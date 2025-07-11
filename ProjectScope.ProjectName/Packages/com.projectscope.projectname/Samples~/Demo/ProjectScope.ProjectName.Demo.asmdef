@@ -1,0 +1,16 @@
+{
+    "name": "ProjectScope.ProjectName.Demo",
+    "rootNamespace": "ProjectScope.ProjectName.Demo",
+    "references": [
+        "ProjectScope.ProjectName"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
