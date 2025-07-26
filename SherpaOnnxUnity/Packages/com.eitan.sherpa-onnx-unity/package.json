@@ -1,0 +1,57 @@
+{
+  "name": "com.eitan.sherpa-onnx-unity",
+  "displayName": "SherpaOnnxUnity",
+  "description": "Offline ASR/TTS for Unity via sherpa-onnx. Supports diarization, enhancement, and VAD.",
+  "keywords": [
+    "sherpa",
+    "onnx",
+    "sherpaonnx",
+    "onnxunity",
+    "unity",
+    "ai",
+    "machinelearning",
+    "ml",
+    "speech",
+    "speechrecognition",
+    "voice",
+    "audio",
+    "realtime",
+    "inference",
+    "deep learning",
+    "neuralnetworks",
+    "asr",
+    "automatic speech recognition",
+    "plugin",
+    "runtime",
+    "csharp",
+    "dotnet",
+    "open source",
+    "crossplatform",
+    "package",
+    "integration"
+  ],
+  "version": "0.1.0-exp.1",
+  "unity": "2021.3",
+  "documentationUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity#documentation",
+  "changelogUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/tree/",
+  "license": "MIT",
+  "samples": [
+    {
+      "displayName": "SherpaOnnxUnity Sample",
+      "description": "A collection of samples demonstrating how to use SherpaOnnxUnity for various ASR/TTS tasks.",
+      "path": "Samples~/Collection"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "repository": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git"
+  },
+  "author": {
+    "name": "Eitan",
+    "email": "unease-equity-5c@icloud.com",
+    "url": "https://github.com/EitanWong"
+  },
+  "publishConfig": {
+    "registry": "https://package.openupm.com"
+  }
+}

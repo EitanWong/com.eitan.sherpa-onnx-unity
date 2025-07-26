@@ -1,0 +1,16 @@
+{
+    "name": "Eitan.SherpaOnnxUnity.Demo",
+    "rootNamespace": "Eitan.SherpaOnnxUnity.Demo",
+    "references": [
+        "Eitan.SherpaOnnxUnity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
