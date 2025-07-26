@@ -1,0 +1,18 @@
+{
+    "name": "Eitan.SherpaOnnxUnity.Editor",
+    "rootNamespace": "Eitan.SherpaOnnxUnity.Editor",
+    "references": [
+        "Eitan.SherpaOnnxUnity"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
