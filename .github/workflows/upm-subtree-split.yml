@@ -10,4 +10,5 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.PAT }}
     - uses: RageAgainstThePixel/upm-subtree-split@v1
