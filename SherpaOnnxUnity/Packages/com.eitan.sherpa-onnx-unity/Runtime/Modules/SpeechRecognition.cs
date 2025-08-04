@@ -3,6 +3,7 @@
 namespace Eitan.SherpaOnnxUnity.Runtime
 {
     using System;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
@@ -89,7 +90,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = { 
-                    Tokens = metadata.GetModelFilePathByKeywords("tokens"),
+                    Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
                     Provider = "cpu",
                     NumThreads = 1,
                     Debug = 0
@@ -107,15 +108,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords);
-                    config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords);
+                    config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
+                    config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
                     break;
                     
                 case SpeechRecognitionModelType.Online_Transducer:
                     config.DecodingMethod = isMobilePlatform ? "greedy_search" : "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords);
-                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords);
-                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords);
+                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
+                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
+                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords).First();
                     break;
                     
                 default:
@@ -131,7 +132,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = { 
-                    Tokens = metadata.GetModelFilePathByKeywords("tokens"),
+                    Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
                     Debug = 0,
                     ModelType = string.Empty
                 },
@@ -142,7 +143,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             };
 
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
-            var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords", int8QuantKeywords);
+            var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords", int8QuantKeywords).First();
             if (!string.IsNullOrEmpty(hotwordsFile))
             {
                 config.HotwordsFile = hotwordsFile;
@@ -152,57 +153,57 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Offline_Transducer:
-                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords);
-                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords);
-                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords);
+                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
+                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
+                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.Offline_Paraformer:
-                    config.ModelConfig.Paraformer.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.Paraformer.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.Offline_ZipformerCtc:
-                    config.ModelConfig.ZipformerCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.ZipformerCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.Offline_Nemo_Ctc:
-                    config.ModelConfig.NeMoCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.NeMoCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.Dolphin:
-                    config.ModelConfig.Dolphin.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.Dolphin.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.TeleSpeech:
-                    config.ModelConfig.TeleSpeechCtc = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.TeleSpeechCtc = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.Whisper:
-                    config.ModelConfig.Whisper.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords);
-                    config.ModelConfig.Whisper.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords);
+                    config.ModelConfig.Whisper.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
+                    config.ModelConfig.Whisper.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
                     config.ModelConfig.Whisper.Language = string.Empty;
                     config.ModelConfig.Whisper.Task = "transcribe";
                     break;
 
                 case SpeechRecognitionModelType.Tdnn:
-                    config.ModelConfig.Tdnn.Model = metadata.GetModelFilePathByKeywords("tdnn", int8QuantKeywords);
+                    config.ModelConfig.Tdnn.Model = metadata.GetModelFilePathByKeywords("tdnn", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.SenseVoice:
-                    config.ModelConfig.SenseVoice.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords);
+                    config.ModelConfig.SenseVoice.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords).First();
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
                     break;
 
                 case SpeechRecognitionModelType.Moonshine:
-                    config.ModelConfig.Moonshine.Preprocessor = metadata.GetModelFilePathByKeywords("preprocess", int8QuantKeywords);
-                    config.ModelConfig.Moonshine.Encoder = metadata.GetModelFilePathByKeywords("encode", int8QuantKeywords);
-                    config.ModelConfig.Moonshine.UncachedDecoder = metadata.GetModelFilePathByKeywords("uncached_decode", int8QuantKeywords);
-                    config.ModelConfig.Moonshine.CachedDecoder = metadata.GetModelFilePathByKeywords("cached_decode", int8QuantKeywords);
+                    config.ModelConfig.Moonshine.Preprocessor = metadata.GetModelFilePathByKeywords("preprocess", int8QuantKeywords).First();
+                    config.ModelConfig.Moonshine.Encoder = metadata.GetModelFilePathByKeywords("encode", int8QuantKeywords).First();
+                    config.ModelConfig.Moonshine.UncachedDecoder = metadata.GetModelFilePathByKeywords("uncached_decode", int8QuantKeywords).First();
+                    config.ModelConfig.Moonshine.CachedDecoder = metadata.GetModelFilePathByKeywords("cached_decode", int8QuantKeywords).First();
                     break;
 
                 case SpeechRecognitionModelType.FireRedAsr:
-                    config.ModelConfig.FireRedAsr.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords);
-                    config.ModelConfig.FireRedAsr.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords);
+                    config.ModelConfig.FireRedAsr.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
+                    config.ModelConfig.FireRedAsr.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
                     break;
 
                 default:

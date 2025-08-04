@@ -1,6 +1,7 @@
 using System;
 using System.Buffers; // For ArrayPool
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For MathUtils
@@ -273,7 +274,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             switch (modelType)
             {
                 case VoiceActivityDetectionModelType.SileroVad:
-                    vadModelConfig.SileroVad.Model = metadata.GetModelFilePathByKeywords("silero", int8QuantKeyword);
+                    vadModelConfig.SileroVad.Model = metadata.GetModelFilePathByKeywords("silero", int8QuantKeyword).First();
                     vadModelConfig.SileroVad.Threshold = Threshold;
                     vadModelConfig.SileroVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.SileroVad.MinSpeechDuration = MinSpeechDuration;
@@ -281,7 +282,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     vadModelConfig.SileroVad.WindowSize = 512;
                     break;
                 case VoiceActivityDetectionModelType.TenVad:
-                    vadModelConfig.TenVad.Model = metadata.GetModelFilePathByKeywords("ten", int8QuantKeyword);
+                    vadModelConfig.TenVad.Model = metadata.GetModelFilePathByKeywords("ten", int8QuantKeyword).First();
                     vadModelConfig.TenVad.Threshold = Threshold;
                     vadModelConfig.TenVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.TenVad.MinSpeechDuration = MinSpeechDuration;
