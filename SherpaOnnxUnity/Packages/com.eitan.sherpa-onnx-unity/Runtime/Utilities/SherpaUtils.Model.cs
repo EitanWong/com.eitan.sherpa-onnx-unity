@@ -32,6 +32,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] ten_keywords = { "ten" };
             #endregion
 
+            #region SpeechSynthesisModelKeywords
+            
+            private static readonly string[] vits_keywords = { "vits" };
+            private static readonly string[] matcha_keywords = { "matcha","vocos" };
+            private static readonly string[] kokoro_keywords = { "kokoro" };
+            #endregion
+
             #endregion
             #region Methods
 
@@ -39,8 +46,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 if (GetSpeechRecognitionModelType(modelID) != SpeechRecognitionModelType.None)
                 { return SherpaOnnxModuleType.SpeechRecognition; }
-                if (GetVoiceActivityDetectionModelType(modelID) != VoiceActivityDetectionModelType.None)
+                else if (GetVoiceActivityDetectionModelType(modelID) != VoiceActivityDetectionModelType.None)
                 { return SherpaOnnxModuleType.VoiceActivityDetection; }
+                else if (GetSpeechSynthesisModelType(modelID) != SpeechSynthesisModelType.None)
+                {return SherpaOnnxModuleType.SpeechSynthesis;}
                 return SherpaOnnxModuleType.Undefined;
             }
 
@@ -54,21 +63,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 // Check for special models first (they have unique identification)
                 if (ContainsAnyKeyword(lowerModelID, whisper_keywords))
                 { return SpeechRecognitionModelType.Whisper; }
-                if (ContainsAnyKeyword(lowerModelID, moonshine_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, moonshine_keywords))
                 { return SpeechRecognitionModelType.Moonshine; }
-                if (ContainsAnyKeyword(lowerModelID, sensevoice_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, sensevoice_keywords))
                 { return SpeechRecognitionModelType.SenseVoice; }
-                if (ContainsAnyKeyword(lowerModelID, fireredasr_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, fireredasr_keywords))
                 { return SpeechRecognitionModelType.FireRedAsr; }
-                if (ContainsAnyKeyword(lowerModelID, dolphin_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, dolphin_keywords))
                 { return SpeechRecognitionModelType.Dolphin; }
-                if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
                 { return SpeechRecognitionModelType.TeleSpeech; }
-                if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
                 { return SpeechRecognitionModelType.Offline_ZipformerCtc; }
-                if (ContainsAnyKeyword(lowerModelID, nemo_ctc_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, nemo_ctc_keywords))
                 { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
-                if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
                 { return SpeechRecognitionModelType.Tdnn; }
 
 
@@ -103,11 +112,29 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 // Check for special models first (they have unique identification)
                 if (ContainsAnyKeyword(lowerModelID, silero_keywords))
                 { return VoiceActivityDetectionModelType.SileroVad; }
-                if (ContainsAnyKeyword(lowerModelID, ten_keywords))
+                else if (ContainsAnyKeyword(lowerModelID, ten_keywords))
                 { return VoiceActivityDetectionModelType.TenVad; }
                 return VoiceActivityDetectionModelType.None;
             }
 
+            public static SpeechSynthesisModelType GetSpeechSynthesisModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                { return SpeechSynthesisModelType.None; }
+
+                string lowerModelID = modelID.ToLower();
+
+                // Check for special models first (they have unique identification)
+                if (ContainsAnyKeyword(lowerModelID, vits_keywords))
+                { return SpeechSynthesisModelType.Vits; }
+                else if (ContainsAnyKeyword(lowerModelID, matcha_keywords))
+                { return SpeechSynthesisModelType.Matcha; }
+                else if (ContainsAnyKeyword(lowerModelID, kokoro_keywords))
+                { return SpeechSynthesisModelType.Kokoro; }
+
+                return SpeechSynthesisModelType.None;
+                
+            }
             public static bool IsOnlineModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))

@@ -33,12 +33,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// A task that represents the asynchronous operation. The task result contains the path of the first matching file.
         /// It returns null if the metadata for the model can't be found, if there are no model files, or if no file matches all the specified keywords.
         /// </returns>
-        public static string GetModelFilePathByKeywords(this SherpaOnnxModelMetadata metadata, params string[] keywords)
+        public static string[] GetModelFilePathByKeywords(this SherpaOnnxModelMetadata metadata, params string[] keywords)
         {
             if (metadata?.modelFileNames == null || !metadata.modelFileNames.Any())
             {
                 UnityEngine.Debug.LogError("Model metadata filenames are empty. Please check the manifest file.");
-                return null;
+                return System.Array.Empty<string>();
             }
 
             // 预处理：过滤空关键字并转换为小写
@@ -49,7 +49,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             if (validKeywords.Length == 0)
             {
-                return null;
+                return System.Array.Empty<string>();
             }
 
             // 分割文件名为单词列表（按非字母数字字符分割）
@@ -81,21 +81,50 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             // 没有匹配文件
             if (matchedFiles.Count == 0)
             {
-                return null;
+                return System.Array.Empty<string>();
             }
 
             // 优先选择：1. 匹配关键字最多的文件 2. 文件路径长度最短的（提高稳定性）
-            var bestMatch = matchedFiles
+            var bestMatches = matchedFiles
                 .OrderByDescending(x => x.KeywordCount) // 匹配关键字数量降序
                 .ThenBy(x => x.FileName.Length)         // 文件名长度升序
-                .First();
+                .Select(x => metadata.GetModelFilePath(x.FileName))
+                .ToArray();
 
-            return metadata.GetModelFilePath(bestMatch.FileName);
+            return bestMatches;
         }
+
+        public static string[] GetModelFilesByExtensionName(this SherpaOnnxModelMetadata metadata, params string[] extensions)
+        {
+            if (metadata?.modelFileNames == null || !metadata.modelFileNames.Any())
+            {
+                UnityEngine.Debug.LogError("Model metadata filenames are empty. Please check the manifest file.");
+                return System.Array.Empty<string>();
+            }
+
+            var validExtensions = new System.Collections.Generic.HashSet<string>(
+                extensions
+                    .Where(ext => !string.IsNullOrWhiteSpace(ext))
+                    .Select(ext => ext.StartsWith(".") ? ext : "." + ext),
+                System.StringComparer.OrdinalIgnoreCase
+            );
+
+            if (validExtensions.Count == 0)
+            {
+                return System.Array.Empty<string>();
+            }
+            
+            return metadata.modelFileNames
+                .Where(file => validExtensions.Contains(System.IO.Path.GetExtension(file)))
+                .Select(file => metadata.GetModelFilePath(file))
+                .ToArray();
+        }
+        
+        
 
         public static bool IsOnlineModel(this SherpaOnnxModelMetadata metadata)
         {
-           return SherpaUtils.Model.IsOnlineModel(metadata.modelId);
+            return SherpaUtils.Model.IsOnlineModel(metadata.modelId);
         }
     }
 }
