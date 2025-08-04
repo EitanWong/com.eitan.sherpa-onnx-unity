@@ -109,6 +109,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken);
                                 continue;
                             }
+                            
+                            // Verify extracted model files
+                            if (!await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken))
+                            {
+                                await ApplyExponentialBackoffAsync(attempt, cancellationToken);
+                                continue;
+                            }
+                            
+                            // All verification passed, model is ready
+                            return true;
+                        }
+                        else
+                        {
+                            // For non-compressed files, verify the downloaded file is the correct model
+                            if (!await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken))
+                            {
+                                await ApplyExponentialBackoffAsync(attempt, cancellationToken);
+                                continue;
+                            }
+                            
+                            // All verification passed, model is ready
+                            return true;
                         }
                     }
 
@@ -188,31 +210,81 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 var lowerFileName = fileName.ToLowerInvariant();
                 return COMPRESSED_EXTENSIONS.Any(ext => lowerFileName.EndsWith(ext));
             }
+            
 
             private static bool CheckDiskSpace(SherpaOnnxModelMetadata metadata, string directoryPath, SherpaFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 try
                 {
-                    var drive = new DriveInfo(Path.GetPathRoot(directoryPath));
-                    var availableSpaceMB = drive.AvailableFreeSpace / BYTES_PER_MB;
-
-                    if (availableSpaceMB < MIN_DISK_SPACE_GB)
+#if UNITY_ANDROID && !UNITY_EDITOR
+                    // On Android, test write access to the actual target directory
+                    // as DriveInfo doesn't work reliably on Android
+                    
+                    // Ensure the directory exists for testing
+                    if (!Directory.Exists(directoryPath))
                     {
-                        // _logger.LogWarning($"Insufficient disk space: {availableSpaceMB}MB available, {MIN_DISK_SPACE_GB}MB required");
-                        reporter?.Report(new VerifyFeedback(metadata, message: $"Insufficient disk space: {availableSpaceMB}MB available", filePath: directoryPath));
+                        Directory.CreateDirectory(directoryPath);
+                    }
+                    
+                    // Try to create a small test file to verify write access and available space
+                    var testFilePath = Path.Combine(directoryPath, $"space_test_{System.Guid.NewGuid()}.tmp");
+                    
+                    try
+                    {
+                        // Create a small test file (1KB) to verify space availability
+                        var testData = new byte[1024];
+                        File.WriteAllBytes(testFilePath, testData);
+                        File.Delete(testFilePath);
+                        
+                        // If we can write a small file, assume we have enough space
+                        // This is a pragmatic approach since Android's storage APIs are limited
+                        return true;
+                    }
+                    catch (Exception)
+                    {
+                        // If we can't even write a small test file, assume insufficient space
+                        reporter?.Report(new VerifyFeedback(metadata, message: "Cannot write to storage, insufficient space or permissions", filePath: directoryPath));
+                        return false;
+                    }
+                    finally
+                    {
+                        // Clean up test file if it still exists
+                        if (File.Exists(testFilePath))
+                        {
+                            try { File.Delete(testFilePath); } catch { }
+                        }
+                    }
+#else
+                    // On non-Android platforms, use DriveInfo
+                    var rootPath = Path.GetPathRoot(directoryPath);
+                    if (string.IsNullOrEmpty(rootPath))
+                    {
+                        // Fallback: assume sufficient space if we can't determine the root
+                        return true;
+                    }
+                    
+                    var drive = new DriveInfo(rootPath);
+                    var availableSpaceMB = drive.AvailableFreeSpace / BYTES_PER_MB;
+                    var requiredSpaceMB = MIN_DISK_SPACE_GB * 1024; // Convert GB to MB
+
+                    if (availableSpaceMB < requiredSpaceMB)
+                    {
+                        reporter?.Report(new VerifyFeedback(metadata, message: $"Insufficient disk space: {availableSpaceMB}MB available, {requiredSpaceMB}MB required", filePath: directoryPath));
                         return false;
                     }
 
                     return true;
+#endif
                 }
                 catch (Exception ex)
                 {
-                    // _logger.LogWarning($"Could not check disk space: {ex.Message}");
-                    reporter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    return false; // Assume sufficient space if we can't check
+                    // On any error, log it but assume sufficient space to avoid blocking legitimate operations
+                    reporter?.Report(new VerifyFeedback(metadata, message: $"Could not check disk space: {ex.Message}. Proceeding with operation.", filePath: directoryPath));
+                    return true;
                 }
             }
-
+            
+            
             private static async Task<bool> VerifyExistingModelAsync(SherpaOnnxModelMetadata metadata,
                 (string ModuleDirectoryPath, string ModelDirectoryPath, string DownloadFilePath, string DownloadFileName, bool IsCompressed) paths,
                 SherpaFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
@@ -233,12 +305,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     for (int i = 0; i < metadata.modelFileNames.Length; i++)
                     {
                         var index = i;
-                        var filePath = metadata.modelFileNames[index];
+                        var relativeFilePath = metadata.modelFileNames[index];
+                        var fullFilePath = Path.Combine(paths.ModelDirectoryPath, relativeFilePath);
                         var expectedSha256 = (metadata.modelFileHashes != null && index < metadata.modelFileHashes.Length)
                             ? metadata.modelFileHashes[index]
                             : null;
 
-                        var task = VerifyFileWithIndexAsync(metadata, index, filePath, expectedSha256, reporter, cancellationToken);
+                        var task = VerifyFileWithIndexAsync(metadata, index, fullFilePath, expectedSha256, reporter, cancellationToken);
                         verificationTasks.Add(task);
                     }
 
@@ -303,8 +376,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 try
                 {
-                    // Check if the file is already downloaded
-                    var (index, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, null, reporter, cancellationToken);
+                    // Check if the file is already downloaded with hash verification
+                    var (index, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, metadata.downloadFileHash, reporter, cancellationToken);
                     if (downloadedFileCheckResult.Status == FileVerificationStatus.Success)
                     {
 

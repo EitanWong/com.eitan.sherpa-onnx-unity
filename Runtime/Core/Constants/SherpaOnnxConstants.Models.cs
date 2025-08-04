@@ -106,9 +106,32 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 new SherpaOnnxModelMetadata {modelId = "ten-vad-int8", modelFileNames = new[]{"ten-vad.int8.onnx"}, modelFileHashes = new[] {"880c072f188efa169ea028b2159d1b3a438e153d080b87eac31b74ecad511e61"}, downloadUrl="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/ten-vad.int8.onnx", downloadFileHash="880c072f188efa169ea028b2159d1b3a438e153d080b87eac31b74ecad511e61"}
             };
 
+            public static readonly SherpaOnnxModelMetadata[] TTS_MODELS_METADATA_TABLES = new[]
+            {
+                //vits_model
+                new SherpaOnnxModelMetadata { modelId = "vits-melo-tts-zh_en", modelFileNames = new[] { "model.onnx", "dict", "date.fst", "number.fst", "phone.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-piper-en_US-libritts_r-medium", modelFileNames = new[] { "en_US-libritts_r-medium.onnx", "en_US-libritts_r-medium.onnx.json", "espeak-ng-data", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-piper-en_US-glados", modelFileNames = new[] { "en_US-glados.onnx", "espeak-ng-data", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-vits-zh-ll", modelFileNames = new[] { "model.onnx", "dict", "date.fst", "number.fst", "phone.fst", "new_heteronym.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-zh-hf-fanchen-C", modelFileNames = new[] { "vits-zh-hf-fanchen-C.onnx", "dict", "date.fst", "number.fst", "phone.fst", "new_heteronym.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-zh-hf-fanchen-wnj", modelFileNames = new[] { "vits-zh-hf-fanchen-wnj.onnx", "dict", "date.fst", "number.fst", "phone.fst", "new_heteronym.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-zh-hf-theresa", modelFileNames = new[] { "theresa.onnx", "dict", "date.fst", "number.fst", "phone.fst", "new_heteronym.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-zh-hf-eula", modelFileNames = new[] { "eula.onnx", "dict", "date.fst", "number.fst", "phone.fst", "new_heteronym.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-icefall-zh-aishell3", modelFileNames = new[] { "model.onnx", "date.fst", "number.fst", "phone.fst", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-ljs", modelFileNames = new[] { "vits-ljs.onnx", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-vctk", modelFileNames = new[] { "vits-vctk.onnx", "vits-vctk.int8.onnx", "lexicon.txt", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "vits-piper-en_US-lessac-medium", modelFileNames = new[] { "en_US-lessac-medium.onnx", "espeak-ng-data", "tokens.txt" } },
+                //matcha
+                new SherpaOnnxModelMetadata {modelId = "vocos-22khz-univ", modelFileNames = new[] { "vocos-22khz-univ.onnx" }, downloadUrl="https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx" },
+                new SherpaOnnxModelMetadata {modelId = "matcha-icefall-en_US-ljspeech", modelFileNames = new[] { "model-steps-3.onnx", "espeak-ng-data", "tokens.txt" } },
+                new SherpaOnnxModelMetadata {modelId = "matcha-icefall-zh-baker", modelFileNames = new[] { "model-steps-3.onnx", "dict","data.fst","number.fst","phone.fst","lexicon.txt", "tokens.txt" } },
+                //kokoro
+                new SherpaOnnxModelMetadata { modelId = "kokoro-multi-lang-v1_1", modelFileNames = new[] { "model.onnx","dict","espeak-ng-data","date-zh.fst","lexicon-gb-en.txt","lexicon-us-en.txt","lexicon-zh.txt","number-zh.fst","phone-zh.fst","voices.bin", "tokens.txt" }},
+                new SherpaOnnxModelMetadata { modelId = "kokoro-int8-multi-lang-v1_1", modelFileNames = new[] { "model.int8.onnx","dict","espeak-ng-data","date-zh.fst","lexicon-gb-en.txt","lexicon-us-en.txt","lexicon-zh.txt","number-zh.fst","phone-zh.fst","voices.bin", "tokens.txt" }},
+                new SherpaOnnxModelMetadata { modelId = "kokoro-multi-lang-v1_0", modelFileNames = new[] { "model.onnx","dict","espeak-ng-data","date-zh.fst","lexicon-gb-en.txt","lexicon-us-en.txt","lexicon-zh.txt","number-zh.fst","phone-zh.fst","voices.bin", "tokens.txt" }},
+                new SherpaOnnxModelMetadata { modelId = "kokoro-en-v0_19", modelFileNames = new[] { "model.onnx","espeak-ng-data","voices.bin", "tokens.txt" }}
+
+            };
         }
-
-
     }
-
 }
