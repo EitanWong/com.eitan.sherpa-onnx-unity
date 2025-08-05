@@ -15,7 +15,6 @@ namespace Eitan.SherpaOnnxUnity.Samples
     [RequireComponent(typeof(AudioSource))]
     public class VoiceActivityDetectionExample : MonoBehaviour, ISherpaFeedbackHandler
     {
-
         // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
         [Header("UI Components")]
         [SerializeField] private Dropdown _modelIDDropdown;
@@ -106,6 +105,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("No model is loaded, no need to unload.");
                 return;
             }
+         
             
             Cleanup();
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
@@ -266,9 +266,13 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private async Task PlayAndResumeAsync()
         {
-            if (accumulatedSpeech.Count == 0) return;
+            if (accumulatedSpeech.Count == 0)
+            {
+                return;
+            }
 
             // Set a flag to prevent audio processing during playback.
+
             isPlayingBack = true;
 
             var samples = accumulatedSpeech.ToArray();
@@ -376,8 +380,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
             SetProgressActive(false);
             UpdateOverallProgress(1f, "Success");
             _initMessageText.text = string.Empty;
-            _vadStatusText.text = "VAD Status: <color=grey>Listening...</color>";
-            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded. Speak into the microphone.";
+            _vadStatusText.text = $"SpeechSyntesis Model Loaded\nNow you can type some text to generate.";
+            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded.";
 
             StartRecording();
 

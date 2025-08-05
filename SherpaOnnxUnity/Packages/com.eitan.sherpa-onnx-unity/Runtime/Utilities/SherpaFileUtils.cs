@@ -19,7 +19,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         Done,
         FileNotFound,
         HashMismatch,
-        IsDirectory,
         Error,
         CacheHit  // New status for when hash is read from cache
     }
@@ -168,13 +167,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 // Check if it's a directory first.
                 if (Directory.Exists(path))
                 {
-                    // Hash verification is not supported for directories.
-                    if (!string.IsNullOrEmpty(expectedHash))
-                    {
-                        eventArgs = new FileVerificationEventArgs(path, FileVerificationStatus.Error, message: "Hash verification is not applicable to directories.");
-                        return eventArgs;
-                    }
-                    eventArgs = new FileVerificationEventArgs(path, FileVerificationStatus.IsDirectory, message: "Path exists and is a directory.");
+                    eventArgs = new FileVerificationEventArgs(path, FileVerificationStatus.Success, message: "Path exists and is a directory.");
                     return eventArgs;
                 }
 

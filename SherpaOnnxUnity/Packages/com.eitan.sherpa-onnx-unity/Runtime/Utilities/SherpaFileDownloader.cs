@@ -394,8 +394,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 if (long.TryParse(contentLengthHeader, out fileSize))
                 {
                     var acceptRangesHeader = headRequest.GetResponseHeader("Accept-Ranges");
-                    supportsRangeRequests = !string.IsNullOrEmpty(acceptRangesHeader) &&
-                                          acceptRangesHeader.Contains("bytes");
+                    supportsRangeRequests = !string.IsNullOrEmpty(acceptRangesHeader) && acceptRangesHeader.Contains("bytes");
                 }
             }
 

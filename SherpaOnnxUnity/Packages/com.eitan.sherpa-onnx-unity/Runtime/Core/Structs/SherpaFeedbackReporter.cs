@@ -6,7 +6,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime{
     {
         private readonly System.Action<IFeedback> _callback;
         private readonly ISherpaFeedbackHandler[] _visitors;
-        ILogger _logger;
+        private ILogger _logger;
 
         public SherpaFeedbackReporter(ILogger logger=null,params ISherpaFeedbackHandler[] visitors)
         {
