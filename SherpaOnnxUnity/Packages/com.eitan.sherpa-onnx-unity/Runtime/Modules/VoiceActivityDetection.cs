@@ -274,7 +274,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             switch (modelType)
             {
                 case VoiceActivityDetectionModelType.SileroVad:
-                    vadModelConfig.SileroVad.Model = metadata.GetModelFilePathByKeywords("silero", int8QuantKeyword).First();
+                    vadModelConfig.SileroVad.Model = metadata.GetModelFilePathByKeywords("silero", int8QuantKeyword)?.First();
                     vadModelConfig.SileroVad.Threshold = Threshold;
                     vadModelConfig.SileroVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.SileroVad.MinSpeechDuration = MinSpeechDuration;
@@ -282,7 +282,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     vadModelConfig.SileroVad.WindowSize = 512;
                     break;
                 case VoiceActivityDetectionModelType.TenVad:
-                    vadModelConfig.TenVad.Model = metadata.GetModelFilePathByKeywords("ten", int8QuantKeyword).First();
+                    vadModelConfig.TenVad.Model = metadata.GetModelFilePathByKeywords("ten", int8QuantKeyword)?.First();
                     vadModelConfig.TenVad.Threshold = Threshold;
                     vadModelConfig.TenVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.TenVad.MinSpeechDuration = MinSpeechDuration;

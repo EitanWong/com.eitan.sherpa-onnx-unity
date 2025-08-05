@@ -52,9 +52,5 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         // 效果：提升语音质量（降噪/去混响/清晰化处理）
         SpeechEnhancement,
 
-        // 语音转文本 | Text To Speech
-        // 效果：将文本转为朗读的语音音频
-        TextToSpeech,
-
     }
 }

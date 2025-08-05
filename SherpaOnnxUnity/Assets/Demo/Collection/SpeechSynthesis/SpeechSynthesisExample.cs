@@ -1,7 +1,6 @@
 
 namespace Eitan.SherpaOnnxUnity.Samples
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
 
@@ -13,7 +12,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using static UnityEngine.UI.Dropdown;
 
     [RequireComponent(typeof(AudioSource))]
-    public class VoiceActivityDetectionExample : MonoBehaviour, ISherpaFeedbackHandler
+    public class SpeechSynthesisExample : MonoBehaviour, ISherpaFeedbackHandler
     {
         // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
         [Header("UI Components")]
@@ -23,26 +22,29 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _vadStatusText;
+        [SerializeField] private Text _speechSynthesisStatusText;
 
-
-        private VoiceActivityDetection vad;
-
-        private readonly int SampleRate = 16000;
-
-        private Mic.Device device;
+        // here is the components for TTS demo needed
+        [Header("TTS Components")]
+        [SerializeField] private RectTransform _containerRectTransform;
+        [SerializeField] private InputField _voiceInputField;
+        [SerializeField] private Slider _speedSlider;
+        [SerializeField] private Text _speedValueText;
+        [SerializeField] private InputField _contentInputField;
+        [SerializeField] private Button _generateButton;
+        private SpeechSynthesis TTS;
 
         private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "ten-vad";
+        private readonly string defaultModelID = "vits-melo-tts-zh_en";
         
         private AudioSource audioSource;
-        private readonly List<float> accumulatedSpeech = new List<float>();
-        private bool isPlayingBack = false;
+        private bool _isGenerating = false;
+        private AudioClip _lastGeneratedClip;
 
         /// <summary>
-        /// True if the VAD model is loaded.
+        /// True if the TTS model is loaded.
         /// </summary>
-        private bool IsModelLoaded => vad != null;
+        private bool IsModelLoaded => TTS != null;
 
         #region Unity Lifecycle Methods
         private void Start()
@@ -51,13 +53,16 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Application.runInBackground = true;
             Application.targetFrameRate = 30;
             _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
+            _generateButton.onClick.AddListener(HandleGenerateButtonClick);
+            _speedSlider.onValueChanged.AddListener(OnSpeedSliderChanged);
             _totalInitProgressBar.gameObject.SetActive(false);
             _initMessageText.gameObject.SetActive(false);
             _tipsText.text = "Load a model to begin.";
-            _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
+            _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _ = InitDropdown();
             UpdateLoadButtonUI();
+            SetOperationContainerDisplay(false);
         }
 
         private void OnDestroy()
@@ -70,12 +75,20 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
             }
+            if (_generateButton != null)
+            {
+                _generateButton.onClick.RemoveListener(HandleGenerateButtonClick);
+            }
+            if( _speedSlider != null)
+            {
+                _speedSlider.onValueChanged.RemoveListener(OnSpeedSliderChanged);
+            }
         }
         #endregion
 
         #region Model and Recording Control
         /// <summary>
-        /// Loads the VAD model with the specified ID and prepares for recording.
+        /// Loads the TTS model with the specified ID and prepares for recording.
         /// </summary>
         /// <param name="modelID">The ID of the model to load.</param>
         private void Load(string modelID)
@@ -87,16 +100,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
 
             var reporter = new SherpaFeedbackReporter(null, this);
-            vad = new VoiceActivityDetection(modelID, SampleRate, reporter);
-            vad.OnSpeakingStateChanged += HandleSpeechStateChanged;
-            vad.OnSpeechSegmentDetected += HandleSpeechSegmentCollected;
+            TTS = new SpeechSynthesis(modelID,  reporter: reporter);
             
             UpdateLoadButtonUI();
 
         }
 
         /// <summary>
-        /// Unloads the current VAD model and releases all related resources.
+        /// Unloads the current TTS model and releases all related resources.
         /// </summary>
         private void Unload()
         {
@@ -105,40 +116,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("No model is loaded, no need to unload.");
                 return;
             }
-         
-            
+
             Cleanup();
-            _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
+            _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
             _tipsText.text = "Load a model to begin.";
             UpdateLoadButtonUI();
-        }
-
-        /// <summary>
-        /// Starts microphone recording.
-        /// </summary>
-        private void StartRecording()
-        {
-            if (isPlayingBack)
-            {
-                Debug.LogWarning("Cannot start recording during playback.");
-                return;
-            }
-
-            Mic.Init();
-            var devices = Mic.AvailableDevices;
-            if (devices.Count > 0)
-            {
-                // Only get a new device and subscribe if we don't have one.
-                // This prevents re-subscribing the event handler on resume.
-                if (device == null)
-                {
-                    device = devices[0];
-                    device.OnFrameCollected += HandleAudioFrameCollected;
-                }
-
-                device.StartRecording(SampleRate, 10);
-                Debug.Log($"Using device: {device.Name}, Sampling Frequency: {device.SamplingFrequency}");
-            }
+            SetOperationContainerDisplay(false); 
         }
 
         /// <summary>
@@ -146,34 +129,22 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// </summary>
         private void Cleanup()
         {
-            // Stop microphone and unsubscribe
-            if (device != null)
-            {
-                device.StopRecording();
-                device.OnFrameCollected -= HandleAudioFrameCollected;
-                device = null;
-            }
-
-            // Destroy VAD and unsubscribe
-            if (vad != null)
-            {
-                vad.OnSpeakingStateChanged -= HandleSpeechStateChanged;
-                vad.OnSpeechSegmentDetected -= HandleSpeechSegmentCollected;
-                vad.Dispose();
-                vad = null;
-            }
-
             // Reset playback state
             if (audioSource != null && audioSource.isPlaying)
             {
                 audioSource.Stop();
             }
-            accumulatedSpeech.Clear();
-            isPlayingBack = false;
+            // accumulatedSpeech.Clear();
+            if (TTS != null)
+            {
+                TTS?.Dispose();
+                TTS=null;
+            }
         }
         #endregion
 
         #region UI and Initialization
+        
         private async Task InitDropdown()
         {
             var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
@@ -181,7 +152,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => (m.moduleType == SherpaOnnxModuleType.VoiceActivityDetection)).Select(m => new OptionData(m.modelId)).ToList();
+                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => (m.moduleType == SherpaOnnxModuleType.SpeechSynthesis)).Select(m => new OptionData(m.modelId)).ToList();
                 _modelIDDropdown.AddOptions(modelOptions);
 
                 var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);
@@ -232,59 +203,36 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
 
         }
-        #endregion
 
-        #region VAD Core Logic
-        private void HandleSpeechStateChanged(bool isSpeaking)
+        private void SetOperationContainerDisplay(bool isVisible)
         {
-            if (isSpeaking)
+            _containerRectTransform.gameObject.SetActive(isVisible);
+            if (isVisible)
             {
-                _vadStatusText.text = "VAD Status: <color=green>Speaking</color>";
-                _tipsText.text = "Recording speech segment...";
+                _tipsText.text = "Model loaded. Enter text and click Generate.";
             }
             else
             {
-                _vadStatusText.text = "VAD Status: <color=red>Silent</color>";
-                _tipsText.text = "Speech ended. Preparing for playback...";
-                // When the user stops speaking and we have recorded something, start playback.
-                if (accumulatedSpeech.Count > 0 && !isPlayingBack)
-                {
-                    _ = PlayAndResumeAsync();
-                }
+                _tipsText.text = "Load a model to begin.";
             }
         }
 
-        private void HandleSpeechSegmentCollected(float[] segment)
+        private async void HandleGenerateButtonClick()
         {
-            if (segment == null || segment.Length == 0)
-            {
-                Debug.LogWarning("Received an empty speech segment.");
-                return;
-            }
-            accumulatedSpeech.AddRange(segment);
+            await GenerateSpeechAsync(_contentInputField.text, int.Parse(_voiceInputField.text), _speedSlider.value);
         }
 
-        private async Task PlayAndResumeAsync()
+
+        #endregion
+
+        #region TTS Core Logic
+        private async Task PlayAndResumeAsync(AudioClip clip)
         {
-            if (accumulatedSpeech.Count == 0)
-            {
-                return;
-            }
-
-            // Set a flag to prevent audio processing during playback.
-
-            isPlayingBack = true;
-
-            var samples = accumulatedSpeech.ToArray();
-            accumulatedSpeech.Clear();
-
-            AudioClip clip = AudioClip.Create("SpeechSegment", samples.Length, 1, SampleRate, false);
-            clip.SetData(samples, 0);
 
             audioSource.clip = clip;
             audioSource.Play();
-            _vadStatusText.text = $"Playback: <color=blue>{clip.length:F2}s</color>";
-            _tipsText.text = "Playing back the last detected speech segment.";
+            _speechSynthesisStatusText.text = $"Playing: <color=blue>{clip.length:F2}s</color>";
+            _tipsText.text = "Playing generated speech.";
             // Debug.Log($"Playing back {clip.length:F2} seconds of audio.");
 
             // Wait for playback to complete.
@@ -293,36 +241,47 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 await Task.Yield();
             }
 
-            // Destroy the temporary AudioClip to free up memory.
-            Destroy(clip);
 
             // Reset the flag to allow audio processing to resume.
             if (IsModelLoaded)
             {
-                _vadStatusText.text = "VAD Status: <color=grey>Listening...</color>";
-                // Debug.Log("Playback finished. Resuming audio processing.");
-                _tipsText.text = "Playback finished. Resumed recording. Speak now.";
+                _speechSynthesisStatusText.text = "TTS Status: <color=green>Ready</color>";
+                _tipsText.text = "Playback finished. Enter text and click Generate.";
             }
-            isPlayingBack = false;
         }
 
-        private void HandleAudioFrameCollected(int sampleRate, int channelCount, float[] pcm)
+        private async Task GenerateSpeechAsync(string text, int voiceID, float speed)
         {
-            try
+            if (string.IsNullOrWhiteSpace(text))
             {
-                // While playing back the previous segment, ignore new audio frames.
-                if (vad == null || isPlayingBack)
-                {
-                    return;
-                }
-                vad.StreamDetect(pcm);
+                _tipsText.text = "Please enter text to generate speech.";
+                return;
+            }
 
-            }
-            catch (Exception ex)
+            if (voiceID < 0)
             {
-                // Log errors to avoid crashing the application
-                Debug.LogError($"An error occurred in HandleAudioFrameCollected: {ex}");
+                _tipsText.text = "Please enter a valid number of voiceID.";
+                return;
             }
+
+            if (!IsModelLoaded)
+            {
+                _tipsText.text = "No model loaded. Please load a model first.";
+                return;
+            }
+
+            _speechSynthesisStatusText.text = "TTS Status: <color=yellow>Generating...</color>";
+            _tipsText.text = "Generating speech, please wait...";
+
+            var generatedAudio = await TTS.GenerateAsync(text, voiceID, speed);
+            // UnityEngine.Debug.Log(generatedAudio);
+            if (generatedAudio == null)
+            {
+                _tipsText.text = "Failed to generate speech. Please check the input text and model.";
+                _speechSynthesisStatusText.text = "TTS Status: <color=red>Generated Failed</color>";
+                return;
+            }
+            await PlayAndResumeAsync(generatedAudio);
         }
         #endregion
 
@@ -380,17 +339,17 @@ namespace Eitan.SherpaOnnxUnity.Samples
             SetProgressActive(false);
             UpdateOverallProgress(1f, "Success");
             _initMessageText.text = string.Empty;
-            _vadStatusText.text = $"SpeechSyntesis Model Loaded\nNow you can type some text to generate.";
-            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded.";
-
-            StartRecording();
+            _speechSynthesisStatusText.text = "TTS Status: <color=green>Ready</color>";
+            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded. Enter text and click Generate.";
+            SetOperationContainerDisplay(true);
+            InitializeDefaultValues();
 
         }
 
         public void OnFeedback(FailedFeedback feedback)
         {
             SetProgressActive(false);
-            UnityEngine.Debug.LogError($"[Failed] :{feedback.Message}");
+            Debug.LogError($"[Failed] :{feedback.Message}");
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model failed to load.";
             Unload();
@@ -403,10 +362,106 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _initMessageText.text = feedback.Message;
         }
         #endregion
+        
+        #region Enhanced UX Methods
+        
+        private void InitializeDefaultValues()
+        {
+            // Set helpful defaults
+            if (_voiceInputField != null)
+            {
+                _voiceInputField.text = "0";
+                _voiceInputField.placeholder.GetComponent<Text>().text = "Voice ID (0, 1, 2...)";
+            }
+            
+            if (_speedSlider != null)
+            {
+                _speedSlider.value = 1f;
+                _speedSlider.minValue = 0.5f;
+                _speedSlider.maxValue = 2.0f;
+            }
+            
+            if (_contentInputField != null)
+            {
+                _contentInputField.placeholder.GetComponent<Text>().text = "Enter text to synthesize speech...";
+            }
+        }
+        
+        
+        
+        private void OnSpeedSliderChanged(float value)
+        {
+            // Show speed value in tips when changing
+            if (!_isGenerating && IsModelLoaded)
+            {
+                // _tipsText.text = $"<b>🎛 Speed Adjusted:</b> {value:F1}x\n• 0.5x = Slower speech\n• 1.0x = Normal speed\n• 2.0x = Faster speech";
+                _speedValueText.text = $"Speed {value:F2}x：";
+            }
+        }
+        
+        private bool ValidateInputs()
+        {
+            if (string.IsNullOrWhiteSpace(_contentInputField.text))
+            {
+                _tipsText.text = "<b><color=orange>⚠ Missing Text</color></b>\nPlease enter text to generate speech.";
+                _speechSynthesisStatusText.text = "<color=orange>⚠ Input Required</color>";
+                return false;
+            }
+            
+            if (!int.TryParse(_voiceInputField.text, out int voiceID) || voiceID < 0)
+            {
+                _tipsText.text = "<b><color=orange>⚠ Invalid Voice ID</color></b>\nPlease enter a valid voice ID number.\n\n<b>Common Values:</b> 0, 1, 2, 3...";
+                _speechSynthesisStatusText.text = "<color=orange>⚠ Invalid Voice ID</color>";
+                return false;
+            }
+            
+            if (!IsModelLoaded)
+            {
+                _tipsText.text = "<b><color=red>❌ No Model Loaded</color></b>\nPlease load a TTS model first.\n\n<b>Steps:</b>\n1. Select model from dropdown\n2. Click 'Load Model'\n3. Wait for loading to complete";
+                _speechSynthesisStatusText.text = "<color=red>❌ Model Required</color>";
+                return false;
+            }
+            
+            if (_isGenerating)
+            {
+                _tipsText.text = "<b><color=yellow>⏳ Generation in Progress</color></b>\nPlease wait for current generation to complete.";
+                return false;
+            }
+            
+            return true;
+        }
+        
+        private void UpdateGenerateButtonState()
+        {
+            if (_generateButton != null)
+            {
+                bool canGenerate = IsModelLoaded && !_isGenerating;
+                _generateButton.interactable = canGenerate;
+                
+                var buttonText = _generateButton.GetComponentInChildren<Text>();
+                if (buttonText != null)
+                {
+                    if (_isGenerating)
+                    {
+                        buttonText.text = "Generating...";
+                    }
+                    else if (!IsModelLoaded)
+                    {
+                        buttonText.text = "Load Model First";
+                    }
+                    else
+                    {
+                        buttonText.text = "Generate Speech";
+                    }
+                }
+            }
+        }
+        #endregion
 
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
+            _tipsText.text = "<b>🔗 Opening GitHub Repository</b>\nOpening project page in your default browser...";
         }
     }
 

@@ -85,7 +85,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         // 步骤1: 校验查模型文件
                         if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken))
                         {
-
                             return true;
                         }
                         // UnityEngine.Debug.Log("Model verify failed");
@@ -135,6 +134,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     }
 
                     await CleanPathAsync(metadata, new[] { paths.ModelDirectoryPath, paths.DownloadFilePath }, reporter, cancellationToken);
+
                     return false;
                 }
                 catch (OperationCanceledException)
