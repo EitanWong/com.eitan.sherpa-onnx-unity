@@ -38,7 +38,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             if (metadata?.modelFileNames == null || !metadata.modelFileNames.Any())
             {
                 UnityEngine.Debug.LogError("Model metadata filenames are empty. Please check the manifest file.");
-                return System.Array.Empty<string>();
+                return null;
             }
 
             // 预处理：过滤空关键字并转换为小写
@@ -49,8 +49,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             if (validKeywords.Length == 0)
             {
-                return System.Array.Empty<string>();
+                return null;
             }
+
 
             // 分割文件名为单词列表（按非字母数字字符分割）
             string[] SplitIntoWords(string fileName)
@@ -66,12 +67,32 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             foreach (var file in metadata.modelFileNames)
             {
-                var words = SplitIntoWords(file);
+                // 只取文件名部分，去掉路径
+                var fileName = System.IO.Path.GetFileName(file);
+                var lowerFileName = fileName.ToLowerInvariant();
+                var matchedKeywords = new System.Collections.Generic.HashSet<string>();
+
+                // 方法1: 完整文件名包含匹配（用于像tokens.txt这样的文件）
+                foreach (var keyword in validKeywords)
+                {
+                    if (!string.IsNullOrEmpty(keyword) && lowerFileName.Contains(keyword))
+                    {
+                        matchedKeywords.Add(keyword);
+                    }
+                }
+
+                // 方法2: 分词匹配（用于像model-name-v1.onnx这样的文件）
+                var words = SplitIntoWords(fileName);
                 var lowerWords = words.Select(w => w.ToLowerInvariant()).ToArray();
+                foreach (var keyword in validKeywords)
+                {
+                    if (lowerWords.Contains(keyword))
+                    {
+                        matchedKeywords.Add(keyword);
+                    }
+                }
 
-                // 计算匹配的关键字数量（不要求全部匹配）
-                int matchCount = validKeywords.Count(kw => lowerWords.Contains(kw));
-
+                int matchCount = matchedKeywords.Count;
                 if (matchCount > 0)
                 {
                     matchedFiles.Add((file, matchCount));
@@ -81,7 +102,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             // 没有匹配文件
             if (matchedFiles.Count == 0)
             {
-                return System.Array.Empty<string>();
+                return null;
             }
 
             // 优先选择：1. 匹配关键字最多的文件 2. 文件路径长度最短的（提高稳定性）

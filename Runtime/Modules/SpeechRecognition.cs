@@ -108,15 +108,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
-                    config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
+                    config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     break;
                     
                 case SpeechRecognitionModelType.Online_Transducer:
                     config.DecodingMethod = isMobilePlatform ? "greedy_search" : "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords).First();
-                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords).First();
-                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords).First();
+                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
                     break;
                     
                 default:
