@@ -10,19 +10,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public void LogError(string message)
         {
             if (!_disposed)
+            {
                 UnityEngine.Debug.LogError(message);
+            }
+
         }
 
         public void LogWarning(string message)
         {
             if (!_disposed)
+            {
                 UnityEngine.Debug.LogWarning(message);
+            }
+
         }
 
         public void LogInfo(string message)
         {
             if (!_disposed)
+            {
                 UnityEngine.Debug.Log(message);
+            }
+
         }
 
         public void Dispose()
