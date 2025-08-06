@@ -746,7 +746,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 828081792}
+  m_Material: {fileID: 721570051}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -1151,7 +1151,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 698925324}
   m_CullTransparentMesh: 1
---- !u!21 &828081792
+--- !u!21 &721570051
 Material:
   serializedVersion: 8
   m_ObjectHideFlags: 0
@@ -1996,7 +1996,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 104}
-  m_SizeDelta: {x: -1357.8291, y: 93.1231}
+  m_SizeDelta: {x: -517.8291, y: 93.1231}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1683833390
 MonoBehaviour:

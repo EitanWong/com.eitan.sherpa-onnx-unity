@@ -15,6 +15,8 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
 
+📋 **[View Changelog](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.1** (2025-01-08)
+
 </div>
 
 ## 🎬 Demo Video
@@ -26,6 +28,21 @@
 *Click above to see SherpaOnnxUnity in action with real-time speech recognition*
 
 </div>
+
+---
+
+## 🆕 What's New in v0.1.1-exp.1 (2025-08-06)
+
+### 🎯 New Modules
+- **🔊 Speech Enhancement** - GTCRN-powered noise reduction with real-time processing
+- **👂 Keyword Spotting** - Voice-activated keyword detection for voice commands
+- **🎛️ Interactive Demos** - Complete examples with model management and UI controls
+
+### ⚡ Key Improvements
+- **Enhanced Model Registry** - Automatic downloads with hash verification
+- **Better Thread Safety** - Improved concurrent processing architecture
+
+[📋 **View Full Changelog**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -41,6 +58,9 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 - **🔌 Offline Operation** - No internet required after setup
 - **⚡ Real-time Processing** - Low-latency speech recognition
 - **🎯 Voice Activity Detection** - Smart speech boundary detection
+- **🔊 Speech Enhancement** - GTCRN noise reduction and audio quality improvement
+- **👂 Keyword Spotting** - Voice-activated keyword detection and wake words
+- **🎤 Text-to-Speech** - High-quality voice synthesis
 - **🌍 Cross-platform Support** - Windows, macOS, Linux, Android
 
 ### 🤖 Intelligent Model Management
@@ -48,12 +68,6 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 - **📡 Breakpoint Resume** - Network interruptions handled
 - **🔐 Hash Verification** - Integrity verification built-in
 - **💾 Smart Caching** - Local storage optimization
-
-### 📱 Mobile-First Design
-- **🏃‍♂️ Android Optimization** - ARM64/ARMv7/x64 native support
-- **🧠 Memory Efficient** - Smart resource management
-- **🔋 Battery Optimized** - Configurable performance modes
-- **📦 Production Ready** - Battle-tested deployment
 
 ### 🛠️ Developer Experience
 - **🎮 Unity Native** - Seamless workflow integration
@@ -121,6 +135,9 @@ The samples include:
 - **Real-time Speech Recognition** - Live microphone input with real-time transcription
 - **Voice Activity Detection** - Detect when users start and stop speaking
 - **Offline Speech Recognition** - Process pre-recorded audio files
+- **Speech Enhancement** - Real-time noise reduction with GTCRN models
+- **Keyword Spotting** - Voice-activated keyword detection and wake words
+- **Text-to-Speech Synthesis** - High-quality voice generation
 - **Advanced Configuration** - Custom model selection and mobile optimization
 
 Each sample contains complete, production-ready code that you can use as a starting point for your own implementation.
