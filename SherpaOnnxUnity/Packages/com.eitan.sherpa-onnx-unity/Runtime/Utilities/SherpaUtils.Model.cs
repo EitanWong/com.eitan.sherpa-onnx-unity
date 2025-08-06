@@ -1,4 +1,5 @@
 using System.Linq;
+using UnityEditorInternal;
 namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 {
     public partial class SherpaUtils
@@ -39,17 +40,33 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] kokoro_keywords = { "kokoro" };
             #endregion
 
+            #region KeywordSpottingModelKeywords
+            private static readonly string[] kws_keywords = { "kws", "keyword" };
             #endregion
+
+            #region SpeechEnhancementModelKeyewords
+            private static readonly string[] speechEnhancement_keywords = { "gtcrn"};
+
+            #endregion
+            
+            #endregion
+
             #region Methods
 
             public static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
             {
-                if (GetSpeechRecognitionModelType(modelID) != SpeechRecognitionModelType.None)
+
+                if (IsKeywordSpottingModel(modelID))
+                { return SherpaOnnxModuleType.KeywordSpotting; }
+                else if (GetSpeechRecognitionModelType(modelID) != SpeechRecognitionModelType.None)
                 { return SherpaOnnxModuleType.SpeechRecognition; }
                 else if (GetVoiceActivityDetectionModelType(modelID) != VoiceActivityDetectionModelType.None)
                 { return SherpaOnnxModuleType.VoiceActivityDetection; }
                 else if (GetSpeechSynthesisModelType(modelID) != SpeechSynthesisModelType.None)
-                {return SherpaOnnxModuleType.SpeechSynthesis;}
+                { return SherpaOnnxModuleType.SpeechSynthesis; }
+                else if (IsSpeechEnhancementModel(modelID))
+                { return SherpaOnnxModuleType.SpeechEnhancement; }
+
                 return SherpaOnnxModuleType.Undefined;
             }
 
@@ -150,6 +167,24 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     default:
                         return false;
                 }
+            }
+
+            public static bool IsKeywordSpottingModel(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                { return false; }
+
+                string lowerModelID = modelID.ToLower();
+                return ContainsAnyKeyword(lowerModelID, kws_keywords);
+            }
+
+            public static bool IsSpeechEnhancementModel(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                { return false; }
+
+                string lowerModelID = modelID.ToLower();
+                return ContainsAnyKeyword(lowerModelID, speechEnhancement_keywords);
             }
 
             /// <summary>
