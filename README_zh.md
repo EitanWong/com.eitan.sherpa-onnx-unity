@@ -15,7 +15,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.1** (2025-01-08)
+📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.1** (2025-08-06)
 
 </div>
 
@@ -42,7 +42,7 @@
 - **增强模型注册** - 自动下载与哈希验证
 - **线程安全升级** - 改进的并发处理架构
 
-[📋 **查看完整更新日志**](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
+[📋 **查看完整更新日志**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
