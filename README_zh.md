@@ -15,6 +15,8 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
 
+📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.1** (2025-01-08)
+
 </div>
 
 ## 🎬 演示视频
@@ -26,6 +28,21 @@
 *点击上方观看SherpaOnnxUnity实时语音识别演示效果*
 
 </div>
+
+---
+
+## 🆕 v0.1.1-exp.1 新功能 (2025-08-06)
+
+### 🎯 新增模块
+- **🔊 语音增强** - 基于GTCRN的噪声消除与实时处理
+- **👂 关键词检测** - 语音激活的关键词识别与唤醒词
+- **🎛️ 交互演示** - 完整的模型管理和UI控件示例
+
+### ⚡ 核心改进
+- **增强模型注册** - 自动下载与哈希验证
+- **线程安全升级** - 改进的并发处理架构
+
+[📋 **查看完整更新日志**](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -41,6 +58,9 @@
 - **🔌 离线运行** - 设置后无需网络连接
 - **⚡ 实时处理** - 低延迟语音识别
 - **🎯 语音活动检测** - 智能语音边界检测
+- **🔊 语音增强** - GTCRN噪声消除与音质改善
+- **👂 关键词检测** - 语音激活的关键词识别与唤醒词
+- **🎤 文本转语音** - 高质量语音合成
 - **🌍 跨平台支持** - Windows、macOS、Linux、Android
 
 ### 🤖 智能模型管理
@@ -48,12 +68,6 @@
 - **📡 断点续传** - 网络中断处理
 - **🔐 哈希验证** - 内置完整性验证
 - **💾 智能缓存** - 本地存储优化
-
-### 📱 移动优先设计
-- **🏃‍♂️ Android优化** - ARM64/ARMv7/x64原生支持
-- **🧠 内存高效** - 智能资源管理
-- **🔋 电池优化** - 可配置性能模式
-- **📦 生产就绪** - 经过实战测试的部署
 
 ### 🛠️ 开发者体验
 - **🎮 Unity原生** - 无缝工作流集成
@@ -215,7 +229,7 @@ SherpaOnnxUnity/
 
 - ⭐ **收藏**此仓库以保持更新
 - 👀 **关注**发布以获得新版本
-- 🐦 **关注** [@EitanWongWong](https://github.com/EitanWongWong)获取更新
+- 🐦 **关注** [@EitanWong](https://github.com/EitanWong)获取更新
 
 ## 🔗 链接和资源
 
@@ -232,7 +246,7 @@ SherpaOnnxUnity/
 
 <div align="center">
 
-**由[Eitan](https://github.com/EitanWongWong)用❤️制作**
+**由[Eitan](https://github.com/EitanWong)用❤️制作**
 
 *基于[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | 受Unity社区启发*
 
