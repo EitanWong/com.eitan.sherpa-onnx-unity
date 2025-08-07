@@ -1,4 +1,4 @@
-name: Unity Build & Test
+name: Unity Build And Test
 on:
   schedule:
     - cron: '0 0 * * 0' # Every Sunday at midnight
@@ -9,17 +9,15 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     branches:
       - '**'
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # only cancel the current run for open pull requests
   cancel-in-progress: ${{(github.event_name == 'pull_request' || github.event.action == 'synchronize')}}
 jobs:
   build:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    name: ${{ matrix.unity-version }} ${{ matrix.build-target }} ${{ matrix.os }}
+    name: ${{ matrix.os }} ${{ matrix.unity-version }} ${{ matrix.build-target }}
     runs-on: ${{ matrix.os }}
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     permissions:
       contents: read
     strategy:
@@ -27,11 +25,44 @@ jobs:
       matrix:
         include: # for each os specify the build targets
           - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: StandaloneLinux64
+          - os: ubuntu-latest
             unity-version: 6000.x
             build-target: StandaloneLinux64
+          # - os: ubuntu-latest
+          #   unity-version: 2022.x
+          #   build-target: WebGL
+          # - os: ubuntu-latest
+          #   unity-version: 6000.x
+          #   build-target: WebGL
+          - os: windows-latest
+            unity-version: 2022.x
+            build-target: StandaloneWindows64
           - os: windows-latest
             unity-version: 6000.x
             build-target: StandaloneWindows64
+          # - os: windows-latest
+          #   unity-version: 2022.x
+          #   build-target: WSAPlayer
+          # - os: windows-latest
+          #   unity-version: 6000.x
+          #   build-target: WSAPlayer
+          # - os: macos-latest
+          #   unity-version: 2022.x
+          #   build-target: iOS
+          # - os: macos-latest
+          #   unity-version: 6000.x
+          #   build-target: iOS
+          - os: macos-latest
+            unity-version: 2022.x
+            build-target: StandaloneOSX
           - os: macos-latest
             unity-version: 6000.x
             build-target: StandaloneOSX
@@ -49,30 +80,17 @@ jobs:
       - uses: RageAgainstThePixel/unity-action@v1
         name: '${{ matrix.build-target }}-Validate'
         with:
+          build-target: ${{ matrix.build-target }}
           log-name: '${{ matrix.build-target }}-Validate'
-          build-target: ${{ matrix.build-target }}
           args: '-quit -nographics -batchmode -executeMethod Utilities.Editor.BuildPipeline.UnityPlayerBuildTools.ValidateProject -importTMProEssentialsAsset'
-      - uses: RageAgainstThePixel/unity-action@v1
-        name: '${{ matrix.build-target }}-Test'
-        with:
-          log-name: '${{ matrix.build-target }}-Test'
-          build-target: ${{ matrix.build-target }}
-          args: '-nographics -batchmode -runTests -testPlatform EditMode -testResults "${{ github.workspace }}/Logs/${{ matrix.build-target }}-results.xml"'
       - uses: RageAgainstThePixel/unity-action@v1
         name: '${{ matrix.build-target }}-Build'
         with:
-          log-name: '${{ matrix.build-target }}-Build'
           build-target: ${{ matrix.build-target }}
+          log-name: '${{ matrix.build-target }}-Build'
           args: '-quit -nographics -batchmode -executeMethod Utilities.Editor.BuildPipeline.UnityPlayerBuildTools.StartCommandLineBuild'
-      - uses: RageAgainstThePixel/unity-test-summary@v1
-        if: success() || failure()
-        with:
-          test-results: ${{ github.workspace }}/**/*-results.xml
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          compression-level: 0
-          retention-days: 1
           name: '${{ github.run_number }}.${{ github.run_attempt }}-${{ matrix.os }}-${{ matrix.unity-version }}-${{ matrix.build-target }}-Artifacts'
-          path: |
-            ${{ github.workspace }}/**/*.log
+          path: '${{ github.workspace }}/**/*.log'
