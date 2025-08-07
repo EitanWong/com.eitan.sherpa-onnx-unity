@@ -2,13 +2,27 @@ name: upm-subtree-split
 on:
   push:
     branches:
-    - main
+      - main
+
+# Ensure the workflow token can push commits/tags/branches
+permissions:
+  contents: write
+
 jobs:
   upm-subtree-split:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GH_PAT }}
-    - uses: RageAgainstThePixel/upm-subtree-split@v1
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use the built-in GITHUB_TOKEN instead of a PAT
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Make sure the remote uses our token and git has an identity
+      - name: Configure git for pushing
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - uses: RageAgainstThePixel/upm-subtree-split@v1
