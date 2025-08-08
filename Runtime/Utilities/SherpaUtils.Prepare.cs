@@ -51,7 +51,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
             /// 
             /// 
-            public static async Task<bool> PrepareModelAsync(SherpaOnnxModelMetadata metadata, SherpaFeedbackReporter reporter, CancellationToken cancellationToken = default)
+            public static async Task<bool> PrepareModelAsync(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken = default)
             {
 
 
@@ -157,7 +157,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             #region Private Methods
 
-            private static bool ValidateMetadata(SherpaOnnxModelMetadata metadata, SherpaFeedbackReporter reporter)
+            private static bool ValidateMetadata(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter)
             {
                 if (metadata == null)
                 {
@@ -178,7 +178,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 var moduleDirectoryPath = SherpaPathResolver.GetModuleRootPath(metadata.moduleType);
                 var modelDirectoryPath = Path.Combine(moduleDirectoryPath, metadata.modelId);
 
-                var downloadUri = new Uri(metadata.downloadUrl);
+                var effectiveUrl = metadata.downloadUrl;
+                if (SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy))
+                {
+                    var proxy = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)?.Trim();
+                    if (!string.IsNullOrEmpty(proxy))
+                    {
+                        // Ensure the proxy ends with a slash before concatenation
+                        if (!proxy.EndsWith("/", StringComparison.Ordinal))
+                        {
+                            proxy += "/";
+                        }
+
+                        // Trim any leading slash on the download path to avoid double slashes
+                        effectiveUrl = proxy + metadata.downloadUrl.TrimStart('/');
+                    }
+                }
+                // Validate and create the URI, throwing a clear exception on failure
+                if (!Uri.TryCreate(effectiveUrl, UriKind.Absolute, out var downloadUri))
+                {
+                    throw new UriFormatException($"Invalid download URL: {effectiveUrl}");
+                }
+                // var downloadUri = new Uri(SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)? $"${SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)}{metadata.downloadUrl}" : metadata.downloadUrl);
                 var downloadFileName = Path.GetFileName(downloadUri.LocalPath);
                 var isCompressFile = IsCompressedFile(downloadFileName);
                 var downloadFilePath = Path.Combine(isCompressFile ? moduleDirectoryPath : modelDirectoryPath, downloadFileName);
@@ -212,7 +233,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
             
 
-            private static bool CheckDiskSpace(SherpaOnnxModelMetadata metadata, string directoryPath, SherpaFeedbackReporter reporter, CancellationToken cancellationToken)
+            private static bool CheckDiskSpace(SherpaOnnxModelMetadata metadata, string directoryPath, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 try
                 {
@@ -287,7 +308,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             
             private static async Task<bool> VerifyExistingModelAsync(SherpaOnnxModelMetadata metadata,
                 (string ModuleDirectoryPath, string ModelDirectoryPath, string DownloadFilePath, string DownloadFileName, bool IsCompressed) paths,
-                SherpaFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
+                SherpaOnnxFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
             {
                 reporter?.Report(new VerifyFeedback(metadata, message: $"Validating model {metadata.modelId} (attempt {attempt + 1}/{MAX_ATTEMPTS})", filePath: paths.ModelDirectoryPath, progress: 0));
 
@@ -358,7 +379,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             // TODO: 重构VerifyFileWithIndexAsync 使其作为SherpaOnnxModel层的通用文件验证方法，可以批量传入filePaths 以及expiatedSha256Array,进行批量验证，等待全部验证完毕后再返回结果。
             private static async Task<(int Index, FileVerificationEventArgs Result)> VerifyFileWithIndexAsync(SherpaOnnxModelMetadata metadata,
-                int index, string filePath, string expectedSha256, SherpaFeedbackReporter reporter, CancellationToken cancellationToken)
+                int index, string filePath, string expectedSha256, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 Progress<FileVerificationEventArgs> progressAdapter = new Progress<FileVerificationEventArgs>(args =>
                 {
@@ -372,7 +393,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
             private static async Task<bool> DownloadModelAsync(SherpaOnnxModelMetadata metadata, string downloadFilePath,
-                SherpaFeedbackReporter reporter, int retryCount, CancellationToken cancellationToken)
+                SherpaOnnxFeedbackReporter reporter, int retryCount, CancellationToken cancellationToken)
             {
                 try
                 {
@@ -417,7 +438,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
             private static async Task<bool> ExtractModelAsync(SherpaOnnxModelMetadata metadata, string zipFilePath, string zipFileHash,
-                string moduleDirectoryPath, string zipFileName, SherpaFeedbackReporter reporter,
+                string moduleDirectoryPath, string zipFileName, SherpaOnnxFeedbackReporter reporter,
                 int retryCount, CancellationToken cancellationToken)
             {
                 try
@@ -460,7 +481,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 }
             }
 
-            private static async Task CleanPathAsync(SherpaOnnxModelMetadata metadata, string[] filePaths, SherpaFeedbackReporter reporter, CancellationToken cancellationToken)
+            private static async Task CleanPathAsync(SherpaOnnxModelMetadata metadata, string[] filePaths, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 if (filePaths == null || filePaths.Length == 0)
                 { return; }

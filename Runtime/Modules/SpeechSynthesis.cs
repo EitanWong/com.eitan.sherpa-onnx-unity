@@ -19,12 +19,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
 
-        public SpeechSynthesis(string modelID, int sampleRate = 16000, SherpaFeedbackReporter reporter = null)
+        public SpeechSynthesis(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -60,7 +60,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
 
 
-        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform,SherpaFeedbackReporter reporter, CancellationToken ct)
+        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform,SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var vadModelConfig = new OfflineTtsConfig();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
@@ -79,7 +79,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                     break;
                 case SpeechSynthesisModelType.Matcha:
-                    var vocoderMetaData = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ");
+                    var vocoderMetaData = SherpaOnnxModelRegistry.Instance.GetMetadata("vocos-22khz-univ");
                     if (modelType == SpeechSynthesisModelType.Matcha)
                     {
                         //prepare vocoder

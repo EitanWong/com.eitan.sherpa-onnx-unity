@@ -44,7 +44,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private int _silentFrames;
         private int _silenceThresholdFrames;
         
-        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaFeedbackReporter reporter = null)
+        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             // Constructor is kept lean. All buffer initializations are deferred to Initialization,
@@ -53,7 +53,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.VoiceActivityDetection;
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {

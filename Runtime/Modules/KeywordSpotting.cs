@@ -24,14 +24,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.KeywordSpotting;
         
         //TODO: 支持自定义唤醒词功能 具体要参考https://k2-fsa.github.io/sherpa/onnx/kws/index.html#what-is-open-vocabulary-keyword-spotting 进行实现，用pinyin库将文字转为拼音kk，英文的情况也要根据文档描述设计转换的算法
-        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, string[] customKeywords = null, SherpaFeedbackReporter reporter = null)
+        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, string[] customKeywords = null, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             _keywordsScore = keywordsScore;
             _keywordsThreshold = keywordsThreshold;
         }
         
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -68,7 +68,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
         
-        private Task<KeywordSpotterConfig> CreateKeywordSpotterConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        private Task<KeywordSpotterConfig> CreateKeywordSpotterConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             _sampleRate = sampleRate;
             
