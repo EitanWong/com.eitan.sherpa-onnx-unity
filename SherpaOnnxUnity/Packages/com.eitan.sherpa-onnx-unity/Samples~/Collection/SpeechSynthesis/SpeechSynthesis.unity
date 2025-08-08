@@ -865,6 +865,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 243020562}
   m_CullTransparentMesh: 1
+--- !u!21 &349412902
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: UI/Easy Progress Bar
+  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BorderSize: 0.15
+    - _FillAmount: 1
+    - _Gradient: 1
+    - _Roundness: 1
+    m_Colors:
+    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
+    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
+    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
+    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &408431298
 GameObject:
   m_ObjectHideFlags: 0
@@ -917,7 +954,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 738338970}
+  m_Material: {fileID: 349412902}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -996,9 +1033,9 @@ RectTransform:
   m_Father: {fileID: 1905868302}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 634.2, y: -298.03}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -325.8, y: 246}
   m_SizeDelta: {x: 651.5962, y: 125.36969}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &468460079
@@ -1589,43 +1626,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 710300206}
   m_CullTransparentMesh: 1
---- !u!21 &738338970
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: UI/Easy Progress Bar
-  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _BorderSize: 0.15
-    - _FillAmount: 1
-    - _Gradient: 1
-    - _Roundness: 1
-    m_Colors:
-    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
-    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
-    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
-    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &780738290
 GameObject:
   m_ObjectHideFlags: 0

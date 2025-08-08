@@ -74,7 +74,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             InitializeApplication();
             InitializeUI();
             InitializeEventListeners();
-            _ = InitializeDropdownAsync();
+            InitializeDropdown();
         }
 
         /// <summary>
@@ -131,11 +131,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// <summary>
         /// 异步初始化下拉菜单 / Asynchronously initialize dropdown
         /// </summary>
-        private async Task InitializeDropdownAsync()
+        private void InitializeDropdown()
         {
             try
             {
-                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+                var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
                 PopulateModelDropdown(manifest);
             }
             catch (Exception ex)
@@ -192,7 +192,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             try
             {
-                var reporter = new SherpaFeedbackReporter(null, this);
+                var reporter = new SherpaOnnxFeedbackReporter(null, this);
                 speechRecognition = new SpeechRecognition(modelID, SAMPLE_RATE, reporter);
                 _modelLoadFlag = true;
                 UpdateLoadButtonUI();

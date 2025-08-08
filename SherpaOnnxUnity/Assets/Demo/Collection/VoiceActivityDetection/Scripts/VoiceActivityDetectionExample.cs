@@ -56,7 +56,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _tipsText.text = "Load a model to begin.";
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _ = InitDropdown();
+            InitDropdown();
             UpdateLoadButtonUI();
         }
 
@@ -86,7 +86,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 return;
             }
 
-            var reporter = new SherpaFeedbackReporter(null, this);
+            var reporter = new SherpaOnnxFeedbackReporter(null, this);
             vad = new VoiceActivityDetection(modelID, SampleRate, reporter);
             vad.OnSpeakingStateChanged += HandleSpeechStateChanged;
             vad.OnSpeechSegmentDetected += HandleSpeechSegmentCollected;
@@ -174,9 +174,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region UI and Initialization
-        private async Task InitDropdown()
+        private void InitDropdown()
         {
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

@@ -1,6 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime.Constants;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using UnityEngine;
@@ -13,107 +12,124 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public static SherpaOnnxModelRegistry Instance => _instance;
 
         private readonly Dictionary<string, SherpaOnnxModelMetadata> _modelData = new Dictionary<string, SherpaOnnxModelMetadata>();
+        private readonly HashSet<string> _resolvedModelIds = new HashSet<string>();
 
         private SherpaOnnxModelManifest _manifest;
-        private Task _initializationTask;
 
-        public bool IsInitialized => _initializationTask != null && _initializationTask.IsCompletedSuccessfully;
+        public bool IsInitialized { get; private set; }
 
         private SherpaOnnxModelRegistry() { }
 
 
-        private async Task InitializeInternalAsync()
+        /// <summary>
+        /// Initialize the registry from the default manifest once. Safe to call multiple times.
+        /// </summary>
+        private void InitializeInternal()
         {
-            string jsonContent = await ReadManifestFileAsync();
-
-            if (!string.IsNullOrEmpty(jsonContent))
+            if (IsInitialized)
             {
-                try
-                {
-                    _manifest = JsonUtility.FromJson<SherpaOnnxModelManifest>(jsonContent);
-                    PopulateDictionaryFromManifest(_manifest);
-                    // Debug.Log($"Successfully loaded {_modelData.Count} model(s) from manifest.");
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogError($"Failed to parse model manifest with JsonUtility: {ex.Message}.");
-                }
+                return;
             }
-            else
+
+
+            try
             {
-                Debug.LogError($"FATAL: Failed to read model manifest. The sherpa-onnx model cannot function without it, please create it in StreamingAssets");
+                _manifest = SherpaOnnxConstants.GetDefaultManifest();
+                _resolvedModelIds.Clear();
+                PopulateDictionaryFromManifest(_manifest);
+                IsInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to parse model manifest with JsonUtility: {ex.Message}.");
+                IsInitialized = false;
             }
         }
 
         private void PopulateDictionaryFromManifest(SherpaOnnxModelManifest manifest)
         {
             _modelData.Clear();
-            if (manifest == null || manifest.models == null)
+            if (manifest?.models == null || manifest.models.Count == 0)
             {
                 return;
             }
+
             foreach (var metadata in manifest.models)
             {
-                if (!string.IsNullOrEmpty(metadata.modelId) && !_modelData.ContainsKey(metadata.modelId))
+                if (string.IsNullOrWhiteSpace(metadata.modelId))
+                {
+                    Debug.LogWarning("Encountered a model entry with an empty modelId. Entry skipped.");
+                    continue;
+                }
+
+                if (!_modelData.ContainsKey(metadata.modelId))
                 {
                     _modelData.Add(metadata.modelId, metadata);
                 }
                 else
                 {
-                    Debug.LogWarning($"Duplicate or invalid modelId found in manifest: '{metadata.modelId}'. Entry skipped.");
+                    Debug.LogWarning($"Duplicate modelId in manifest: '{metadata.modelId}'. Entry skipped.");
                 }
             }
         }
 
-        private async Task<string> ReadManifestFileAsync()
+//         private async Task<string> ReadManifestFileAsync()
+//         {
+
+//             string directoryPath = Path.Combine(Application.streamingAssetsPath, SherpaOnnxConstants.RootDirectoryName);
+//             string manifestPath = Path.Combine(directoryPath, SherpaOnnxConstants.ManifestFileName);
+
+// #if (!UNITY_ANDROID && !UNITY_IOS && !UNITY_WEBGL)
+//             if (!File.Exists(manifestPath))
+//             {
+//                 string defaultJson = SherpaOnnxConstants.GetDefaultManifestContent();
+//                 if (!Directory.Exists(directoryPath))
+//                 {
+//                     Directory.CreateDirectory(directoryPath);
+//                 }
+//                 await File.WriteAllTextAsync(manifestPath, defaultJson);
+//             }
+
+//             if (File.Exists(manifestPath))
+//             {
+//                 return await File.ReadAllTextAsync(manifestPath);
+//             }
+//             return null;
+// #else
+//             using (UnityWebRequest www = UnityWebRequest.Get(manifestPath))
+//             {
+//                 var operation = www.SendWebRequest();
+//                 while (!operation.isDone)
+//                 {
+//                     await Task.Yield();
+//                 }
+                
+//                 return www.result == UnityWebRequest.Result.Success ? www.downloadHandler.text : null;
+//             }
+
+// #endif
+//         }
+
+        /// <summary>
+        /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
+        /// </summary>
+        public SherpaOnnxModelMetadata GetMetadata(string modelId)
         {
-
-            string directoryPath = Path.Combine(Application.streamingAssetsPath, SherpaOnnxConstants.RootDirectoryName);
-            string manifestPath = Path.Combine(directoryPath, SherpaOnnxConstants.ManifestFileName);
-
-#if !UNITY_ANDROID && !UNITY_IOS && !UNITY_WEBGL
-            if (!File.Exists(manifestPath))
+            if (!IsInitialized)
             {
-
-                string defaultJson = SherpaOnnxConstants.GetDefaultManifestContent();
-                if (!Directory.Exists(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-                await File.WriteAllTextAsync(manifestPath, defaultJson);
+                InitializeInternal();
             }
-
-            if (File.Exists(manifestPath))
-            {
-                return await File.ReadAllTextAsync(manifestPath);
-            }
-
-#else
-            using (UnityWebRequest www = UnityWebRequest.Get(manifestPath))
-            {
-                var operation = www.SendWebRequest();
-                while (!operation.isDone) await Task.Yield();
-                return www.result == UnityWebRequest.Result.Success ? www.downloadHandler.text : null;
-            }
-#endif
-
-            return null;
-        }
-
-        public async Task<SherpaOnnxModelMetadata> GetMetadataAsync(string modelId)
-        {
-            if (_initializationTask == null)
-            {
-                _initializationTask = InitializeInternalAsync();
-            }
-            await _initializationTask;
 
             if (_modelData.TryGetValue(modelId, out var metadata))
             {
-                //select all modelFiles add fullPath
-                for (int i = 0; i < metadata.modelFileNames.Length; i++)
+                // Resolve model file names to absolute paths only once per modelId
+                if (!_resolvedModelIds.Contains(modelId))
                 {
-                    metadata.modelFileNames[i] = SherpaPathResolver.GetModelFilePath(modelId, metadata.modelFileNames[i]);
+                    for (int i = 0; i < metadata.modelFileNames.Length; i++)
+                    {
+                        metadata.modelFileNames[i] = SherpaPathResolver.GetModelFilePath(modelId, metadata.modelFileNames[i]);
+                    }
+                    _resolvedModelIds.Add(modelId);
                 }
 
                 return metadata;
@@ -124,13 +140,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
         
         
-        public async Task<SherpaOnnxModelManifest> GetManifestAsync()
+        /// <summary>
+        /// Get the loaded manifest. Triggers lazy initialization if necessary.
+        /// </summary>
+        public SherpaOnnxModelManifest GetManifest()
         {
-            if (_initializationTask == null)
+            if (!IsInitialized)
             {
-                _initializationTask = InitializeInternalAsync();
+                InitializeInternal();
             }
-            await _initializationTask;
             return _manifest;
         }
     }

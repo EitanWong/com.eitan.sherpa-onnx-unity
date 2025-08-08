@@ -18,12 +18,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechEnhancement;
 
-        public SpeechEnhancement(string modelID, int sampleRate = 16000, SherpaFeedbackReporter reporter = null)
+        public SpeechEnhancement(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {

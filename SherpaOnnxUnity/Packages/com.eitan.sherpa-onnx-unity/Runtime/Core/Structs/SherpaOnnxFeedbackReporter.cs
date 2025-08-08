@@ -2,20 +2,20 @@ using System;
 
 namespace Eitan.SherpaOnnxUnity.Runtime{
 
-    public class SherpaFeedbackReporter: IProgress<IFeedback>
+    public class SherpaOnnxFeedbackReporter: IProgress<IFeedback>
     {
         private readonly System.Action<IFeedback> _callback;
         private readonly ISherpaFeedbackHandler[] _visitors;
         private ILogger _logger;
 
-        public SherpaFeedbackReporter(ILogger logger=null,params ISherpaFeedbackHandler[] visitors)
+        public SherpaOnnxFeedbackReporter(ILogger logger=null,params ISherpaFeedbackHandler[] visitors)
         {
             // _callback = callback;
             this._visitors = visitors ?? new ISherpaFeedbackHandler[0];
             _logger = logger ?? new UnityLogger();
         }
         
-        public SherpaFeedbackReporter(System.Action<IFeedback> callback, ILogger logger = null)
+        public SherpaOnnxFeedbackReporter(System.Action<IFeedback> callback, ILogger logger = null)
         {
             this._callback = callback;
             _logger = logger ?? new UnityLogger();

@@ -64,7 +64,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _originalFontSize = _keywordText.fontSize;
             }
-            _ = InitDropdown();
+            InitDropdown();
             UpdateLoadButtonUI();
         }
 
@@ -72,7 +72,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             if (keywordSpotting == null)
             {
-                var reporter = new SherpaFeedbackReporter(null, this);
+                var reporter = new SherpaOnnxFeedbackReporter(null, this);
                 keywordSpotting = new KeywordSpotting(modelID, SampleRate, 2.0f, 0.25f, null,reporter);
                 keywordSpotting.OnKeywordDetected += HandleKeywordDetected;
 
@@ -151,9 +151,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private async Task InitDropdown()
+        private void InitDropdown()
         {
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

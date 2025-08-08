@@ -9,6 +9,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
     using SherpaOnnx;
 
+
     public class SpeechRecognition : SherpaOnnxModule
     {
         private OnlineRecognizer _onlineRecognizer;
@@ -21,12 +22,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechRecognition;
 
-        public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaFeedbackReporter reporter = null)
+        public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -51,7 +52,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        private async Task LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        private async Task LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
             
@@ -68,7 +69,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             });
         }
 
-        private async Task LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct)
+        private async Task LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
             

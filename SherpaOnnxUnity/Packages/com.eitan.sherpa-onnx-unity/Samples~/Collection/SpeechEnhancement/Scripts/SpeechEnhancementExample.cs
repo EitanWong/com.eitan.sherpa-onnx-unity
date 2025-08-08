@@ -77,7 +77,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _originRecordBtnColor = _recordStopButton.GetComponent<Image>().color;
             
-            _ = InitDropdown();
+            InitDropdown();
             UpdateUI();
         }
 
@@ -111,7 +111,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 return;
             }
 
-            var reporter = new SherpaFeedbackReporter(null, this);
+            var reporter = new SherpaOnnxFeedbackReporter(null, this);
             _speechEnhancement = new SpeechEnhancement(modelID, SampleRate, reporter);
             UpdateUI();
         }
@@ -377,9 +377,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region UI and Initialization
-        private async Task InitDropdown()
+        private void InitDropdown()
         {
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

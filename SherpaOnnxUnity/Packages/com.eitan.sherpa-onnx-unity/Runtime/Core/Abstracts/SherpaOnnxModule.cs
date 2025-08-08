@@ -17,7 +17,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         // --- 统一的、线程安全的销毁标志 ---
         protected bool IsDisposed { get; private set; }
 
-        public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaFeedbackReporter reporter = null)
+        public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
         {
             _rootThreadContext = SynchronizationContext.Current;
             runner = new TaskRunner();
@@ -34,7 +34,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 {
                     return;
                 }
-                var reporterAdapter = new SherpaFeedbackReporter(feedbackArgs =>
+                var reporterAdapter = new SherpaOnnxFeedbackReporter(feedbackArgs =>
                 {
                     // 使用 _isDisposed 标志位进行更可靠的检查
                     if (IsDisposed || runner.IsDisposed) { return; }
@@ -53,7 +53,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }, feedbackArgs);
                 });
 
-                var metadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync(modelID);
+                var metadata = SherpaOnnxModelRegistry.Instance.GetMetadata(modelID);
 
                 try
                 {
@@ -134,7 +134,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// 子类必须实现的初始化逻辑。
         /// </summary>
-        protected abstract Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaFeedbackReporter reporter, CancellationToken ct);
+        protected abstract Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct);
 
         /// <summary>
         /// 子类必须实现的资源清理逻辑。

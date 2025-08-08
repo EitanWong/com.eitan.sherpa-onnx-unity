@@ -12,8 +12,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
         public const string ModelRootDirectoryName = "models";
 
-        public const string githubProxyUrl = "https://gh-proxy.com/";
-
+        // public const string githubProxyUrl = "https://gh-proxy.com/";
 
         private static string GetModelDownloadUrl(string modelId)
         {
@@ -38,9 +37,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                     break;
             }
 
-            return $"{githubProxyUrl}https://github.com/k2-fsa/sherpa-onnx/releases/download/{typeName}/{modelId}.tar.bz2";
+            return $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{typeName}/{modelId}.tar.bz2";
         }
-
 
 
         /// <summary>
@@ -49,16 +47,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         /// <returns>一个 JSON 字符串。</returns>
         public static string GetDefaultManifestContent()
         {
-            var manifest = new SherpaOnnxModelManifest();
-
-            AddToManifest(manifest, SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechRecognition);
-            AddToManifest(manifest, SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES, SherpaOnnxModuleType.VoiceActivityDetection);
-            AddToManifest(manifest, SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechSynthesis);
-            AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
-            AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
             
             // 使用 JsonUtility 进行序列化，'true' 表示格式化输出（带缩进，易读）
-            return JsonUtility.ToJson(manifest, true);
+            return JsonUtility.ToJson(GetDefaultManifest(), true);
+        }
+
+        public static SherpaOnnxModelManifest GetDefaultManifest()
+        {
+                var manifest = new SherpaOnnxModelManifest();
+
+                AddToManifest(manifest, SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechRecognition);
+                AddToManifest(manifest, SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES, SherpaOnnxModuleType.VoiceActivityDetection);
+                AddToManifest(manifest, SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechSynthesis);
+                AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
+                AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
+                return manifest;
         }
 
         private static void AddToManifest(SherpaOnnxModelManifest manifest, SherpaOnnxModelMetadata[] modelMetadataList, SherpaOnnxModuleType moduleType)
@@ -70,7 +73,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 {
                     modelConfig.downloadUrl = GetModelDownloadUrl(modelConfig.modelId);
                 }
-                
+
                 modelConfig.moduleType = moduleType;
                 manifest.models.Add(modelConfig);
             }

@@ -11,8 +11,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             {
 
                 //TODO: 补全所有的hash信息
-                
-
                 // online models
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-streaming-zipformer-zh-xlarge-int8-2025-06-30",modelFileNames = new[]{ "decoder.onnx","encoder.int8.onnx","joiner.int8.onnx","tokens.txt"} ,},
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-streaming-zipformer-zh-xlarge-fp16-2025-06-30", modelFileNames = new[]{ "decoder.fp16.onnx","encoder.fp16.onnx","joiner.fp16.onnx","tokens.txt"}, },
