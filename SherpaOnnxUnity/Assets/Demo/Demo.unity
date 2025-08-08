@@ -873,18 +873,6 @@ MonoBehaviour:
   _rootOfButtons: {fileID: 1207214006}
   _panelAnimationDuration: 0.3
   _buttonAnimationDelay: 0.1
-  _easeOutBack:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  _easeInBack:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
 --- !u!1 &620476460
 GameObject:
   m_ObjectHideFlags: 0

@@ -88,3 +88,5 @@ StreamingAssets.meta
 # ====================== #
 
 SherpaOnnxUnity/.config/
+
+*.blob

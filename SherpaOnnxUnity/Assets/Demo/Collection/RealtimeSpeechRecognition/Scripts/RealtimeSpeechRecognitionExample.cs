@@ -47,7 +47,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _transcriptionText.text = "Please click the button to load the model";
             _tipsText.text = string.Empty;
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _ = InitDropdown();
+            InitDropdown();
             UpdateLoadButtonUI();
         }
 
@@ -55,7 +55,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             if (speechRecognition == null)
             {
-                var reporter = new SherpaFeedbackReporter(null, this);
+                var reporter = new SherpaOnnxFeedbackReporter(null, this);
                 speechRecognition = new SpeechRecognition(modelID, SampleRate, reporter);
 
                 _modelLoadFlag = true;
@@ -120,9 +120,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private async Task InitDropdown()
+        private void InitDropdown()
         {
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
