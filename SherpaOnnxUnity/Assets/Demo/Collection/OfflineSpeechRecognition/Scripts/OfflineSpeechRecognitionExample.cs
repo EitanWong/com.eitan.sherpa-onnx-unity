@@ -155,7 +155,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             if (manifest.models != null)
             {
                 var modelOptions = manifest
-                    .Filter(m => m.moduleType == SherpaOnnxModuleType.SpeechRecognition && !m.IsOnlineModel())
+                    .Filter(m => m.moduleType == SherpaOnnxModuleType.SpeechRecognition && !SherpaOnnxUnityAPI.IsOnlineModel(m.modelId))
                     .Select(m => new OptionData(m.modelId))
                     .ToList();
 

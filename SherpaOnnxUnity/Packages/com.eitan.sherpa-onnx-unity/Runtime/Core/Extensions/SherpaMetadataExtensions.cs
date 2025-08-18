@@ -4,10 +4,10 @@ using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 namespace Eitan.SherpaOnnxUnity.Runtime
 {
 
-    public static class SherpaMetadataExtensions
+    internal static class SherpaMetadataExtensions
     {
 
-        public static string GetModelFilePath(this SherpaOnnxModelMetadata metadata, string modelFile)
+        internal static string GetModelFilePath(this SherpaOnnxModelMetadata metadata, string modelFile)
         {
             if (string.IsNullOrEmpty(modelFile))
             {
@@ -33,7 +33,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// A task that represents the asynchronous operation. The task result contains the path of the first matching file.
         /// It returns null if the metadata for the model can't be found, if there are no model files, or if no file matches all the specified keywords.
         /// </returns>
-        public static string[] GetModelFilePathByKeywords(this SherpaOnnxModelMetadata metadata, params string[] keywords)
+        internal static string[] GetModelFilePathByKeywords(this SherpaOnnxModelMetadata metadata, params string[] keywords)
         {
             if (metadata?.modelFileNames == null || !metadata.modelFileNames.Any())
             {
@@ -115,7 +115,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return bestMatches;
         }
 
-        public static string[] GetModelFilesByExtensionName(this SherpaOnnxModelMetadata metadata, params string[] extensions)
+        internal static string[] GetModelFilesByExtensionName(this SherpaOnnxModelMetadata metadata, params string[] extensions)
         {
             if (metadata?.modelFileNames == null || !metadata.modelFileNames.Any())
             {
@@ -143,7 +143,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         
         
 
-        public static bool IsOnlineModel(this SherpaOnnxModelMetadata metadata)
+        internal static bool IsOnlineModel(this SherpaOnnxModelMetadata metadata)
         {
             return SherpaUtils.Model.IsOnlineModel(metadata.modelId);
         }

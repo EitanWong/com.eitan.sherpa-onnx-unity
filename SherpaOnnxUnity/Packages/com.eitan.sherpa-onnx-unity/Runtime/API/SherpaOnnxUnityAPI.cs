@@ -3,7 +3,9 @@
 // File: Packages/com.eitan.sherpa-onnx-unity/Runtime/API/SherpaOnnxUnityAPI.cs
 #nullable enable
 using System;
-using Eitan.SherpaOnnxUnity.Runtime; // For SherpaOnnxEnvironment
+using System.Linq;
+using Eitan.SherpaOnnxUnity.Runtime;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For SherpaOnnxEnvironment
 
 /// <summary>
 /// Thin, user-friendly facade for common Sherpa ONNX settings.
@@ -36,6 +38,17 @@ public static class SherpaOnnxUnityAPI
     public static void ClearGithubProxy()
     {
         SherpaOnnxEnvironment.Remove(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy);
+    }
+
+    public static string[] GetModelIDByType(SherpaOnnxModuleType type)
+    {
+        var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+        return manifest.Filter(m => m.moduleType == type).Select(m => m.modelId).ToArray();
+    }
+
+    public static bool IsOnlineModel(string modelID)
+    {
+        return SherpaUtils.Model.IsOnlineModel(modelID);
     }
 
 }

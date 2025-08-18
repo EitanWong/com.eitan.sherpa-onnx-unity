@@ -108,14 +108,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken);
                                 continue;
                             }
-                            
+
                             // Verify extracted model files
                             if (!await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken))
                             {
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken);
                                 continue;
                             }
-                            
+
                             // All verification passed, model is ready
                             return true;
                         }
@@ -127,7 +127,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken);
                                 continue;
                             }
-                            
+
                             // All verification passed, model is ready
                             return true;
                         }
@@ -151,7 +151,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     throw;
 
                 }
-                
+
             }
             #endregion
 
@@ -178,28 +178,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 var moduleDirectoryPath = SherpaPathResolver.GetModuleRootPath(metadata.moduleType);
                 var modelDirectoryPath = Path.Combine(moduleDirectoryPath, metadata.modelId);
 
-                var effectiveUrl = metadata.downloadUrl;
-                if (SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy))
-                {
-                    var proxy = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)?.Trim();
-                    if (!string.IsNullOrEmpty(proxy))
-                    {
-                        // Ensure the proxy ends with a slash before concatenation
-                        if (!proxy.EndsWith("/", StringComparison.Ordinal))
-                        {
-                            proxy += "/";
-                        }
-
-                        // Trim any leading slash on the download path to avoid double slashes
-                        effectiveUrl = proxy + metadata.downloadUrl.TrimStart('/');
-                    }
-                }
-                // Validate and create the URI, throwing a clear exception on failure
-                if (!Uri.TryCreate(effectiveUrl, UriKind.Absolute, out var downloadUri))
-                {
-                    throw new UriFormatException($"Invalid download URL: {effectiveUrl}");
-                }
-                // var downloadUri = new Uri(SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)? $"${SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)}{metadata.downloadUrl}" : metadata.downloadUrl);
+                var downloadUri = new Uri(metadata.downloadUrl);
                 var downloadFileName = Path.GetFileName(downloadUri.LocalPath);
                 var isCompressFile = IsCompressedFile(downloadFileName);
                 var downloadFilePath = Path.Combine(isCompressFile ? moduleDirectoryPath : modelDirectoryPath, downloadFileName);
@@ -231,7 +210,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 var lowerFileName = fileName.ToLowerInvariant();
                 return COMPRESSED_EXTENSIONS.Any(ext => lowerFileName.EndsWith(ext));
             }
-            
+
 
             private static bool CheckDiskSpace(SherpaOnnxModelMetadata metadata, string directoryPath, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
             {
@@ -283,7 +262,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         // Fallback: assume sufficient space if we can't determine the root
                         return true;
                     }
-                    
+
                     var drive = new DriveInfo(rootPath);
                     var availableSpaceMB = drive.AvailableFreeSpace / BYTES_PER_MB;
                     var requiredSpaceMB = MIN_DISK_SPACE_GB * 1024; // Convert GB to MB
@@ -304,8 +283,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     return true;
                 }
             }
-            
-            
+
+
             private static async Task<bool> VerifyExistingModelAsync(SherpaOnnxModelMetadata metadata,
                 (string ModuleDirectoryPath, string ModelDirectoryPath, string DownloadFilePath, string DownloadFileName, bool IsCompressed) paths,
                 SherpaOnnxFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
@@ -413,7 +392,30 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                             downloader.Feedback += reporter.Report;
                         }
 
-                        var downloadSuccess = await downloader.DownloadAsync(metadata.downloadUrl, downloadFilePath, cancellationToken: cancellationToken);
+                        var effectiveUrl = metadata.downloadUrl;
+
+                        if (SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy))
+                        {
+                            var proxy = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)?.Trim();
+                            if (!string.IsNullOrEmpty(proxy))
+                            {
+                                // Ensure the proxy ends with a slash before concatenation
+                                if (!proxy.EndsWith("/", StringComparison.Ordinal))
+                                {
+                                    proxy += "/";
+                                }
+
+                                // Trim any leading slash on the download path to avoid double slashes
+                                effectiveUrl = proxy + metadata.downloadUrl.TrimStart('/');
+                            }
+                        }
+                        // Validate and create the URI, throwing a clear exception on failure
+                        if (!Uri.TryCreate(effectiveUrl, UriKind.Absolute, out var downloadUri))
+                        {
+                            throw new UriFormatException($"Invalid download URL: {effectiveUrl}");
+                        }
+
+                        var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: cancellationToken);
                         if (!downloadSuccess)
                         {
                             SherpaFileUtils.Delete(downloadFilePath);

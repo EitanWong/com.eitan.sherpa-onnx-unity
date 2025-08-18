@@ -23,7 +23,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public float Threshold { get; set; } = 0.5F;
         public float MinSilenceDuration { get; set; } = 0.3F;
         public float MinSpeechDuration { get; set; } = 0.1F;
-        public float MaxSpeechDuration { get; set; } = 10.0F;
+        public float MaxSpeechDuration { get; set; } = 30.0F;
         public float LeadingPaddingDuration { get; set; } = 0.2F;
         #endregion
 

@@ -24,8 +24,6 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
 
     // 备份根目录与标记文件（用于失败兜底）
     private const string HiddenRootAsset = "Assets/StreamingAssets~";
-    private const string BackupRoot = HiddenRootAsset;
-    private const string MarkerFile = HiddenRootAsset + "/.pending_restore";
     private const string ConflictLogPath = "Library/SherpaOnnx_ConflictReport.txt";
 
     // Dynamic hidden root path (Unity may auto-suffix the folder name). Always reuse the actual path.
