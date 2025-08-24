@@ -92,15 +92,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = { 
                     Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
-                    Provider = "cpu",
-                    NumThreads = 1,
+                    NumThreads = 4,
                     Debug = 0
                 },
                 MaxActivePaths = 4,
                 EnableEndpoint = 1,
-                Rule1MinTrailingSilence = 2.7f,
+                Rule1MinTrailingSilence = 2.4f,
                 Rule2MinTrailingSilence = 1.2f,
-                Rule3MinUtteranceLength = 20f
+                Rule3MinUtteranceLength = 30f
             };
 
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
@@ -134,6 +133,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = { 
                     Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
+                    NumThreads = 4,
                     Debug = 0,
                     ModelType = string.Empty
                 },

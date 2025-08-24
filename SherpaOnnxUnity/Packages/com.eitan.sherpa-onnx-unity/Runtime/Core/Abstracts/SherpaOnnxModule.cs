@@ -16,6 +16,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         // --- 统一的、线程安全的销毁标志 ---
         protected bool IsDisposed { get; private set; }
+        
+        public bool Initialized { get; private set; }
 
         public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
         {
@@ -54,11 +56,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 });
 
                 var metadata = SherpaOnnxModelRegistry.Instance.GetMetadata(modelID);
-
+                
                 try
                 {
-
-
                     var prepareResult = await SherpaUtils.Prepare.PrepareModelAsync(metadata, reporterAdapter);
 
                     if (prepareResult)
@@ -91,7 +91,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 {
                     reporterAdapter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
                 }
-            });
+                finally
+                {
+                    Initialized = true;
+                }
+            }, policy: Utilities.ExecutionPolicy.Never);
         }
 
         // --- 实现完整的、标准的 IDisposable 模式 ---

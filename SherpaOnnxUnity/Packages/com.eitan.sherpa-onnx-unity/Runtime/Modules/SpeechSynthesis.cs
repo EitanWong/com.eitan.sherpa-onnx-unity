@@ -13,24 +13,30 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     public class SpeechSynthesis : SherpaOnnxModule
     {
 
-        private SpeechRecognitionModelType _modelType;
         private readonly object _lockObject = new object();
         private OfflineTts _tts;
+        private readonly System.Threading.SynchronizationContext _unityContext;
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
+        public int SampleRate{ get; private set; }
 
-        public SpeechSynthesis(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public SpeechSynthesis(string modelID, int sampleRate = -1, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
+            // Capture Unity main thread context at construction time
+            _unityContext = System.Threading.SynchronizationContext.Current;
         }
 
         protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
+                // ignore the prarmeter sampleRate it's not correct.
+
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}")); 
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
-                var ttsConfig = await CreateTtsConfig(modelType, metadata, sampleRate, isMobilePlatform,reporter,ct);
+                this.SampleRate = metadata.SampleRate;
+                var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform,reporter,ct);
                 await runner.RunAsync(cancellationToken =>
                 {
                     try
@@ -91,7 +97,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     vadModelConfig.Model.Matcha.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
                     vadModelConfig.Model.Matcha.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
                     vadModelConfig.Model.Matcha.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
-                    vadModelConfig.Model.Matcha.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
+                    vadModelConfig.Model.Matcha.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First(); 
+                    
                     break;
                 case SpeechSynthesisModelType.Kokoro:
 
@@ -150,9 +157,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }
                 }
 
-                if (SynchronizationContext.Current != null)
+                if (_unityContext != null)
                 {
-                    SynchronizationContext.Current.Post(_ => CreateAudioClipOnMainThread(), null);
+                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
                 }
                 else
                 {
@@ -160,7 +167,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 return await tcs.Task;
-            }, cancellationToken: ct ?? CancellationToken.None);
+            }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
         /// <summary>
@@ -207,9 +214,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }
                 }
 
-                if (SynchronizationContext.Current != null)
+                if (_unityContext != null)
                 {
-                    SynchronizationContext.Current.Post(_ => CreateAudioClipOnMainThread(), null);
+                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
                 }
                 else
                 {
@@ -217,7 +224,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 return await tcs.Task;
-            }, cancellationToken: ct ?? CancellationToken.None);
+            }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
         /// <summary>
@@ -241,7 +248,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return await runner.RunAsync(async (cancellationToken) =>
             {
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
-
                 if (generatedAudio == null)
                 { 
                     Debug.LogWarning("TTS generation returned no audio.");
@@ -254,9 +260,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 {
                     try
                     {
-                        var audioClip = AudioClip.Create($"tts_{voiceID}_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
-                        audioClip.SetData(generatedAudio.Samples, 0);
-                        tcs.SetResult(audioClip);
+                        if (generatedAudio != null)
+                        {
+                            var audioClip = AudioClip.Create($"tts_{voiceID}_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
+                            audioClip.SetData(generatedAudio.Samples, 0);
+                            tcs.SetResult(audioClip);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -264,9 +273,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }
                 }
 
-                if (SynchronizationContext.Current != null)
+                if (_unityContext != null)
                 {
-                    SynchronizationContext.Current.Post(_ => CreateAudioClipOnMainThread(), null);
+                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
                 }
                 else
                 {
@@ -274,7 +283,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 return await tcs.Task;
-            }, cancellationToken: ct ?? CancellationToken.None);
+            }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
 

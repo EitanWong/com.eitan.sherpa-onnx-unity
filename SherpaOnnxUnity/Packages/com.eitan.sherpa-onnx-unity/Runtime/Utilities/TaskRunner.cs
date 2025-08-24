@@ -7,6 +7,25 @@ using System.Threading.Tasks;
 namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 {
     /// <summary>
+    /// Controls how TaskRunner decides to offload work to a background thread.
+    /// </summary>
+    public enum ExecutionPolicy
+    {
+        /// <summary>
+        /// Automatically offload when invoked from the main thread; otherwise execute inline.
+        /// </summary>
+        Auto,
+        /// <summary>
+        /// Always offload to a background thread.
+        /// </summary>
+        Always,
+        /// <summary>
+        /// Never offload automatically; execute inline (current behavior).
+        /// </summary>
+        Never
+    }
+
+    /// <summary>
     /// Thread-safe task runner with automatic cleanup and Unity integration.
     /// Provides controlled task execution with proper resource management.
     /// </summary>
@@ -16,6 +35,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         private readonly ConcurrentDictionary<Task, byte> _activeTasks = new();
         private readonly SemaphoreSlim _concurrencyLimiter;
         private readonly Timer _cleanupTimer;
+        private readonly int _mainThreadId;
 
         private CancellationTokenSource _globalCts = new();
         private volatile bool _disposed;
@@ -34,6 +54,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             _maxConcurrentTasks = maxConcurrentTasks;
             _mainContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            _mainThreadId = Thread.CurrentThread.ManagedThreadId;
             _concurrencyLimiter = new SemaphoreSlim(maxConcurrentTasks, maxConcurrentTasks);
 
             // Periodic cleanup of completed tasks
@@ -63,18 +84,29 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// </summary>
         public async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> asyncFunc,
                                        Action<Exception> onComplete = null,
-                                       CancellationToken cancellationToken = default)
+                                       CancellationToken cancellationToken = default,
+                                       ExecutionPolicy policy = ExecutionPolicy.Auto)
         {
             ThrowIfDisposed();
             ValidateInput(asyncFunc, nameof(asyncFunc));
 
-            await _concurrencyLimiter.WaitAsync(cancellationToken);
+            await _concurrencyLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             using var linkedCts = CreateLinkedTokenSource(cancellationToken);
-            var task = ExecuteWithCleanup(asyncFunc, onComplete, linkedCts.Token);
+
+            // Decide whether to offload to a background thread
+            Task<T> task;
+            if (ShouldOffload(policy))
+            {
+                task = Task.Run(() => ExecuteWithCleanup(asyncFunc, onComplete, linkedCts.Token), linkedCts.Token);
+            }
+            else
+            {
+                task = ExecuteWithCleanup(asyncFunc, onComplete, linkedCts.Token);
+            }
 
             TrackTask(task);
-            return await task;
+            return await task.ConfigureAwait(false);
         }
 
         /// <summary>
@@ -82,9 +114,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// </summary>
         public Task RunAsync(Func<CancellationToken, Task> asyncAction,
                            Action<Exception> onComplete = null,
-                           CancellationToken cancellationToken = default)
+                           CancellationToken cancellationToken = default,
+                           ExecutionPolicy policy = ExecutionPolicy.Auto)
         {
-            return RunAsync(async ct => { await asyncAction(ct); return true; }, onComplete, cancellationToken);
+            return RunAsync(async ct => { await asyncAction(ct).ConfigureAwait(false); return true; }, onComplete, cancellationToken, policy);
         }
 
         /// <summary>
@@ -92,10 +125,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// </summary>
         public Task RunAsync(Action<CancellationToken> action,
                            Action<Exception> onComplete = null,
-                           CancellationToken cancellationToken = default)
+                           CancellationToken cancellationToken = default,
+                           ExecutionPolicy policy = ExecutionPolicy.Auto)
         {
             ValidateInput(action, nameof(action));
-            return RunAsync(ct => Task.Run(() => action(ct), ct), onComplete, cancellationToken);
+            // This overload already offloads using Task.Run, so don't offload again.
+            return RunAsync(ct => Task.Run(() => action(ct), ct), onComplete, cancellationToken, ExecutionPolicy.Never);
         }
 
         /// <summary>
@@ -179,16 +214,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                result = await asyncFunc(cancellationToken);
+                result = await asyncFunc(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException ex)
             {
                 capturedException = ex;
+                // Cancellation is a control flow event; do not log as error
                 throw;
             }
             catch (Exception ex)
             {
                 capturedException = ex;
+                // Ensure background exceptions are surfaced
+                ReportException(ex);
                 throw;
             }
             finally
@@ -246,9 +284,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         {
             _activeTasks.TryAdd(task, 0);
 
-            // Remove task when completed (fire-and-forget)
-            _ = task.ContinueWith(t => _activeTasks.TryRemove(t, out _),
-                TaskContinuationOptions.ExecuteSynchronously);
+            // Remove task when completed (fire-and-forget) and report exceptions
+            _ = task.ContinueWith(t =>
+            {
+                _activeTasks.TryRemove(t, out _);
+                if (t.IsFaulted && t.Exception != null)
+                {
+                    var agg = t.Exception.Flatten();
+                    foreach (var ex in agg.InnerExceptions)
+                    {
+                        ReportException(ex);
+                    }
+                }
+            }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         private void CleanupCompletedTasks(object state)
@@ -284,6 +332,48 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     catch { /* Swallow callback exceptions to prevent crashes */ }
                 }
             }, null);
+        }
+
+        private void ReportException(Exception ex)
+        {
+            try
+            {
+                // Prefer logging on main thread when possible for Unity console visibility
+                PostCallback(() =>
+                {
+                    try
+                    {
+                        UnityEngine.Debug.LogException(ex);
+                    }
+                    catch
+                    {
+                        try { System.Console.Error.WriteLine(ex.ToString()); } catch { }
+                    }
+                });
+            }
+            catch
+            {
+                try { UnityEngine.Debug.LogException(ex); } catch { }
+            }
+        }
+
+        private bool ShouldOffload(ExecutionPolicy policy)
+        {
+            switch (policy)
+            {
+                case ExecutionPolicy.Always:
+                    return true;
+                case ExecutionPolicy.Never:
+                    return false;
+                case ExecutionPolicy.Auto:
+                default:
+                    return IsMainThread();
+            }
+        }
+
+        private bool IsMainThread()
+        {
+            return Thread.CurrentThread.ManagedThreadId == _mainThreadId;
         }
 
         private static bool IsUnityContext()
@@ -376,7 +466,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             if (asyncActions == null || asyncActions.Length == 0) { return; }
 
             var tasks = asyncActions.Select(action => runner.RunAsync(action)).ToArray();
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
     }
 }
