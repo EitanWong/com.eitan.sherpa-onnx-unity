@@ -3,7 +3,6 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using System;
     using System.Collections;
     using System.Linq;
-    using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
@@ -22,6 +21,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _keywordText;
 
+        [Header("Kws Setup")]
+        [SerializeField] private string[] kwsKeywords;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip wakeupSoundClip;
+
         private KeywordSpotting keywordSpotting;
 
         private readonly int SampleRate = 16000;
@@ -32,7 +37,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private Color _originLoadBtnColor;
         private readonly string defaultModelID = "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01";
-        
+
         // For combo effect
         private int _comboCount;
         private string _lastKeyword;
@@ -73,7 +78,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             if (keywordSpotting == null)
             {
                 var reporter = new SherpaOnnxFeedbackReporter(null, this);
-                keywordSpotting = new KeywordSpotting(modelID, SampleRate, 2.0f, 0.25f, null,reporter);
+                keywordSpotting = new KeywordSpotting(modelID, SampleRate, 2.0f, 0.25f, kwsKeywords, reporter);
                 keywordSpotting.OnKeywordDetected += HandleKeywordDetected;
 
                 _modelLoadFlag = true;
@@ -105,7 +110,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 device.OnFrameCollected -= HandleAudioFrameCollected;
                 device = null;
             }
-            
+
             if (_resetCoroutine != null)
             {
                 StopCoroutine(_resetCoroutine);
@@ -143,7 +148,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
             }
-            
+
             if (_resetCoroutine != null)
             {
                 StopCoroutine(_resetCoroutine);
@@ -270,6 +275,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Debug.Log($"Wake-up word detected: {keyword}, combo: {_comboCount}");
 
             _resetCoroutine = StartCoroutine(ResetKeywordDisplayAfterDelay());
+
+
+            if (wakeupSoundClip)
+            {
+                AudioSource.PlayClipAtPoint(wakeupSoundClip, Camera.main.transform.position);
+            }
         }
 
         private IEnumerator ResetKeywordDisplayAfterDelay()

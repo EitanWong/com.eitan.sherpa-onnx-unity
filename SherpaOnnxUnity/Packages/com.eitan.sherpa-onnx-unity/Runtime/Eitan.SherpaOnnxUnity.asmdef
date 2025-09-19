@@ -1,7 +1,9 @@
 {
     "name": "Eitan.SherpaOnnxUnity",
     "rootNamespace": "Eitan.SherpaOnnxUnity",
-    "references": [],
+    "references": [
+        "GUID:b542629712c0c4bf5beefd715ba6ad98"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
