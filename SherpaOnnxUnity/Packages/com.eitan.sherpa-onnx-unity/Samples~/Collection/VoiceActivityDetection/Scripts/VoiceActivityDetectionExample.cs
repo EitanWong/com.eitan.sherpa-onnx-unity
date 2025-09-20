@@ -34,7 +34,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private Color _originLoadBtnColor;
         private readonly string defaultModelID = "ten-vad";
-        
+
         private AudioSource audioSource;
         private readonly List<float> accumulatedSpeech = new List<float>();
         private bool isPlayingBack = false;
@@ -90,7 +90,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             vad = new VoiceActivityDetection(modelID, SampleRate, reporter);
             vad.OnSpeakingStateChanged += HandleSpeechStateChanged;
             vad.OnSpeechSegmentDetected += HandleSpeechSegmentCollected;
-            
+
             UpdateLoadButtonUI();
 
         }
@@ -105,8 +105,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("No model is loaded, no need to unload.");
                 return;
             }
-         
-            
+
+
             Cleanup();
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
             _tipsText.text = "Load a model to begin.";
@@ -216,7 +216,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
                 _tipsText.text = "Load a model to begin.";
-                
+
             }
         }
 
@@ -380,7 +380,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             SetProgressActive(false);
             UpdateOverallProgress(1f, "Success");
             _initMessageText.text = string.Empty;
-            _vadStatusText.text = $"SpeechSyntesis Model Loaded\nNow you can type some text to generate.";
+            _vadStatusText.text = $"VAD Model Loaded\nNow you can speak to test.";
             _tipsText.text = $"Model {feedback.Metadata.modelId} loaded.";
 
             StartRecording();

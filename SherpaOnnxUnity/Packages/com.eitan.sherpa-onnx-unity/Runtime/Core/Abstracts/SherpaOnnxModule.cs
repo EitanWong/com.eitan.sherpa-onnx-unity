@@ -16,7 +16,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         // --- 统一的、线程安全的销毁标志 ---
         protected bool IsDisposed { get; private set; }
-        
+
         public bool Initialized { get; private set; }
 
         public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
@@ -41,7 +41,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     // 使用 _isDisposed 标志位进行更可靠的检查
                     if (IsDisposed || runner.IsDisposed) { return; }
 
-                    _rootThreadContext.Post(state =>
+                    ExecuteOnMainThread(state =>
                     {
                         if (IsDisposed || runner.IsDisposed) { return; }
                         try
@@ -56,7 +56,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 });
 
                 var metadata = SherpaOnnxModelRegistry.Instance.GetMetadata(modelID);
-                
+
                 try
                 {
                     var prepareResult = await SherpaUtils.Prepare.PrepareModelAsync(metadata, reporterAdapter);
@@ -112,6 +112,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             // 如果开发者忘记调用Dispose()，此方法会确保非托管资源被释放
             Dispose(false);
+        }
+
+        protected void ExecuteOnMainThread(SendOrPostCallback callback, object args = null)
+        {
+            if (_rootThreadContext != null)
+            {
+
+                _rootThreadContext.Post(callback, args);
+            }
+            else
+            {
+                UnityEngine.Debug.LogError("The main thread context not exist, can't execute callback on main thread");
+            }
         }
 
         private void Dispose(bool disposing)

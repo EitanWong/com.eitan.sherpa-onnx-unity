@@ -1,7 +1,10 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin;
@@ -11,6 +14,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 {
     public sealed class KeywordSpotting : SherpaOnnxModule
     {
+        private const float DefaultBoostingScore = 2.0f;
+        private const float DefaultTriggerThreshold = 0.1f;
+
+        [Serializable]
+        public struct KeywordRegistration
+        {
+            public KeywordRegistration(string keyword, float boostingScore = DefaultBoostingScore, float triggerThreshold = DefaultTriggerThreshold)
+            {
+                Keyword = keyword;
+                BoostingScore = boostingScore;
+                TriggerThreshold = triggerThreshold;
+            }
+
+            public string Keyword;
+
+            [UnityEngine.MinAttribute(0.0001f)]
+            public float BoostingScore;
+
+            [UnityEngine.RangeAttribute(0f, 1f)]
+            public float TriggerThreshold;
+        }
+
         public event Action<string> OnKeywordDetected;
 
         private KeywordSpotter _keywordSpotter;
@@ -22,21 +47,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private readonly float _keywordsScore;
         private readonly float _keywordsThreshold;
 
-        private readonly string[] _registedKeywords;
-        private readonly SynchronizationContext _unityContext;
+        private string[] _registedKeywords = Array.Empty<string>();
+        private string _keywordsPayload;
+        private readonly KeywordRegistration[] _keywordConfigs;
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.KeywordSpotting;
 
-        //TODO: 支持自定义唤醒词功能 具体要参考https://k2-fsa.github.io/sherpa/onnx/kws/index.html#what-is-open-vocabulary-keyword-spotting 进行实现，用pinyin库将文字转为拼音，英文的情况也要根据文档描述设计转换的算法
-        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, string[] customKeywords = null, SherpaOnnxFeedbackReporter reporter = null)
+        //支持自定义唤醒词功能 具体要参考https://k2-fsa.github.io/sherpa/onnx/kws/index.html#what-is-open-vocabulary-keyword-spotting 用pinyin库将文字转为拼音，英文需要使用bpe模型进行分词，暂不支持
+        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, KeywordRegistration[] customKeywords = null, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             _keywordsScore = keywordsScore;
             _keywordsThreshold = keywordsThreshold;
-            _registedKeywords = customKeywords;
-            _unityContext = SynchronizationContext.Current;
-            RawKeywordsProcess(_registedKeywords);
-
+            _keywordConfigs = customKeywords;
         }
 
         protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
@@ -52,8 +75,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     try
                     {
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading KWS model: {metadata.modelId}"));
+
                         _keywordSpotter = new KeywordSpotter(config);
-                        _stream = _keywordSpotter.CreateStream();
+
+                        if (!string.IsNullOrEmpty(_keywordsPayload))
+                        {
+                            _stream = _keywordSpotter.CreateStream(_keywordsPayload);
+                        }
+                        else
+                        {
+                            _stream = _keywordSpotter.CreateStream();
+                        }
 
                         if (_keywordSpotter == null || _stream == null)
                         {
@@ -98,7 +130,18 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", "99", int8QuantKeyword)?.First();
             config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", "99", int8QuantKeyword)?.First();
             config.ModelConfig.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
-            config.KeywordsFile = metadata.GetModelFilePathByKeywords("keywords.txt")?.First();
+
+            EnsureCustomKeywords(config.ModelConfig.Tokens);
+
+            if (!string.IsNullOrEmpty(_keywordsPayload))
+            {
+                config.KeywordsBuf = _keywordsPayload;
+                config.KeywordsBufSize = Encoding.UTF8.GetByteCount(_keywordsPayload);
+            }
+            else
+            {
+                config.KeywordsFile = metadata.GetModelFilePathByKeywords("keywords.txt")?.First();
+            }
 
             return Task.FromResult(config);
         }
@@ -184,26 +227,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     {
                         _keywordSpotter.Reset(_stream);
                         var detectedKeyword = result.Keyword;
-
-                        if (_unityContext != null)
+                        ExecuteOnMainThread(_ =>
                         {
-                            _unityContext.Post(_ =>
+                            try
                             {
-                                try
-                                {
-                                    OnKeywordDetected?.Invoke(detectedKeyword);
-                                }
-                                catch (Exception e)
-                                {
-                                    UnityEngine.Debug.LogException(e);
-                                }
-                            }, null);
-                        }
-                        else
-                        {
-                            UnityEngine.Debug.LogWarning("KeywordSpotting detected a keyword but no Unity SynchronizationContext is available; invoking callback on background thread.");
-                            OnKeywordDetected?.Invoke(detectedKeyword);
-                        }
+                                OnKeywordDetected?.Invoke(detectedKeyword);
+                            }
+                            catch (Exception e)
+                            {
+                                UnityEngine.Debug.LogException(e);
+                            }
+                        });
                     }
                 }
             }
@@ -285,16 +319,321 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
 
         #region  PrivateMethod
-        private void RawKeywordsProcess(string[] keywords)
+        private void EnsureCustomKeywords(string tokensFilePath)
         {
-            PinyinFormat format = PinyinFormat.WITH_TONE_MARK | PinyinFormat.LOWERCASE;
-
-            for (int i = 0; i < keywords.Length; i++)
+            if (_keywordsPayload != null || _keywordConfigs == null || _keywordConfigs.Length == 0)
             {
-                var w = keywords[i];
-                var py = Pinyin4Net.GetPinyin(w, format);
-                UnityEngine.Debug.Log(py);
+                return;
             }
+
+            if (string.IsNullOrEmpty(tokensFilePath) || !File.Exists(tokensFilePath))
+            {
+                UnityEngine.Debug.LogWarning($"KeywordSpotting: Tokens file '{tokensFilePath}' is missing. Custom keywords will be ignored.");
+                _registedKeywords = Array.Empty<string>();
+                _keywordsPayload = null;
+                return;
+            }
+
+            var tokenSet = LoadTokenSet(tokensFilePath, out int maxTokenLength);
+            var format = PinyinFormat.WITH_TONE_MARK | PinyinFormat.LOWERCASE;
+            var formattedKeywords = new List<string>(_keywordConfigs.Length);
+
+            for (int i = 0; i < _keywordConfigs.Length; i++)
+            {
+                var keywordConfig = _keywordConfigs[i];
+                var keyword = keywordConfig.Keyword?.Trim();
+
+                if (string.IsNullOrEmpty(keyword))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var pinyin = Pinyin4Net.GetPinyin(keyword, format);
+                    var tokens = ConvertPinyinToTokens(pinyin, tokenSet, maxTokenLength);
+
+                    if (tokens == null || tokens.Count == 0)
+                    {
+                        UnityEngine.Debug.LogWarning($"KeywordSpotting: Unable to tokenize keyword '{keyword}'. It will be skipped.");
+                        continue;
+                    }
+
+                    var boosting = SanitizeBoostingScore(keywordConfig.BoostingScore, keyword);
+                    var threshold = SanitizeTriggerThreshold(keywordConfig.TriggerThreshold, keyword);
+                    var spacedPinyin = string.Join(" ", tokens);
+                    formattedKeywords.Add(FormattableString.Invariant($"{spacedPinyin} :{boosting:0.0###} #{threshold:0.0###} @{keyword}"));
+                }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogWarning($"KeywordSpotting: Exception while processing keyword '{keyword}'. It will be skipped. {ex.Message}");
+                }
+            }
+
+            if (formattedKeywords.Count == 0)
+            {
+                _registedKeywords = Array.Empty<string>();
+                _keywordsPayload = null;
+                return;
+            }
+
+            _registedKeywords = formattedKeywords.ToArray();
+            _keywordsPayload = string.Join("\n", _registedKeywords);
+
+            if (!_keywordsPayload.EndsWith("\n", StringComparison.Ordinal))
+            {
+                _keywordsPayload += "\n";
+            }
+        }
+
+        private static List<string> ConvertPinyinToTokens(string pinyin, HashSet<string> tokenSet, int maxTokenLength)
+        {
+            if (string.IsNullOrWhiteSpace(pinyin))
+            {
+                return null;
+            }
+
+            pinyin = NormalizeWhitespace(pinyin).Trim();
+            if (pinyin.Length == 0)
+            {
+                return null;
+            }
+
+            var syllables = pinyin.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var result = new List<string>();
+
+            for (int i = 0; i < syllables.Length; i++)
+            {
+                var syllable = syllables[i];
+                if (string.IsNullOrEmpty(syllable))
+                {
+                    continue;
+                }
+
+                var normalized = NormalizeToneMarks(syllable)
+                    .Replace("'", string.Empty)
+                    .Replace("’", string.Empty)
+                    .Replace("u:", "ü")
+                    .Replace("v", "ü")
+                    .Replace("·", string.Empty);
+
+                normalized = normalized.ToLowerInvariant();
+
+                if (TrySegmentSyllable(normalized, tokenSet, maxTokenLength, out var tokens))
+                {
+                    result.AddRange(tokens);
+                    continue;
+                }
+
+                var fallback = TryFallbackSegmentation(normalized, tokenSet);
+                if (fallback == null)
+                {
+                    return null;
+                }
+
+                result.AddRange(fallback);
+            }
+
+            return result;
+        }
+
+        private static HashSet<string> LoadTokenSet(string tokensFilePath, out int maxTokenLength)
+        {
+            var tokens = new HashSet<string>(StringComparer.Ordinal);
+            maxTokenLength = 0;
+
+            foreach (var line in File.ReadLines(tokensFilePath))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                var trimmed = line.Trim();
+                if (trimmed.Length == 0 || trimmed[0] == '#')
+                {
+                    continue;
+                }
+
+                if (trimmed.StartsWith("<", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var spaceIndex = trimmed.IndexOf(' ');
+                var token = spaceIndex >= 0 ? trimmed.Substring(0, spaceIndex) : trimmed;
+                if (string.IsNullOrEmpty(token))
+                {
+                    continue;
+                }
+
+                tokens.Add(token);
+                if (token.Length > maxTokenLength)
+                {
+                    maxTokenLength = token.Length;
+                }
+            }
+
+            if (maxTokenLength == 0)
+            {
+                maxTokenLength = 1;
+            }
+
+            return tokens;
+        }
+
+        private static bool TrySegmentSyllable(string syllable, HashSet<string> tokenSet, int maxTokenLength, out List<string> segments)
+        {
+            segments = new List<string>();
+
+            if (string.IsNullOrEmpty(syllable))
+            {
+                return false;
+            }
+
+            var memo = new Dictionary<int, bool>();
+            if (TrySegmentRecursive(syllable, 0, tokenSet, maxTokenLength, segments, memo))
+            {
+                return true;
+            }
+
+            segments.Clear();
+            return false;
+        }
+
+        private static bool TrySegmentRecursive(string syllable, int index, HashSet<string> tokenSet, int maxTokenLength, List<string> current, Dictionary<int, bool> memo)
+        {
+            if (index == syllable.Length)
+            {
+                return true;
+            }
+
+            if (memo.ContainsKey(index))
+            {
+                return false;
+            }
+
+            int remaining = syllable.Length - index;
+            int maxLen = Math.Min(maxTokenLength, remaining);
+
+            for (int len = maxLen; len >= 1; len--)
+            {
+                var slice = syllable.Substring(index, len);
+                if (!tokenSet.Contains(slice))
+                {
+                    continue;
+                }
+
+                current.Add(slice);
+                if (TrySegmentRecursive(syllable, index + len, tokenSet, maxTokenLength, current, memo))
+                {
+                    return true;
+                }
+
+                current.RemoveAt(current.Count - 1);
+            }
+
+            memo[index] = true;
+            return false;
+        }
+
+        private static List<string> TryFallbackSegmentation(string syllable, HashSet<string> tokenSet)
+        {
+            if (tokenSet.Contains(syllable))
+            {
+                return new List<string> { syllable };
+            }
+
+            var fallback = new List<string>(syllable.Length);
+            foreach (var rune in syllable)
+            {
+                var token = rune.ToString();
+                if (!tokenSet.Contains(token))
+                {
+                    return null;
+                }
+
+                fallback.Add(token);
+            }
+
+            return fallback;
+        }
+
+        private static string NormalizeWhitespace(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder(value.Length);
+            for (int i = 0; i < value.Length; i++)
+            {
+                var ch = value[i];
+                builder.Append(ch == '\u00A0' ? ' ' : ch);
+            }
+
+            return builder.ToString();
+        }
+
+        private static float SanitizeBoostingScore(float value, string keyword)
+        {
+            if (value > 0f)
+            {
+                return value;
+            }
+
+            UnityEngine.Debug.LogWarning($"Keyword '{keyword}' has invalid boosting score {value}. Using default {DefaultBoostingScore}.");
+            return DefaultBoostingScore;
+        }
+
+        private static float SanitizeTriggerThreshold(float value, string keyword)
+        {
+            if (value > 0f && value <= 1f)
+            {
+                return value;
+            }
+
+            if (value <= 0f)
+            {
+                UnityEngine.Debug.LogWarning($"Keyword '{keyword}' has invalid trigger threshold {value}. Using default {DefaultTriggerThreshold}.");
+                return DefaultTriggerThreshold;
+            }
+
+            UnityEngine.Debug.LogWarning($"Keyword '{keyword}' trigger threshold {value} is above 1.0. Clamping to 1.0.");
+            return 1f;
+        }
+
+        private static string NormalizeToneMarks(string pinyin)
+        {
+            if (string.IsNullOrEmpty(pinyin))
+            {
+                return string.Empty;
+            }
+
+            Span<char> buffer = stackalloc char[pinyin.Length];
+            int count = 0;
+
+            for (int i = 0; i < pinyin.Length; i++)
+            {
+                char c = pinyin[i];
+                buffer[count++] = c switch
+                {
+                    'ă' => 'ǎ',
+                    'Ă' => 'Ǎ',
+                    'ĕ' => 'ě',
+                    'Ĕ' => 'Ě',
+                    'ĭ' => 'ǐ',
+                    'Ĭ' => 'Ǐ',
+                    'ŏ' => 'ǒ',
+                    'Ŏ' => 'Ǒ',
+                    'ŭ' => 'ǔ',
+                    'Ŭ' => 'Ǔ',
+                    _ => c
+                };
+            }
+
+            return new string(buffer.Slice(0, count));
         }
 
         #endregion

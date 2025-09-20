@@ -22,7 +22,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Text _keywordText;
 
         [Header("Kws Setup")]
-        [SerializeField] private string[] kwsKeywords;
+        [SerializeField] private KeywordSpotting.KeywordRegistration[] kwsKeywords;
 
         [Header("Audio")]
         [SerializeField] private AudioClip wakeupSoundClip;

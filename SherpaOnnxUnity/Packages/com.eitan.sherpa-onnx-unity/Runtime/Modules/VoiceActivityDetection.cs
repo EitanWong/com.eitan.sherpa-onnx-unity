@@ -32,7 +32,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         // --- Core Data Flow & State ---
         private readonly ConcurrentQueue<float> _audioQueue = new ConcurrentQueue<float>();
-        
+
         // Backing memory for the stack-allocated CircularBuffer
         private float[] _leadingPaddingBackingBuffer;
 
@@ -43,7 +43,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private bool _isSpeaking;
         private int _silentFrames;
         private int _silenceThresholdFrames;
-        
+
         public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
@@ -66,9 +66,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 // --- Initialize all buffers here, now that we have all parameters ---
                 int paddingCapacity = (int)(LeadingPaddingDuration * sampleRate);
                 _leadingPaddingBackingBuffer = new float[MathUtils.NextPowerOfTwo(Math.Max(16, paddingCapacity))];
-                
+
                 _acceptWaveformWorkspace = new float[_windowSize];
-                
+
                 _segmentWorkspace = new float[sampleRate * 15]; // 15 seconds initial capacity
 
                 await runner.RunAsync(cancellationToken =>
@@ -84,13 +84,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 throw;
             }
         }
-        
+
         public void StreamDetect(float[] samples)
         {
             if (IsDisposed || _detector == null || samples.Length == 0)
             {
                 return;
             }
+
 
 
             foreach (var sample in samples)
@@ -173,12 +174,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             if (chunk.Length == _windowSize)
             {
                 chunk.CopyTo(_acceptWaveformWorkspace);
+
                 _detector.AcceptWaveform(_acceptWaveformWorkspace);
             }
             else
             {
                 // This path is for the smaller, final chunk during a flush.
                 // ToArray() is acceptable here as it's an infrequent operation.
+
                 _detector.AcceptWaveform(chunk.ToArray());
             }
 
@@ -197,7 +200,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var segmentSamples = segment.Samples;
 
                 paddingBuffer.GetSpans(out var padding1, out var padding2);
-                
+
                 int totalSamples = padding1.Length + padding2.Length + segmentSamples.Length;
 
                 if (_segmentWorkspace.Length < totalSamples)
@@ -210,19 +213,20 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 padding1.CopyTo(workspaceSpan);
                 padding2.CopyTo(workspaceSpan.Slice(padding1.Length));
                 segmentSamples.CopyTo(workspaceSpan.Slice(padding1.Length + padding2.Length));
-                
+
                 // Create final, perfectly-sized array for the event. This is the only required allocation.
                 var finalSegment = workspaceSpan.Slice(0, totalSamples).ToArray();
                 OnSpeechSegmentDetected?.Invoke(finalSegment);
-                
+
                 _detector.Pop();
                 paddingBuffer.Clear();
             }
         }
-        
+
         private void UpdateSpeakingState()
         {
             bool detectedSpeaking = _detector.IsSpeechDetected();
+
             if (!detectedSpeaking && _isSpeaking)
             {
                 _silentFrames++;
@@ -240,7 +244,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             if (detectedSpeaking != _isSpeaking)
             {
                 _isSpeaking = detectedSpeaking;
-                OnSpeakingStateChanged?.Invoke(_isSpeaking);
+
+                ExecuteOnMainThread(_ =>
+                {
+                    OnSpeakingStateChanged?.Invoke(_isSpeaking);
+                });
             }
         }
 
@@ -249,10 +257,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             if (_isSpeaking)
             {
                 _isSpeaking = false;
-                OnSpeakingStateChanged?.Invoke(false);
+                ExecuteOnMainThread(_ =>
+                {
+                    OnSpeakingStateChanged?.Invoke(false);
+                });
             }
             _silentFrames = 0;
-            
+
             // Clear the buffer by creating a local instance and calling Clear.
             var paddingBuffer = new CircularBuffer<float>(_leadingPaddingBackingBuffer);
             paddingBuffer.Clear();
@@ -265,7 +276,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
 
         #region Configuration & Helpers
-        
+
         private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
         {
             var vadModelConfig = new VadModelConfig { SampleRate = sampleRate };
