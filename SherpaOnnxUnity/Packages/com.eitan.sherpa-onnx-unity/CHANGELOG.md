@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.1-exp.2] - 2025-09-21
+
+### Added
+- **SpokenLanguageIdentification Module** - Identifies the language from a list of candidates in a given audio clip.
+  - Supports both streaming and batch processing.
+  - Includes a demo scene for interactive testing.
+- **Custom Keyword Support** - Added functionality to the `KeywordSpotting` module to support custom keywords.
+  - Currently available for Chinese language models.
+
+### Changed
+- Updated sherpa-onnx to [v1.12.14](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.14).
+
 ## [0.1.1-exp.1] - 2025-08-06
 
 ### Added

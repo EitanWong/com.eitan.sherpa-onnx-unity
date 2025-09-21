@@ -15,7 +15,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.1** (2025-08-06)
+📋 **[View Changelog](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.2** (2025-09-21)
 
 </div>
 
@@ -29,18 +29,16 @@
 
 </div>
 
----
+--- 
 
-## 🆕 What's New in v0.1.1-exp.1 (2025-08-06)
+## 🆕 What's New in v0.1.1-exp.2 (2025-09-21)
 
-### 🎯 New Modules
-- **🔊 Speech Enhancement** - GTCRN-powered noise reduction with real-time processing
-- **👂 Keyword Spotting** - Voice-activated keyword detection for voice commands
-- **🎛️ Interactive Demos** - Complete examples with model management and UI controls
+### 🎯 New Modules & Features
+- **🌍 Spoken Language Identification** - Detect the language being spoken from an audio stream.
+- **✨ Custom Keyword Support** - The Keyword Spotting module now supports custom keywords (currently for Chinese).
 
-### ⚡ Key Improvements
-- **Enhanced Model Registry** - Automatic downloads with hash verification
-- **Better Thread Safety** - Improved concurrent processing architecture
+### ⚡ Core Updates
+- **Upgraded sherpa-onnx** - Core engine updated to [v1.12.14](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.14) for the latest features and fixes.
 
 [📋 **View Full Changelog**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -59,9 +57,10 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 - **⚡ Real-time Processing** - Low-latency speech recognition
 - **🎯 Voice Activity Detection** - Smart speech boundary detection
 - **🔊 Speech Enhancement** - GTCRN noise reduction and audio quality improvement
-- **👂 Keyword Spotting** - Voice-activated keyword detection and wake words
+- **👂 Keyword Spotting** - Voice-activated keyword detection, now with custom keyword support.
 - **🎤 Text-to-Speech** - High-quality voice synthesis
-- **🌍 Cross-platform Support** - Windows, macOS, Linux, Android
+- **🌍 Spoken Language Identification** - Identify the language of a given audio clip.
+- **🖥️ Cross-platform Support** - Windows, macOS, Linux, Android
 
 ### 🤖 Intelligent Model Management
 - **🔄 Automatic Downloads** - Models download seamlessly
@@ -91,17 +90,25 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 
 ### 📦 Installation
 
-<details>
-<summary><strong>🎯 OpenUPM (Recommended)</strong></summary>
+> **Note:** This package is currently in an experimental phase and has not yet been published to OpenUPM. Please use the Git URL method for installation.
 
-```bash
-openupm add com.eitan.sherpa-onnx-unity
-```
+<details open>
+<summary><strong>🎯 Add package from Git URL (Recommended)</strong></summary>
+
+1. In Unity, open **Window → Package Manager**.
+2. Click the **+** button in the top-left corner.
+3. Select **"Add package from git URL..."**
+4. Enter the following URL and click **Add**:
+   ```
+   https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
+   ```
 
 </details>
 
 <details>
-<summary><strong>🔧 Unity Package Manager</strong></summary>
+<summary><strong>🔧 Unity Package Manager (via Scoped Registry - Coming Soon)</strong></summary>
+
+> This method will be available after the official release on OpenUPM.
 
 1. **Edit → Project Settings → Package Manager**
 2. Add Scoped Registry:
@@ -114,10 +121,12 @@ openupm add com.eitan.sherpa-onnx-unity
 </details>
 
 <details>
-<summary><strong>🔗 Git URL</strong></summary>
+<summary><strong>🔗 OpenUPM (CLI - Coming Soon)</strong></summary>
 
-```
-https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
+> This method will be available after the official release on OpenUPM.
+
+```bash
+openupm add com.eitan.sherpa-onnx-unity
 ```
 
 </details>
@@ -137,6 +146,7 @@ The samples include:
 - **Offline Speech Recognition** - Process pre-recorded audio files
 - **Speech Enhancement** - Real-time noise reduction with GTCRN models
 - **Keyword Spotting** - Voice-activated keyword detection and wake words
+- **Spoken Language Identification** - Identify the language from an audio clip.
 - **Text-to-Speech Synthesis** - High-quality voice generation
 - **Advanced Configuration** - Custom model selection and mobile optimization
 

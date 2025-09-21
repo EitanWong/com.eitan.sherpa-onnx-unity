@@ -15,7 +15,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private OnlineRecognizer _onlineRecognizer;
         private OnlineStream _onlineStream;
         private OfflineRecognizer _offlineRecognizer;
-        
+
         private SpeechRecognitionModelType _modelType;
         private readonly object _lockObject = new object();
         public bool IsOnlineModel { get; private set; }
@@ -32,7 +32,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-                
+
                 IsOnlineModel = SherpaUtils.Model.IsOnlineModel(metadata.modelId);
                 _modelType = SherpaUtils.Model.GetSpeechRecognitionModelType(metadata.modelId);
                 if (IsOnlineModel)
@@ -41,7 +41,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
                 else
                 {
-                    
+
                     await LoadOfflineModelAsync(metadata, sampleRate, isMobilePlatform, reporter, ct);
                 }
             }
@@ -55,7 +55,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private async Task LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
-            
+
             await runner.RunAsync(cancellationToken =>
             {
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
@@ -72,7 +72,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private async Task LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
-            
+
             await runner.RunAsync(cancellationToken =>
             {
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
@@ -90,7 +90,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             var config = new OnlineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
-                ModelConfig = { 
+                ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
                     NumThreads = 4,
                     Debug = 0
@@ -103,7 +103,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             };
 
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
-            
+
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
@@ -111,14 +111,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     break;
-                    
+
                 case SpeechRecognitionModelType.Online_Transducer:
                     config.DecodingMethod = isMobilePlatform ? "greedy_search" : "modified_beam_search";
                     config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
                     break;
-                    
+
                 default:
                     throw new NotSupportedException($"Unsupported online model type: {_modelType}");
             }
@@ -131,7 +131,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             var config = new OfflineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
-                ModelConfig = { 
+                ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
                     NumThreads = 4,
                     Debug = 0,
@@ -142,7 +142,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 HotwordsScore = 1.5f,
                 RuleFsts = string.Empty
             };
-            
+
 
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
             var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords", int8QuantKeywords)?.First();
@@ -221,7 +221,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 return Task.FromResult(string.Empty);
             }
 
-            return IsOnlineModel ? 
+            return IsOnlineModel ?
                 ProcessOnlineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken) :
                 ProcessOfflineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken);
         }
@@ -236,7 +236,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             lock (_lockObject)
             {
                 if (IsDisposed || _onlineStream == null) { return Task.FromResult(string.Empty); }
-                
+
                 _onlineStream.AcceptWaveform(sampleRate, audioSamplesFrame);
             }
 
@@ -253,17 +253,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 lock (_lockObject)
                 {
                     if (IsDisposed || _onlineStream == null) { return Task.FromResult(string.Empty); }
-                    
+
                     DecodeOnlineStream(combinedCt);
                     var result = _onlineRecognizer.GetResult(_onlineStream);
-                    
+
                     if (_onlineRecognizer.IsEndpoint(_onlineStream))
                     {
                         HandleEndpointDetection(sampleRate, combinedCt);
                         result = _onlineRecognizer.GetResult(_onlineStream);
                         _onlineRecognizer.Reset(_onlineStream);
                     }
-                    
+
                     return Task.FromResult(result?.Text ?? string.Empty);
                 }
             });
@@ -311,11 +311,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private void HandleEndpointDetection(int sampleRate, CancellationToken cancellationToken)
         {
             if (IsDisposed || _onlineStream == null) { return; }
-            
+
             // Add tail padding to ensure final words are processed
             var tailPadding = new float[sampleRate]; // 1 second of silence
             _onlineStream.AcceptWaveform(sampleRate, tailPadding);
-            
+
             DecodeOnlineStream(cancellationToken);
         }
 

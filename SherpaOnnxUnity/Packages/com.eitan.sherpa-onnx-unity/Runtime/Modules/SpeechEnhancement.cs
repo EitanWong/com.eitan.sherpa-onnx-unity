@@ -28,7 +28,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-                
+
                 _sampleRate = sampleRate;
                 var config = CreateSpeechDenoiserConfig(metadata, isMobilePlatform);
 
@@ -38,12 +38,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     {
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading Speech Enhancement model: {metadata.modelId}"));
                         _denoiser = new OfflineSpeechDenoiser(config);
-                        
+
                         if (_denoiser == null)
                         {
                             throw new Exception($"Failed to initialize Speech Enhancement model: {metadata.modelId}");
                         }
-                        
+
                         reporter?.Report(new LoadFeedback(metadata, message: $"Speech Enhancement model loaded successfully: {metadata.modelId}"));
                     }
                     catch (Exception ex)
@@ -72,7 +72,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             };
 
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
-            
+
             // Configure GTCRN model
             var gtcrnModelPath = metadata.GetModelFilePathByKeywords("gtcrn", "model", int8QuantKeyword)?.FirstOrDefault();
             if (!string.IsNullOrEmpty(gtcrnModelPath))
@@ -122,7 +122,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
                 var combinedCt = linkedCts.Token;
-                
+
                 if (IsDisposed || _denoiser == null)
                 {
                     return;
@@ -136,10 +136,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }
 
                     combinedCt.ThrowIfCancellationRequested();
-                    
+
                     var enhancedAudio = _denoiser.Run(samples, effectiveSampleRate);
                     var enhancedSamples = enhancedAudio?.Samples;
-                    
+
                     if (enhancedSamples != null && enhancedSamples.Length > 0)
                     {
                         // Copy enhanced data back to input array in-place
@@ -176,7 +176,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 var enhancedAudio = _denoiser.Run(samples, effectiveSampleRate);
                 var enhancedSamples = enhancedAudio?.Samples;
-                
+
                 if (enhancedSamples != null && enhancedSamples.Length > 0)
                 {
                     // Copy enhanced data back to input array in-place
@@ -212,7 +212,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var inputArray = samples.ToArray();
                 var enhancedAudio = _denoiser.Run(inputArray, effectiveSampleRate);
                 var enhancedSamples = enhancedAudio?.Samples;
-                
+
                 if (enhancedSamples != null && enhancedSamples.Length > 0)
                 {
                     // Copy enhanced data back to input span in-place
@@ -232,7 +232,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <param name="sampleRate">Sample rate of the audio. If null, uses the module's sample rate.</param>
         public void EnhanceSync(float[] buffer, int offset, int length, int? sampleRate = null)
         {
-            if (_denoiser == null || IsDisposed || buffer == null || 
+            if (_denoiser == null || IsDisposed || buffer == null ||
                 offset < 0 || length <= 0 || offset + length > buffer.Length)
             {
                 return;
@@ -250,10 +250,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 // Create a temporary span for the portion to process
                 var segment = buffer.AsSpan(offset, length);
                 var inputArray = segment.ToArray();
-                
+
                 var enhancedAudio = _denoiser.Run(inputArray, effectiveSampleRate);
                 var enhancedSamples = enhancedAudio?.Samples;
-                
+
                 if (enhancedSamples != null && enhancedSamples.Length > 0)
                 {
                     // Copy enhanced data back to the specific buffer region
@@ -290,7 +290,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             for (int i = 0; i < audioSegments.Length; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 if (audioSegments[i] != null && audioSegments[i].Length > 0)
                 {
                     await EnhanceAsync(audioSegments[i], effectiveSampleRate, cancellationToken);

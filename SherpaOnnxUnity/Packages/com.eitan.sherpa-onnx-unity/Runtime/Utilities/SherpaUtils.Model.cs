@@ -35,9 +35,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             #endregion
 
             #region SpeechSynthesisModelKeywords
-            
+
             private static readonly string[] vits_keywords = { "vits" };
-            private static readonly string[] matcha_keywords = { "matcha","vocos" };
+            private static readonly string[] matcha_keywords = { "matcha", "vocos" };
             private static readonly string[] kokoro_keywords = { "kokoro" };
             #endregion
 
@@ -46,15 +46,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             #endregion
 
             #region SpeechEnhancementModelKeyewords
-            private static readonly string[] speechEnhancement_keywords = { "gtcrn"};
+            private static readonly string[] speechEnhancement_keywords = { "gtcrn" };
 
             #endregion
-            
+
+
+            #region SpokenLanguageIdentification
+            private static readonly string[] spokenLanguageIdentification_whisper_keywords = { "whisper" };
             #endregion
 
+            #endregion
             #region Methods
 
-            public static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
+            internal static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
             {
 
                 if (IsKeywordSpottingModel(modelID))
@@ -71,7 +75,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return SherpaOnnxModuleType.Undefined;
             }
 
-            public static SpeechRecognitionModelType GetSpeechRecognitionModelType(string modelID)
+            internal static SpeechRecognitionModelType GetSpeechRecognitionModelType(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return SpeechRecognitionModelType.None; }
@@ -120,7 +124,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return SpeechRecognitionModelType.None;
             }
 
-            public static VoiceActivityDetectionModelType GetVoiceActivityDetectionModelType(string modelID)
+            internal static VoiceActivityDetectionModelType GetVoiceActivityDetectionModelType(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return VoiceActivityDetectionModelType.None; }
@@ -135,7 +139,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return VoiceActivityDetectionModelType.None;
             }
 
-            public static SpeechSynthesisModelType GetSpeechSynthesisModelType(string modelID)
+            internal static SpeechSynthesisModelType GetSpeechSynthesisModelType(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return SpeechSynthesisModelType.None; }
@@ -151,8 +155,24 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SpeechSynthesisModelType.Kokoro; }
 
                 return SpeechSynthesisModelType.None;
-                
+
             }
+
+
+            internal static SpokenLanguageIdentificationModelType GetSpokenLanguageIdentificationModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                { return SpokenLanguageIdentificationModelType.None; }
+
+                string lowerModelID = modelID.ToLower();
+
+                // Check for special models first (they have unique identification)
+                if (ContainsAnyKeyword(lowerModelID, spokenLanguageIdentification_whisper_keywords))
+                { return SpokenLanguageIdentificationModelType.Whisper; }
+                return SpokenLanguageIdentificationModelType.None;
+            }
+
+
             public static bool IsOnlineModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
@@ -251,6 +271,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         return new string[0];
                 }
             }
+
+
             #endregion
         }
 

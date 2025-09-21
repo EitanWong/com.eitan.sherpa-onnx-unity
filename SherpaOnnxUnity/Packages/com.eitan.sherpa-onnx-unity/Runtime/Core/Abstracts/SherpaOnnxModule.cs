@@ -12,12 +12,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         protected abstract SherpaOnnxModuleType ModuleType { get; }
 
         private readonly SynchronizationContext _rootThreadContext;
+        private readonly object _lockObject = new object();
+
         protected readonly TaskRunner runner;
 
         // --- 统一的、线程安全的销毁标志 ---
         protected bool IsDisposed { get; private set; }
 
         public bool Initialized { get; private set; }
+
 
         public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
         {
@@ -124,6 +127,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             else
             {
                 UnityEngine.Debug.LogError("The main thread context not exist, can't execute callback on main thread");
+            }
+        }
+
+        protected void SafeExecute(Action action)
+        {
+            lock (_lockObject)
+            {
+                action?.Invoke();
             }
         }
 

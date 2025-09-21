@@ -88,6 +88,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-moonshine-tiny-en-int8", modelFileNames = new[] { "preprocess.onnx", "cached_decode.int8.onnx","uncached_decode.int8.onnx","encode.int8.onnx","tokens.txt" } },
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-moonshine-base-en-int8", modelFileNames = new[] { "preprocess.onnx", "cached_decode.int8.onnx","uncached_decode.int8.onnx","encode.int8.onnx","tokens.txt" } },
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17", modelFileNames = new[] { "model.onnx", "model.int8.onnx", "tokens.txt" } },
+                new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09", modelFileNames = new[] { "model.int8.onnx", "tokens.txt" } },
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16", modelFileNames = new[] { "decoder.int8.onnx", "encoder.int8.onnx", "tokens.txt" } },
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-dolphin-base-ctc-multi-lang-int8-2025-04-02", modelFileNames = new[] { "model.int8.onnx", "tokens.txt" } },
                 new SherpaOnnxModelMetadata { modelId = "sherpa-onnx-dolphin-base-ctc-multi-lang-2025-04-02", modelFileNames = new[] { "model.onnx", "tokens.txt" } },
@@ -101,7 +102,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 new SherpaOnnxModelMetadata {modelId = "silero-vad", modelFileNames = new[]{"silero_vad.onnx"}, modelFileHashes=new[]{"9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"}, downloadUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",downloadFileHash = "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"},
                 new SherpaOnnxModelMetadata {modelId = "silero-vad-int8", modelFileNames = new[]{"silero_vad.int8.onnx"}, modelFileHashes = new[]{"c36d490aff5ab924ca6c7aeec4d8f6bd3d22db6fa17611b9c5b17eae58ac3a20"}, downloadUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.int8.onnx", downloadFileHash = "c36d490aff5ab924ca6c7aeec4d8f6bd3d22db6fa17611b9c5b17eae58ac3a20"},
                 new SherpaOnnxModelMetadata {modelId = "silero-vad-v4",modelFileNames = new[]{"silero_vad.onnx"},modelFileHashes = new[]{"a35ebf52fd3ce5f1469b2a36158dba761bc47b973ea3382b3186ca15b1f5af28"}, downloadUrl = "https://raw.githubusercontent.com/snakers4/silero-vad/refs/tags/v4.0/files/silero_vad.onnx", downloadFileHash = "a35ebf52fd3ce5f1469b2a36158dba761bc47b973ea3382b3186ca15b1f5af28"},
-                new SherpaOnnxModelMetadata {modelId = "silero-vad-v5", modelFileNames = new[]{"silero_vad.onnx"}, modelFileHashes = new[] {"2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f"}, downloadUrl = "https://github.com/snakers4/silero-vad/raw/refs/heads/master/src/silero_vad/data/silero_vad.onnx", downloadFileHash = "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f"},
+
+
+                new SherpaOnnxModelMetadata {modelId = "silero-vad-v5", modelFileNames = new[]{"silero_vad.onnx"}, modelFileHashes = new[] {"6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396"}, downloadUrl = "https://github.com/snakers4/silero-vad/raw/refs/tags/v5.0/files/silero_vad.onnx", downloadFileHash = "6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396"},
+
+
+                new SherpaOnnxModelMetadata {modelId = "silero-vad-latest", modelFileNames = new[]{"silero_vad.onnx"}, downloadUrl = "https://github.com/snakers4/silero-vad/raw/refs/heads/master/src/silero_vad/data/silero_vad.onnx"},
                 new SherpaOnnxModelMetadata {modelId = "ten-vad", modelFileNames = new[]{"ten-vad.onnx"}, modelFileHashes = new[] {"718cb7eef47e3cf5ddbe7e967a7503f46b8b469c0706872f494dfa921b486206"}, downloadUrl="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/ten-vad.onnx", downloadFileHash="718cb7eef47e3cf5ddbe7e967a7503f46b8b469c0706872f494dfa921b486206"},
                 new SherpaOnnxModelMetadata {modelId = "ten-vad-int8", modelFileNames = new[]{"ten-vad.int8.onnx"}, modelFileHashes = new[] {"880c072f188efa169ea028b2159d1b3a438e153d080b87eac31b74ecad511e61"}, downloadUrl="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/ten-vad.int8.onnx", downloadFileHash="880c072f188efa169ea028b2159d1b3a438e153d080b87eac31b74ecad511e61"}
             };
@@ -149,6 +155,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 new SherpaOnnxModelMetadata { modelId = "gtcrn-simple", modelFileNames = new[] { "gtcrn_simple.onnx" },modelFileHashes= new string[]{"e77603ac0c23dac3227dd2d7135b3a585cbee2679048aecfa886657d3ae1b534"},downloadFileHash= "e77603ac0c23dac3227dd2d7135b3a585cbee2679048aecfa886657d3ae1b534",downloadUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/speech-enhancement-models/gtcrn_simple.onnx"},
             };
 
+
+            public static readonly SherpaOnnxModelMetadata[] SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES = new[]{
+              new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-whisper-tiny", modelFileNames = new []{"tiny-decoder.onnx","tiny-decoder.int8.onnx","tiny-encoder.onnx","tiny-encoder.int8.onnx","tiny-tokens.txt"}, modelFileHashes = new string[] {"e144c07dc6b55cece24392811f2d934b97013811f5e677d1315d341a0a74a25d","d2fece8dd42771f1df975c6c0445770d0c292bf7547c2cae04a6c0cc57540925","42c1d4cbf889632ba21ab6f0d4064c80209755f265ce5cd630db4a6793e7089c","d24fb083ae3b1041fc24e97971d60e280c9342201fbb67b0ab428a8b4a51a434","b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"}, downloadFileHash = "c46116994e539aa165266d96b325252728429c12535eb9d8b6a2b10f129e66b1"},
+              new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-whisper-base", modelFileNames = new []{"base-decoder.onnx","base-decoder.int8.onnx","base-encoder.onnx","base-encoder.int8.onnx","base-tokens.txt"},modelFileHashes = new string[]{
+                "8a12c3f6ad65bb5b86d7e6eccc302378f20f9fb2df6cb10747c62895da7ac194","9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d","5a6b87cb313993f6c9fefec9e7027556f6cb30becddf49655bee36c50ecc12d7","0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11","b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+              }, downloadFileHash = "911b2083efd7c0dca2ac3b358b75222660dc09fb716d64fbfc417ba6c99ff3de"},
+              new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-whisper-small", modelFileNames = new []{"small-decoder.onnx","small-decoder.int8.onnx","small-encoder.onnx","small-encoder.int8.onnx","small-tokens.txt"}},
+              new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-whisper-medium", modelFileNames = new []{"medium-decoder.onnx","medium-decoder.int8.onnx","medium-encoder.onnx","medium-encoder.int8.onnx","medium-tokens.txt"}}
+            };
         }
     }
 }

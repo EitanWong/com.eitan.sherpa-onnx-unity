@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace Eitan.SherpaOnnxUnity.Runtime.Constants
@@ -35,6 +36,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 case SherpaOnnxModuleType.SpeechEnhancement:
                     typeName = "speech-enhancement-models";
                     break;
+                case SherpaOnnxModuleType.SpokenLanguageIdentification:
+                    typeName = "asr-models"; // use whisper model so it's should be asr-models
+                    break;
             }
 
             return $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{typeName}/{modelId}.tar.bz2";
@@ -47,21 +51,22 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         /// <returns>一个 JSON 字符串。</returns>
         public static string GetDefaultManifestContent()
         {
-            
+
             // 使用 JsonUtility 进行序列化，'true' 表示格式化输出（带缩进，易读）
             return JsonUtility.ToJson(GetDefaultManifest(), true);
         }
 
         public static SherpaOnnxModelManifest GetDefaultManifest()
         {
-                var manifest = new SherpaOnnxModelManifest();
+            var manifest = new SherpaOnnxModelManifest();
 
-                AddToManifest(manifest, SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechRecognition);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES, SherpaOnnxModuleType.VoiceActivityDetection);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechSynthesis);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
-                return manifest;
+            AddToManifest(manifest, SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechRecognition);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES, SherpaOnnxModuleType.VoiceActivityDetection);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechSynthesis);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpokenLanguageIdentification);
+            return manifest;
         }
 
         private static void AddToManifest(SherpaOnnxModelManifest manifest, SherpaOnnxModelMetadata[] modelMetadataList, SherpaOnnxModuleType moduleType)

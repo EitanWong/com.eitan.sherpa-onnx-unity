@@ -15,7 +15,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.1** (2025-08-06)
+📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.2** (2025-09-21)
 
 </div>
 
@@ -29,18 +29,16 @@
 
 </div>
 
----
+--- 
 
-## 🆕 v0.1.1-exp.1 新功能 (2025-08-06)
+## 🆕 v0.1.1-exp.2 新功能 (2025-09-21)
 
-### 🎯 新增模块
-- **🔊 语音增强** - 基于GTCRN的噪声消除与实时处理
-- **👂 关键词检测** - 语音激活的关键词识别与唤醒词
-- **🎛️ 交互演示** - 完整的模型管理和UI控件示例
+### 🎯 新增模块与功能
+- **🌍 语种识别** - 从音频流中检测正在说的语言。
+- **✨ 自定义关键词支持** - 关键词检测模块现在支持自定义关键词（目前仅支持中文）。
 
-### ⚡ 核心改进
-- **增强模型注册** - 自动下载与哈希验证
-- **线程安全升级** - 改进的并发处理架构
+### ⚡ 核心更新
+- **升级sherpa-onnx** - 核心引擎更新至 [v1.12.14](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.14)，以获得最新的功能和修复。
 
 [📋 **查看完整更新日志**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -59,9 +57,10 @@
 - **⚡ 实时处理** - 低延迟语音识别
 - **🎯 语音活动检测** - 智能语音边界检测
 - **🔊 语音增强** - GTCRN噪声消除与音质改善
-- **👂 关键词检测** - 语音激活的关键词识别与唤醒词
+- **👂 关键词检测** - 语音激活的关键词识别，现已支持自定义关键词。
 - **🎤 文本转语音** - 高质量语音合成
-- **🌍 跨平台支持** - Windows、macOS、Linux、Android
+- **🌍 语种识别** - 识别给定音频片段的语言。
+- **🖥️ 跨平台支持** - Windows、macOS、Linux、Android
 
 ### 🤖 智能模型管理
 - **🔄 自动下载** - 模型无缝下载
@@ -91,20 +90,28 @@
 
 ### 📦 安装方式
 
-<details>
-<summary><strong>🎯 OpenUPM（推荐）</strong></summary>
+> **请注意:** 本包目前处于实验阶段，尚未发布到 OpenUPM。请使用 Git URL 方式进行安装。
 
-```bash
-openupm add com.eitan.sherpa-onnx-unity
-```
+<details open>
+<summary><strong>🎯 通过 Git URL 添加包（推荐）</strong></summary>
+
+1. 在 Unity 编辑器中，打开 **Window → Package Manager**。
+2. 点击左上角的 **+** 按钮。
+3. 选择 **"Add package from git URL..."**
+4. 输入以下 URL 并点击 **Add**:
+   ```
+   https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
+   ```
 
 </details>
 
 <details>
-<summary><strong>🔧 Unity Package Manager</strong></summary>
+<summary><strong>🔧 Unity Package Manager (通过 Scoped Registry - 即将支持)</strong></summary>
+
+> 该方法将在包正式发布到 OpenUPM 后可用。
 
 1. **Edit → Project Settings → Package Manager**
-2. 添加Scoped Registry：
+2. 添加 Scoped Registry:
    - Name: `OpenUPM`
    - URL: `https://package.openupm.com`
    - Scope: `com.eitan.sherpa-onnx-unity`
@@ -114,10 +121,12 @@ openupm add com.eitan.sherpa-onnx-unity
 </details>
 
 <details>
-<summary><strong>🔗 Git URL</strong></summary>
+<summary><strong>🔗 OpenUPM (命令行 - 即将支持)</strong></summary>
 
-```
-https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
+> 该方法将在包正式发布到 OpenUPM 后可用。
+
+```bash
+openupm add com.eitan.sherpa-onnx-unity
 ```
 
 </details>
@@ -135,6 +144,10 @@ https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
 - **实时语音识别** - 麦克风实时输入和转录
 - **语音活动检测** - 检测用户开始和停止说话
 - **离线语音识别** - 处理预录制音频文件
+- **语音增强** - 使用GTCRN模型进行实时降噪
+- **关键词检测** - 语音激活的关键词检测和唤醒词
+- **语种识别** - 从音频片段中识别语言
+- **文本转语音合成** - 高质量语音生成
 - **高级配置** - 自定义模型选择和移动端优化
 
 每个示例都包含完整的、生产就绪的代码，您可以将其作为自己实现的起点。
@@ -220,7 +233,6 @@ SherpaOnnxUnity/
 
 ### 获取帮助
 
-- 💬 **Discord**: [加入我们的社区](https://discord.gg/xQgMW9ufN4)获得实时支持
 - 🐛 **问题**: [GitHub Issues](https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/issues)用于错误报告
 - 📖 **Wiki**: [项目Wiki](https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/wiki)获得详细指南
 - 💡 **讨论**: [GitHub Discussions](https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/discussions)用于问题和想法

@@ -33,7 +33,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         private Mic.Device device;
 
         private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "ten-vad";
+        private readonly string defaultModelID = "silero-vad-latest";
 
         private AudioSource audioSource;
         private readonly List<float> accumulatedSpeech = new List<float>();

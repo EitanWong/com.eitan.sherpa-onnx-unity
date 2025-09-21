@@ -13,18 +13,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     public class SpeechSynthesis : SherpaOnnxModule
     {
 
-        private readonly object _lockObject = new object();
         private OfflineTts _tts;
-        private readonly System.Threading.SynchronizationContext _unityContext;
+        // private readonly System.Threading.SynchronizationContext _unityContext;
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
-        public int SampleRate{ get; private set; }
+        public int SampleRate { get; private set; }
 
         public SpeechSynthesis(string modelID, int sampleRate = -1, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             // Capture Unity main thread context at construction time
-            _unityContext = System.Threading.SynchronizationContext.Current;
+            // _unityContext = System.Threading.SynchronizationContext.Current;
         }
 
         protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
@@ -33,10 +32,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 // ignore the prarmeter sampleRate it's not correct.
 
-                reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}")); 
+                reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
                 this.SampleRate = metadata.SampleRate;
-                var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform,reporter,ct);
+                var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
                 await runner.RunAsync(cancellationToken =>
                 {
                     try
@@ -62,26 +61,26 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 throw;
             }
         }
-        
 
 
 
-        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform,SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+
+        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
-            var vadModelConfig = new OfflineTtsConfig();
+            var ttsModelConfig = new OfflineTtsConfig();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
-            vadModelConfig.RuleFsts = string.Join(",", metadata.GetModelFilesByExtensionName(".fst"));
-            vadModelConfig.RuleFars = string.Join(",", metadata.GetModelFilesByExtensionName(".far"));
-            vadModelConfig.Model.NumThreads = 4;
+            ttsModelConfig.RuleFsts = string.Join(",", metadata.GetModelFilesByExtensionName(".fst"));
+            ttsModelConfig.RuleFars = string.Join(",", metadata.GetModelFilesByExtensionName(".far"));
+            ttsModelConfig.Model.NumThreads = 4;
 
             switch (modelType)
             {
                 case SpeechSynthesisModelType.Vits:
-                    vadModelConfig.Model.Vits.Model = metadata.GetModelFilePathByKeywords("model", "en_US", "vits", "theresa", "eula", int8QuantKeyword)?.First();
-                    vadModelConfig.Model.Vits.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
-                    vadModelConfig.Model.Vits.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
-                    vadModelConfig.Model.Vits.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
-                    vadModelConfig.Model.Vits.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
+                    ttsModelConfig.Model.Vits.Model = metadata.GetModelFilePathByKeywords("model", "en_US", "vits", "theresa", "eula", int8QuantKeyword)?.First();
+                    ttsModelConfig.Model.Vits.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
+                    ttsModelConfig.Model.Vits.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
+                    ttsModelConfig.Model.Vits.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
+                    ttsModelConfig.Model.Vits.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
 
                     break;
                 case SpeechSynthesisModelType.Matcha:
@@ -91,28 +90,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         //prepare vocoder
                         await SherpaUtils.Prepare.PrepareModelAsync(vocoderMetaData, reporter, ct);
                     }
-                    
-                    vadModelConfig.Model.Matcha.AcousticModel = metadata.GetModelFilePathByKeywords("matcha","model", int8QuantKeyword)?.First();
-                    vadModelConfig.Model.Matcha.Vocoder = vocoderMetaData.GetModelFilePathByKeywords("vocos")?.First();
-                    vadModelConfig.Model.Matcha.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
-                    vadModelConfig.Model.Matcha.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
-                    vadModelConfig.Model.Matcha.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
-                    vadModelConfig.Model.Matcha.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First(); 
-                    
+
+                    ttsModelConfig.Model.Matcha.AcousticModel = metadata.GetModelFilePathByKeywords("matcha", "model", int8QuantKeyword)?.First();
+                    ttsModelConfig.Model.Matcha.Vocoder = vocoderMetaData.GetModelFilePathByKeywords("vocos")?.First();
+                    ttsModelConfig.Model.Matcha.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
+                    ttsModelConfig.Model.Matcha.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
+                    ttsModelConfig.Model.Matcha.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
+                    ttsModelConfig.Model.Matcha.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
+
                     break;
                 case SpeechSynthesisModelType.Kokoro:
 
-                    vadModelConfig.Model.Kokoro.Model = metadata.GetModelFilePathByKeywords("model", "kokoro", int8QuantKeyword)?.First();
-                    vadModelConfig.Model.Kokoro.Voices = metadata.GetModelFilePathByKeywords("voices")?.First();
-                    vadModelConfig.Model.Kokoro.Lexicon = string.Join(",", metadata.GetModelFilePathByKeywords("lexicon"));
-                    vadModelConfig.Model.Kokoro.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
-                    vadModelConfig.Model.Kokoro.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
-                    vadModelConfig.Model.Kokoro.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
+                    ttsModelConfig.Model.Kokoro.Model = metadata.GetModelFilePathByKeywords("model", "kokoro", int8QuantKeyword)?.First();
+                    ttsModelConfig.Model.Kokoro.Voices = metadata.GetModelFilePathByKeywords("voices")?.First();
+                    ttsModelConfig.Model.Kokoro.Lexicon = string.Join(",", metadata.GetModelFilePathByKeywords("lexicon"));
+                    ttsModelConfig.Model.Kokoro.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
+                    ttsModelConfig.Model.Kokoro.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
+                    ttsModelConfig.Model.Kokoro.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported VAD model type: {modelType}");
             }
-            return vadModelConfig;
+            return ttsModelConfig;
         }
 
         /// <summary>
@@ -136,7 +135,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 OfflineTtsGeneratedAudio generatedAudio = _tts.Generate(text, speed, voiceID);
 
                 if (generatedAudio == null)
-                { 
+                {
                     Debug.LogWarning("TTS generation returned no audio.");
                     return null;
                 }
@@ -156,15 +155,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         tcs.SetException(ex);
                     }
                 }
-
-                if (_unityContext != null)
-                {
-                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
-                }
-                else
-                {
-                    tcs.SetException(new InvalidOperationException("Cannot create AudioClip without a Unity SynchronizationContext."));
-                }
+                ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
 
                 return await tcs.Task;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
@@ -193,7 +184,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallback(text, speed, voiceID, callback);
 
                 if (generatedAudio == null)
-                { 
+                {
                     Debug.LogWarning("TTS generation returned no audio.");
                     return null;
                 }
@@ -213,15 +204,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         tcs.SetException(ex);
                     }
                 }
-
-                if (_unityContext != null)
+                ExecuteOnMainThread(_ =>
                 {
-                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
-                }
-                else
-                {
-                    tcs.SetException(new InvalidOperationException("Cannot create AudioClip without a Unity SynchronizationContext."));
-                }
+                    CreateAudioClipOnMainThread();
+                });
 
                 return await tcs.Task;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
@@ -249,7 +235,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
                 if (generatedAudio == null)
-                { 
+                {
                     Debug.LogWarning("TTS generation returned no audio.");
                     return null;
                 }
@@ -273,14 +259,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }
                 }
 
-                if (_unityContext != null)
-                {
-                    _unityContext.Post(_ => CreateAudioClipOnMainThread(), null);
-                }
-                else
-                {
-                    tcs.SetException(new InvalidOperationException("Cannot create AudioClip without a Unity SynchronizationContext."));
-                }
+                ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
 
                 return await tcs.Task;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
@@ -289,11 +268,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override void OnDestroy()
         {
-            lock (_lockObject)
+            SafeExecute(() =>
             {
                 _tts?.Dispose();
                 _tts = null;
-            }
+            });
         }
     }
 }

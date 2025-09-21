@@ -2,6 +2,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 {
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using Eitan.SherpaOnnxUnity.Runtime;
     using UnityEngine;
@@ -21,6 +22,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _keywordText;
 
+        [SerializeField] private RectTransform _keywordsPanel;
+        [SerializeField] private InputField _keywordInput;
+        [SerializeField] private ScrollRect _keywordsListScrollView;
+        [SerializeField] private Button _clearKeywordsBtn;
+        [SerializeField] private GameObject _keywordTemplate;
+
         [Header("Kws Setup")]
         [SerializeField] private KeywordSpotting.KeywordRegistration[] kwsKeywords;
 
@@ -37,6 +44,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private Color _originLoadBtnColor;
         private readonly string defaultModelID = "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01";
+        private readonly List<KeywordSpotting.KeywordRegistration> _runtimeKeywords = new();
+        private Button _registerKeywordButton;
+        private const string KeywordTemplateLabelPath = "Text (Legacy)";
+        private const string KeywordTemplateDeleteButtonPath = "Button (Register)";
 
         // For combo effect
         private int _comboCount;
@@ -70,7 +81,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _originalFontSize = _keywordText.fontSize;
             }
             InitDropdown();
-            UpdateLoadButtonUI();
+            InitKeywordsPanelUI();
+            UpdateUI();
+
         }
 
         private void Load(string modelID)
@@ -87,7 +100,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 UnityEngine.Debug.LogError("Please Unload current model first");
             }
-            UpdateLoadButtonUI();
+            UpdateUI();
 
         }
         private void Unload()
@@ -117,7 +130,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _resetCoroutine = null;
             }
 
-            UpdateLoadButtonUI();
+            UpdateUI();
 
         }
 
@@ -149,6 +162,15 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
             }
 
+            if (_registerKeywordButton != null)
+            {
+                _registerKeywordButton.onClick.RemoveListener(HandleAddKeywordButtonClick);
+            }
+            if (_clearKeywordsBtn != null)
+            {
+                _clearKeywordsBtn.onClick.RemoveListener(HandleClearKeywordsButtonClick);
+            }
+
             if (_resetCoroutine != null)
             {
                 StopCoroutine(_resetCoroutine);
@@ -176,7 +198,226 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private void UpdateLoadButtonUI()
+        private void InitKeywordsPanelUI()
+        {
+            if (_keywordsPanel == null || _keywordInput == null || _keywordsListScrollView == null || _keywordTemplate == null)
+            {
+                Debug.LogWarning("[KeywordSpottingExample] Missing keyword UI references.");
+                return;
+            }
+
+            if (_registerKeywordButton == null)
+            {
+                _registerKeywordButton = _keywordInput.GetComponentInChildren<Button>(true);
+                if (_registerKeywordButton != null)
+                {
+                    _registerKeywordButton.onClick.AddListener(HandleAddKeywordButtonClick);
+                }
+                else
+                {
+                    Debug.LogWarning("[KeywordSpottingExample] Register keyword button not found under input field.");
+                }
+            }
+
+            if (_keywordTemplate.activeSelf)
+            {
+                _keywordTemplate.SetActive(false);
+            }
+
+            _runtimeKeywords.Clear();
+            if (kwsKeywords != null)
+            {
+                foreach (var registration in kwsKeywords)
+                {
+                    if (string.IsNullOrWhiteSpace(registration.Keyword))
+                    {
+                        continue;
+                    }
+
+                    _runtimeKeywords.Add(new KeywordSpotting.KeywordRegistration(registration.Keyword.Trim(), registration.BoostingScore, registration.TriggerThreshold));
+                }
+            }
+
+            if (_clearKeywordsBtn != null)
+            {
+                _clearKeywordsBtn.onClick.RemoveAllListeners();
+                _clearKeywordsBtn.onClick.AddListener(HandleClearKeywordsButtonClick);
+            }
+
+            SyncSerializedKeywords();
+            RefreshKeywordsUI();
+        }
+        private void HandleClearKeywordsButtonClick()
+        {
+            if (_modelLoadFlag)
+            {
+                Debug.LogWarning("[KeywordSpottingExample] Cannot clear keywords while model is loaded.");
+                return;
+            }
+
+            _runtimeKeywords.Clear();
+            SyncSerializedKeywords();
+            RefreshKeywordsUI();
+            if (_tipsText != null)
+            {
+                _tipsText.text = "<color=yellow><b>All keywords cleared.</b></color>";
+            }
+        }
+
+        private void HandleAddKeywordButtonClick()
+        {
+            if (_keywordInput == null)
+            {
+                return;
+            }
+
+            TryAddCustomKeyword(_keywordInput.text);
+        }
+
+        private void TryAddCustomKeyword(string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return;
+            }
+
+            var keyword = candidate.Trim();
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return;
+            }
+
+            if (_runtimeKeywords.Any(k => string.Equals(k.Keyword, keyword, StringComparison.OrdinalIgnoreCase)))
+            {
+                Debug.LogWarning($"[KeywordSpottingExample] Keyword '{keyword}' already exists.");
+                return;
+            }
+
+            var registration = new KeywordSpotting.KeywordRegistration(keyword);
+            _runtimeKeywords.Add(registration);
+            SyncSerializedKeywords();
+            CreateKeywordItem(registration);
+            UpdateKeywordListLayout(forceScrollToLatest: true);
+
+            if (_keywordInput != null)
+            {
+                _keywordInput.text = string.Empty;
+            }
+
+            if (keywordSpotting != null && _tipsText != null)
+            {
+                _tipsText.text = "<color=yellow><b>Keywords updated.</b></color> Reload model to apply changes.";
+            }
+        }
+
+        private void RefreshKeywordsUI()
+        {
+            if (_keywordsListScrollView == null || _keywordsListScrollView.content == null)
+            {
+                return;
+            }
+
+            var content = _keywordsListScrollView.content;
+            var itemsToDestroy = new List<GameObject>();
+            foreach (Transform child in content)
+            {
+                if (child == null || child.gameObject == _keywordTemplate)
+                {
+                    continue;
+                }
+
+                itemsToDestroy.Add(child.gameObject);
+            }
+
+            foreach (var item in itemsToDestroy)
+            {
+                Destroy(item);
+            }
+
+            foreach (var registration in _runtimeKeywords)
+            {
+                CreateKeywordItem(registration);
+            }
+
+            UpdateKeywordListLayout(forceScrollToLatest: false);
+        }
+
+        private void CreateKeywordItem(KeywordSpotting.KeywordRegistration registration)
+        {
+            if (_keywordsListScrollView == null || _keywordsListScrollView.content == null || _keywordTemplate == null)
+            {
+                return;
+            }
+
+            var item = Instantiate(_keywordTemplate, _keywordsListScrollView.content);
+            item.name = $"Keyword_{registration.Keyword}";
+            item.SetActive(true);
+
+            var keywordLabel = item.transform.Find(KeywordTemplateLabelPath)?.GetComponent<Text>();
+            if (keywordLabel != null)
+            {
+                keywordLabel.text = registration.Keyword;
+            }
+
+            var deleteButtonTransform = item.transform.Find(KeywordTemplateDeleteButtonPath);
+            if (deleteButtonTransform != null && deleteButtonTransform.TryGetComponent<Button>(out var deleteButton))
+            {
+                var keyword = registration.Keyword;
+                deleteButton.onClick.RemoveAllListeners();
+                deleteButton.onClick.AddListener(() => RemoveCustomKeyword(keyword, item));
+            }
+            else
+            {
+                Debug.LogWarning("[KeywordSpottingExample] Keyword template missing delete button.");
+            }
+        }
+
+        private void RemoveCustomKeyword(string keyword, GameObject item)
+        {
+            var index = _runtimeKeywords.FindIndex(k => string.Equals(k.Keyword, keyword, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                return;
+            }
+
+            _runtimeKeywords.RemoveAt(index);
+            SyncSerializedKeywords();
+
+            if (item != null)
+            {
+                Destroy(item);
+            }
+
+            UpdateKeywordListLayout(forceScrollToLatest: false);
+
+            if (keywordSpotting != null && _tipsText != null)
+            {
+                _tipsText.text = "<color=yellow><b>Keywords updated.</b></color> Reload model to apply changes.";
+            }
+        }
+
+        private void SyncSerializedKeywords()
+        {
+            kwsKeywords = _runtimeKeywords.ToArray();
+        }
+
+        private void UpdateKeywordListLayout(bool forceScrollToLatest)
+        {
+            if (_keywordsListScrollView == null || _keywordsListScrollView.content == null)
+            {
+                return;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_keywordsListScrollView.content);
+
+            if (forceScrollToLatest)
+            {
+                _keywordsListScrollView.verticalNormalizedPosition = 0f;
+            }
+        }
+
+        private void UpdateUI()
         {
 
             if (_modelLoadFlag)// already has model loaded
@@ -187,6 +428,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
                 _totalInitProgressBar.gameObject.SetActive(true);
                 _initMessageText.gameObject.SetActive(true);
+                _keywordInput.interactable = false;
+                _registerKeywordButton.interactable = false;
+                _clearKeywordsBtn.interactable = false;
+                UpdateKeywordsListDeleteBtnInteractable(false);
             }
             else // no model loaded, init new model
             {
@@ -199,8 +444,30 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _initMessageText.gameObject.SetActive(false);
                 _keywordText.text = string.Empty;
                 _tipsText.text = string.Empty;
+
+                _keywordInput.interactable = true;
+                _registerKeywordButton.interactable = true;
+                _clearKeywordsBtn.interactable = true;
+                UpdateKeywordsListDeleteBtnInteractable(true);
+            }
+
+        }
+        private void UpdateKeywordsListDeleteBtnInteractable(bool interactable)
+        {
+
+            if (_keywordsListScrollView && _keywordsListScrollView.content)
+            {
+                foreach (RectTransform child in _keywordsListScrollView.content)
+                {
+                    var childBtn = child.GetComponentInChildren<Button>();
+                    if (childBtn)
+                    {
+                        childBtn.interactable = interactable;
+                    }
+                }
             }
         }
+
 
         private void HandleModelLoadOrUnloadButtonClick()
         {
