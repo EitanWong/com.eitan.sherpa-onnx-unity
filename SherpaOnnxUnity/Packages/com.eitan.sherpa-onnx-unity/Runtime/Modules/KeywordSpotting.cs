@@ -243,52 +243,61 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        public async Task<string> DetectAsync(float[] samples, CancellationToken? ct = null)
+        public async Task<string> DetectAsync(float[] samples, int sampleRate = 0, CancellationToken? ct = null)
         {
             if (_keywordSpotter == null || _stream == null)
             {
                 throw new InvalidOperationException("KeywordSpotting is not initialized or has been disposed. Please ensure it is loaded successfully before detecting keywords.");
             }
+            if (sampleRate <= 0)
+            {
+                sampleRate = _sampleRate;
+            }
 
             return await runner.RunAsync((cancellationToken) =>
-            {
-                string detectedKeyword = string.Empty;
-
-                lock (_lockObject)
                 {
-                    if (IsDisposed || _stream == null)
+                    string detectedKeyword = string.Empty;
+
+                    lock (_lockObject)
                     {
-
-                        return Task.FromResult(string.Empty);
-                    }
-
-
-                    _stream.AcceptWaveform(_sampleRate, samples);
-
-                    while (_keywordSpotter.IsReady(_stream))
-                    {
-                        _keywordSpotter.Decode(_stream);
-                        var result = _keywordSpotter.GetResult(_stream);
-
-                        if (!string.IsNullOrEmpty(result.Keyword))
+                        if (IsDisposed || _stream == null)
                         {
-                            _keywordSpotter.Reset(_stream);
-                            detectedKeyword = result.Keyword;
-                            break;
+
+                            return Task.FromResult(string.Empty);
+                        }
+
+
+                        _stream.AcceptWaveform(sampleRate, samples);
+
+                        while (_keywordSpotter.IsReady(_stream))
+                        {
+                            _keywordSpotter.Decode(_stream);
+                            var result = _keywordSpotter.GetResult(_stream);
+
+                            if (!string.IsNullOrEmpty(result.Keyword))
+                            {
+                                _keywordSpotter.Reset(_stream);
+                                detectedKeyword = result.Keyword;
+                                break;
+                            }
                         }
                     }
-                }
 
-                return Task.FromResult(detectedKeyword);
-            }, cancellationToken: ct ?? CancellationToken.None);
+                    return Task.FromResult(detectedKeyword);
+                }, cancellationToken: ct ?? CancellationToken.None);
         }
 
-        public string DetectSync(float[] samples)
+        public string DetectSync(float[] samples, int sampleRate = 0)
         {
             if (_keywordSpotter == null || _stream == null || IsDisposed)
             {
 
                 return string.Empty;
+            }
+
+            if (sampleRate <= 0)
+            {
+                sampleRate = _sampleRate;
             }
 
 
@@ -300,7 +309,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
 
-                _stream.AcceptWaveform(_sampleRate, samples);
+                _stream.AcceptWaveform(sampleRate, samples);
 
                 while (_keywordSpotter.IsReady(_stream))
                 {
