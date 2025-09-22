@@ -50,12 +50,16 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             #endregion
 
-
             #region SpokenLanguageIdentification
             private static readonly string[] spokenLanguageIdentification_whisper_keywords = { "whisper" };
             #endregion
 
+            #region Punctuation
+            private static readonly string[] punctuation_keywords = { "punct" };
             #endregion
+            #endregion
+
+
             #region Methods
 
             internal static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
@@ -71,6 +75,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SherpaOnnxModuleType.SpeechSynthesis; }
                 else if (IsSpeechEnhancementModel(modelID))
                 { return SherpaOnnxModuleType.SpeechEnhancement; }
+                else if (IsKeywordSpottingModel(modelID))
+                { return SherpaOnnxModuleType.KeywordSpotting; }
+                else if (GetSpokenLanguageIdentificationModelType(modelID) != SpokenLanguageIdentificationModelType.None)
+                { return SherpaOnnxModuleType.SpokenLanguageIdentification; }
+                else if (IsPunctuationModel(modelID))
+                { return SherpaOnnxModuleType.AddPunctuation; }
 
                 return SherpaOnnxModuleType.Undefined;
             }
@@ -173,6 +183,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
 
+
+
             public static bool IsOnlineModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
@@ -188,6 +200,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     default:
                         return false;
                 }
+            }
+
+            public static bool IsPunctuationModel(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                { return false; }
+
+                string lowerModelID = modelID.ToLower();
+                return ContainsAnyKeyword(lowerModelID, punctuation_keywords);
             }
 
             public static bool IsKeywordSpottingModel(string modelID)

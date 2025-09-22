@@ -108,7 +108,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 return;
             }
 
-
             await runner.RunAsync(ct =>
             {
                 ProcessAudioQueue(flush: true);

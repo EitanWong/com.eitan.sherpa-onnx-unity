@@ -39,6 +39,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 case SherpaOnnxModuleType.SpokenLanguageIdentification:
                     typeName = "asr-models"; // use whisper model so it's should be asr-models
                     break;
+                case SherpaOnnxModuleType.AddPunctuation:
+                    typeName = "punctuation-models";
+                    break;
             }
 
             return $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{typeName}/{modelId}.tar.bz2";
@@ -66,6 +69,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
             AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
             AddToManifest(manifest, SherpaOnnxConstants.Models.SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpokenLanguageIdentification);
+            AddToManifest(manifest, SherpaOnnxConstants.Models.PUNCTUATION_MODELS_METADATA_TABLES, SherpaOnnxModuleType.AddPunctuation);
             return manifest;
         }
 
