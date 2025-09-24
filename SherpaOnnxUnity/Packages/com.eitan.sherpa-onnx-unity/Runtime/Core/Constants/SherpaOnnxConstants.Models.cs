@@ -1,4 +1,3 @@
-
 namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 {
 

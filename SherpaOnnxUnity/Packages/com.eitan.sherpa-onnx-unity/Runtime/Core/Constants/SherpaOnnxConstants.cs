@@ -1,8 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using UnityEditor.Experimental.GraphView;
-using UnityEngine;
-
 namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 {
     public partial class SherpaOnnxConstants
@@ -56,7 +51,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         {
 
             // 使用 JsonUtility 进行序列化，'true' 表示格式化输出（带缩进，易读）
-            return JsonUtility.ToJson(GetDefaultManifest(), true);
+            return UnityEngine.JsonUtility.ToJson(GetDefaultManifest(), true);
         }
 
         public static SherpaOnnxModelManifest GetDefaultManifest()
