@@ -166,8 +166,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
             public static readonly SherpaOnnxModelMetadata[] PUNCTUATION_MODELS_METADATA_TABLES = new[] {
                 // new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-online-punct-en-2024-08-06", modelFileNames = new []{"model.onnx","model.int8.onnx","bpe.vocab"}}, // not supported
-                new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12", modelFileNames = new []{"model.onnx"}},
-                new SherpaOnnxModelMetadata { modelId ="sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8", modelFileNames = new []{"model.int8.onnx"}}
+                new SherpaOnnxModelMetadata
+                {
+                    modelId = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12",
+                    modelFileNames = new[] { "model.onnx", "tokens.json" },
+                    modelFileHashes = new[]
+                    {
+                        "e93593a6dbd69a07f8734ef269dbe861a379755f8d1c8354719432116f2c44bd",
+                        "c960ab87bccea4aa15cf49a59f71973c2c330b46668048cd8da253749ec71ee3"
+                    }
+                },
+                new SherpaOnnxModelMetadata
+                {
+                    modelId = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
+                    modelFileNames = new[] { "model.int8.onnx", "tokens.json" }
+                }
 
             };
         }

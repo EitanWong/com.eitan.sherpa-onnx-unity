@@ -88,7 +88,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     if (modelType == SpeechSynthesisModelType.Matcha)
                     {
                         //prepare vocoder
-                        await SherpaUtils.Prepare.PrepareModelAsync(vocoderMetaData, reporter, ct);
+                        await SherpaUtils.Prepare.PrepareAndLoadModelAsync(vocoderMetaData, reporter, ct);
                     }
 
                     ttsModelConfig.Model.Matcha.AcousticModel = metadata.GetModelFilePathByKeywords("matcha", "model", int8QuantKeyword)?.First();

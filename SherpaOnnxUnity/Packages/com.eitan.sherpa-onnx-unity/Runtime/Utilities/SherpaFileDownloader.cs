@@ -93,27 +93,34 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         protected override bool ReceiveData(byte[] data, int dataLength)
         {
             if (data == null || dataLength <= 0)
-            { return false; }
+            { return true; }
 
             try
             {
+                var remaining = (_endPosition - _startPosition + 1) - _receivedBytes;
+                if (remaining <= 0)
+                {
+                    _chunkInfo.IsCompleted = true;
+                    return true;
+                }
+
+                var bytesToWrite = Math.Min((long)dataLength, remaining);
+
                 // Write to file at correct position
                 lock (_fileLock)
                 {
                     _fileStream.Seek(_startPosition + _receivedBytes, SeekOrigin.Begin);
-                    _fileStream.Write(data, 0, dataLength);
+                    _fileStream.Write(data, 0, (int)bytesToWrite);
                     _fileStream.Flush();
                 }
 
-                _receivedBytes += dataLength;
-                _chunkInfo.Downloaded += dataLength;
-                _onProgressUpdate?.Invoke(dataLength);
+                _receivedBytes += bytesToWrite;
+                _chunkInfo.Downloaded += bytesToWrite;
+                _onProgressUpdate?.Invoke(bytesToWrite);
 
-                // Check if chunk is completed
-                if (_startPosition + _receivedBytes > _endPosition)
+                if (_receivedBytes >= (_endPosition - _startPosition + 1))
                 {
                     _chunkInfo.IsCompleted = true;
-                    return false; // Stop receiving data
                 }
 
                 return true;

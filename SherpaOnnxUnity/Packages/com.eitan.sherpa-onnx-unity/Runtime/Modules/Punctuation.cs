@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using SherpaOnnx;
 
 namespace Eitan.SherpaOnnxUnity
@@ -98,9 +101,15 @@ namespace Eitan.SherpaOnnxUnity
                 throw new InvalidOperationException("Punctuation is not initialized or has been disposed. Please ensure it is loaded successfully before adding punctuation.");
             }
 
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
             return await runner.RunAsync(cancellationToken =>
             {
-                return Task.FromResult(_punct.AddPunct(text));
+                var sanitizedInput = text.Trim();
+                return Task.FromResult(_punct.AddPunct(sanitizedInput));
             }, cancellationToken: ct ?? CancellationToken.None, policy: Runtime.Utilities.ExecutionPolicy.Auto);
         }
 

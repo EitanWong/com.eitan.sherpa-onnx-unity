@@ -62,7 +62,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 try
                 {
-                    var prepareResult = await SherpaUtils.Prepare.PrepareModelAsync(metadata, reporterAdapter);
+                    var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelAsync(metadata, reporterAdapter);
 
                     if (prepareResult)
                     {

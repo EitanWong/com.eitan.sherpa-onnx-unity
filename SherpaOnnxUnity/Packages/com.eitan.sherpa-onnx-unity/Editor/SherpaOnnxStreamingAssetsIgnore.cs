@@ -35,7 +35,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         if (Directory.Exists(desired))
         {
 
-            return desired.Replace('\\','/');
+            return desired.Replace('\\', '/');
         }
 
         // 2) If AssetDatabase already recognizes it, use it
@@ -51,11 +51,11 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         try { Directory.CreateDirectory(desired); } catch { /* ignore IO issues */ }
         // Make sure the editor sees the new folder (even though it's ignored by importer)
         AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-        return desired.Replace('\\','/');
+        return desired.Replace('\\', '/');
     }
 
     private static string MarkerFilePath
-        => (GetOrCreateHiddenRootAsset() + "/.pending_restore").Replace('\\','/');
+        => (GetOrCreateHiddenRootAsset() + "/.pending_restore").Replace('\\', '/');
 
     private static void BeginAssetBatch()
     {
@@ -168,11 +168,12 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         }
     }
 
-    [MenuItem("Tools/StreamingAssets/Restore Ignored Folders")]
-    private static void MenuRestore()
-    {
-        TryRestoreAll("menu");
-    }
+    // [MenuItem("Tools/StreamingAssets/Restore Ignored Folders")]
+    // private static void MenuRestore()
+    // {
+    //     TryRestoreAll("menu");
+    // }
+
     #endregion
 
     #region Core restore/move
@@ -220,8 +221,8 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
     private static void MoveOrMergeAssetFolder(string sourceAssetPath, string targetAssetPath)
     {
         // Normalize
-        sourceAssetPath = sourceAssetPath.Replace('\\','/');
-        targetAssetPath = targetAssetPath.Replace('\\','/');
+        sourceAssetPath = sourceAssetPath.Replace('\\', '/');
+        targetAssetPath = targetAssetPath.Replace('\\', '/');
 
         // Prevent self-move/no-op
         if (string.Equals(sourceAssetPath, targetAssetPath, StringComparison.OrdinalIgnoreCase))
@@ -236,7 +237,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         if (sourceUnderHiddenRoot)
         {
             // Ensure destination parent exists; do not pre-create the final target folder if moving the whole tree.
-            var parent = Path.GetDirectoryName(targetAssetPath)?.Replace('\\','/');
+            var parent = Path.GetDirectoryName(targetAssetPath)?.Replace('\\', '/');
             if (!string.IsNullOrEmpty(parent))
             {
                 EnsureAssetFolder(parent);
@@ -269,11 +270,11 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
 
         // If target is under the ignored hidden root (…/StreamingAssets~), use filesystem move.
         // AssetDatabase may not recognize ignored folders, causing ValidateMoveAsset/MoveAsset to fail.
-        bool targetUnderHiddenRoot = targetAssetPath.Replace('\\','/').StartsWith(hiddenRoot + "/", StringComparison.Ordinal);
+        bool targetUnderHiddenRoot = targetAssetPath.Replace('\\', '/').StartsWith(hiddenRoot + "/", StringComparison.Ordinal);
         if (targetUnderHiddenRoot)
         {
             // Ensure parent exists (via IO for '~' folders), but DO NOT pre-create the target folder itself.
-            var parent = Path.GetDirectoryName(targetAssetPath)?.Replace('\\','/');
+            var parent = Path.GetDirectoryName(targetAssetPath)?.Replace('\\', '/');
             if (!string.IsNullOrEmpty(parent))
             {
                 EnsureAssetFolder(parent);
@@ -433,13 +434,13 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         }
     }
 
-/// <summary>
-/// •	本地/默认：继续用 Project Settings 的“桌面端是否包含模型”开关。
-// •	CI/Cloud Build：设置环境变量覆盖开关（优先级更高）：
-// •	包含模型：SHERPA_INCLUDE_MODELS_DESKTOP=1
-// •	忽略模型：SHERPA_INCLUDE_MODELS_DESKTOP=0
-/// </summary>
-/// <returns></returns>
+    /// <summary>
+    /// •	本地/默认：继续用 Project Settings 的“桌面端是否包含模型”开关。
+    // •	CI/Cloud Build：设置环境变量覆盖开关（优先级更高）：
+    // •	包含模型：SHERPA_INCLUDE_MODELS_DESKTOP=1
+    // •	忽略模型：SHERPA_INCLUDE_MODELS_DESKTOP=0
+    /// </summary>
+    /// <returns></returns>
     private static bool? GetEnvIncludeModelsDesktopOverride()
     {
         try
@@ -565,7 +566,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         // If this is an ignored special folder (leaf ends with '~'), create it via System.IO to avoid Unity auto-suffixing
 
         var leaf = Path.GetFileName(assetFolder);
-        var parent = Path.GetDirectoryName(assetFolder)?.Replace('\\','/');
+        var parent = Path.GetDirectoryName(assetFolder)?.Replace('\\', '/');
         if (!string.IsNullOrEmpty(leaf) && leaf.EndsWith("~", StringComparison.Ordinal))
         {
             if (!string.IsNullOrEmpty(parent))
@@ -602,7 +603,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
     // AssetDatabase doesn't see. Use an IO-level check to decide true emptiness.
     private static bool IsDirectoryReallyEmptyIO(string assetFolderPath)
     {
-        var path = assetFolderPath.Replace('\\','/');
+        var path = assetFolderPath.Replace('\\', '/');
         if (!Directory.Exists(path))
         {
             return true;
@@ -623,7 +624,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
     // Force delete a folder on disk (plus its .meta), then refresh the AssetDatabase.
     private static void ForceDeleteFolderIO(string assetFolderPath)
     {
-        var path = assetFolderPath.Replace('\\','/');
+        var path = assetFolderPath.Replace('\\', '/');
         try
         {
             if (Directory.Exists(path))
@@ -703,7 +704,7 @@ public sealed class SherpaOnnxStreamingAssetsIgnore :
         // 3) If the folder looks empty to AssetDatabase but still contains hidden files (like .DS_Store),
         // use an IO-level emptiness check.
         bool rootEmptyADB = AssetDatabase.IsValidFolder(hiddenRoot) ? IsAssetFolderEmpty(hiddenRoot) : true;
-        bool rootEmptyIO  = IsDirectoryReallyEmptyIO(hiddenRoot);
+        bool rootEmptyIO = IsDirectoryReallyEmptyIO(hiddenRoot);
         bool shouldDelete = rootEmptyADB && rootEmptyIO;
 
         if (shouldDelete)
