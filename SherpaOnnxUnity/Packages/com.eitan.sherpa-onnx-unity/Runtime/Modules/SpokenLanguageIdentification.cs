@@ -20,7 +20,7 @@ namespace Eitan.SherpaOnnxUnity
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpokenLanguageIdentification;
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -32,24 +32,25 @@ namespace Eitan.SherpaOnnxUnity
 
                 var sliConfig = CreateSliConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
 
-                await runner.RunAsync(cancellationToken =>
+                return await runner.RunAsync<bool>(cancellationToken =>
                 {
                     try
                     {
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                        linkedCts.Token.ThrowIfCancellationRequested();
+
+                        if (IsDisposed) { return Task.FromResult(false); }
+
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading SpokenLanguageIdentification model: {metadata.modelId}"));
 
                         _slid = new SherpaOnnx.SpokenLanguageIdentification(sliConfig);
-                        if (_slid == null)
+                        var initialized = IsSuccessInitializad(_slid);
+                        if (initialized)
                         {
-
-                            throw new Exception($"Failed to initialize SpokenLanguageIdentification model: {metadata.modelId}");
+                            reporter?.Report(new LoadFeedback(metadata, message: $"SpokenLanguageIdentification model loaded successfully: {metadata.modelId}"));
                         }
+                        return Task.FromResult(initialized);
 
-                        // var s = slid.CreateStream();
-                        // s.AcceptWaveform(waveReader.SampleRate, waveReader.Samples);
-                        // var result = slid.Compute(s);
-
-                        reporter?.Report(new LoadFeedback(metadata, message: $"SpokenLanguageIdentification model loaded successfully: {metadata.modelId}"));
                     }
                     catch (System.Exception ex)
                     {

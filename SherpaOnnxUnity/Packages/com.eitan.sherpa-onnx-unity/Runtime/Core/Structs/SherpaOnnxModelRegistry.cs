@@ -73,42 +73,42 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-//         private async Task<string> ReadManifestFileAsync()
-//         {
+        //         private async Task<string> ReadManifestFileAsync()
+        //         {
 
-//             string directoryPath = Path.Combine(Application.streamingAssetsPath, SherpaOnnxConstants.RootDirectoryName);
-//             string manifestPath = Path.Combine(directoryPath, SherpaOnnxConstants.ManifestFileName);
+        //             string directoryPath = Path.Combine(Application.streamingAssetsPath, SherpaOnnxConstants.RootDirectoryName);
+        //             string manifestPath = Path.Combine(directoryPath, SherpaOnnxConstants.ManifestFileName);
 
-// #if (!UNITY_ANDROID && !UNITY_IOS && !UNITY_WEBGL)
-//             if (!File.Exists(manifestPath))
-//             {
-//                 string defaultJson = SherpaOnnxConstants.GetDefaultManifestContent();
-//                 if (!Directory.Exists(directoryPath))
-//                 {
-//                     Directory.CreateDirectory(directoryPath);
-//                 }
-//                 await File.WriteAllTextAsync(manifestPath, defaultJson);
-//             }
+        // #if (!UNITY_ANDROID && !UNITY_IOS && !UNITY_WEBGL)
+        //             if (!File.Exists(manifestPath))
+        //             {
+        //                 string defaultJson = SherpaOnnxConstants.GetDefaultManifestContent();
+        //                 if (!Directory.Exists(directoryPath))
+        //                 {
+        //                     Directory.CreateDirectory(directoryPath);
+        //                 }
+        //                 await File.WriteAllTextAsync(manifestPath, defaultJson);
+        //             }
 
-//             if (File.Exists(manifestPath))
-//             {
-//                 return await File.ReadAllTextAsync(manifestPath);
-//             }
-//             return null;
-// #else
-//             using (UnityWebRequest www = UnityWebRequest.Get(manifestPath))
-//             {
-//                 var operation = www.SendWebRequest();
-//                 while (!operation.isDone)
-//                 {
-//                     await Task.Yield();
-//                 }
-                
-//                 return www.result == UnityWebRequest.Result.Success ? www.downloadHandler.text : null;
-//             }
+        //             if (File.Exists(manifestPath))
+        //             {
+        //                 return await File.ReadAllTextAsync(manifestPath);
+        //             }
+        //             return null;
+        // #else
+        //             using (UnityWebRequest www = UnityWebRequest.Get(manifestPath))
+        //             {
+        //                 var operation = www.SendWebRequest();
+        //                 while (!operation.isDone)
+        //                 {
+        //                     await Task.Yield();
+        //                 }
 
-// #endif
-//         }
+        //                 return www.result == UnityWebRequest.Result.Success ? www.downloadHandler.text : null;
+        //             }
+
+        // #endif
+        //         }
 
         /// <summary>
         /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
@@ -138,8 +138,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             Debug.LogError($"Metadata for modelId '{modelId}' not found in the manifest.");
             return null;
         }
-        
-        
+
+
         /// <summary>
         /// Get the loaded manifest. Triggers lazy initialization if necessary.
         /// </summary>

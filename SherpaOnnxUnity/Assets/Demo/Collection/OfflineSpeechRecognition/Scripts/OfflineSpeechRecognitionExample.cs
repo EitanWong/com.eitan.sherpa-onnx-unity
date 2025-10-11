@@ -196,7 +196,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 speechRecognition = new SpeechRecognition(modelID, SAMPLE_RATE, reporter);
                 _modelLoadFlag = true;
                 UpdateLoadButtonUI();
-                
+
                 Debug.Log($"Started loading model: {modelID}");
             }
             catch (Exception ex)
@@ -223,7 +223,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 speechRecognition = null;
                 _modelLoadFlag = false;
                 UpdateLoadButtonUI();
-                
+
                 Debug.Log("Model unloaded successfully");
             }
             catch (Exception ex)
@@ -247,9 +247,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             try
             {
-                Mic.Init();
+                if (!Mic.Initialized)
+                {
+                    Mic.Init();
+                }
                 _ringBuffer = new RingBuffer<float>(SAMPLE_RATE * MAX_RECORDING_DURATION);
-                
+
                 var devices = Mic.AvailableDevices;
                 if (devices.Count > 0)
                 {
@@ -259,7 +262,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                         device = devices[0];
                         device.OnFrameCollected += HandleAudioFrameCollected;
                     }
-                    
+
                     device.StartRecording(SAMPLE_RATE, MIC_FRAME_LENGTH);
                     Debug.Log($"Recording started with device: {device.Name}, Sample Rate: {device.SamplingFrequency}Hz");
                 }
@@ -286,7 +289,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                     device.OnFrameCollected -= HandleAudioFrameCollected;
                     device.StopRecording();
                     device = null;
-                    
+
                     Debug.Log("Recording stopped");
                     _ = ProcessSpeechTranscriptionAsync();
                 }
@@ -346,10 +349,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
                 // 执行语音转录 / Perform speech transcription
                 var result = await speechRecognition.SpeechTranscriptionAsync(samples, SAMPLE_RATE);
-                
+
                 // 更新UI显示结果 / Update UI with result
                 UpdateTranscriptionResult(result);
-                
+
                 Debug.Log($"Transcription completed: {result}");
             }
             catch (Exception ex)
@@ -407,11 +410,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 buttonText.text = "Unload Model";
                 buttonImage.color = Color.red;
                 _modelIDDropdown.interactable = false;
-                
+
                 // 显示加载进度UI / Show loading progress UI
                 _totalInitProgressBar.gameObject.SetActive(true);
                 _initMessageText.gameObject.SetActive(true);
-                
+
                 // 停止录音并隐藏录音按钮 / Stop recording and hide recording button
                 StopRecording();
                 _recordingBtn.gameObject.SetActive(false);
@@ -421,11 +424,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 buttonText.text = "Load Model";
                 buttonImage.color = _originLoadBtnColor;
                 _modelIDDropdown.interactable = true;
-                
+
                 // 隐藏加载进度UI / Hide loading progress UI
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
-                
+
                 // 清空显示内容 / Clear display content
                 _transcriptionText.text = string.Empty;
                 _tipsText.text = string.Empty;
@@ -445,15 +448,15 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 buttonText.text = "Stop Recording";
                 buttonImage.color = Color.red;
-                
+
                 // 禁用其他控件 / Disable other controls
                 _modelLoadOrUnloadButton.interactable = false;
                 _modelIDDropdown.interactable = false;
-                
+
                 // 隐藏进度条 / Hide progress bar
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
-                
+
                 // 显示录音提示 / Show recording hint
                 _transcriptionText.text = "<b><i>When you are done speaking, \nclick the Stop Recording button.</i></b>";
             }
@@ -461,11 +464,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 buttonText.text = "Start Recording";
                 buttonImage.color = _originRecordingBtnColor;
-                
+
                 // 启用其他控件 / Enable other controls
                 _modelLoadOrUnloadButton.interactable = true;
                 _modelIDDropdown.interactable = !_modelLoadFlag;
-                
+
                 // 隐藏进度条 / Hide progress bar
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
@@ -503,7 +506,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 StartRecording();
             }
-            
+
             UpdateRecordingButtonUI();
         }
         #endregion
@@ -533,7 +536,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 {
                     _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
                 }
-                
+
                 if (_recordingBtn != null)
                 {
                     _recordingBtn.onClick.RemoveListener(HandleRecordingButtonClick);

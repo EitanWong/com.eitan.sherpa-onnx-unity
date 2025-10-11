@@ -8,7 +8,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
     using SherpaOnnx;
-
+    using UnityEngine;
 
     public class SpeechRecognition : SherpaOnnxModule
     {
@@ -27,7 +27,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -35,14 +35,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 IsOnlineModel = SherpaUtils.Model.IsOnlineModel(metadata.modelId);
                 _modelType = SherpaUtils.Model.GetSpeechRecognitionModelType(metadata.modelId);
+
                 if (IsOnlineModel)
                 {
-                    await LoadOnlineModelAsync(metadata, sampleRate, isMobilePlatform, reporter, ct);
+                    return await LoadOnlineModelAsync(metadata, sampleRate, isMobilePlatform, reporter, ct);
                 }
                 else
                 {
 
-                    await LoadOfflineModelAsync(metadata, sampleRate, isMobilePlatform, reporter, ct);
+                    return await LoadOfflineModelAsync(metadata, sampleRate, isMobilePlatform, reporter, ct);
                 }
             }
             catch (Exception ex)
@@ -52,37 +53,48 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        private async Task LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<bool> LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
 
-            await runner.RunAsync(cancellationToken =>
+            return await runner.RunAsync<bool>(cancellationToken =>
             {
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
                 linkedCts.Token.ThrowIfCancellationRequested();
 
-                if (IsDisposed) { return; }
+                if (IsDisposed) { return Task.FromResult(false); }
 
                 _onlineRecognizer = new OnlineRecognizer(config);
-                _onlineStream = _onlineRecognizer.CreateStream();
+                var initialized = IsSuccessInitializad(_onlineRecognizer);
+                if (initialized)
+                {
+                    _onlineStream = _onlineRecognizer.CreateStream();
+                }
                 reporter?.Report(new LoadFeedback(metadata, message: $"Loaded online model: {metadata.modelId}"));
+                return Task.FromResult(initialized);
             });
         }
 
-        private async Task LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<bool> LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
 
-            await runner.RunAsync(cancellationToken =>
-            {
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
-                linkedCts.Token.ThrowIfCancellationRequested();
+            return await runner.RunAsync<bool>(cancellationToken =>
+             {
+                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                 linkedCts.Token.ThrowIfCancellationRequested();
 
-                if (IsDisposed) { return; }
+                 if (IsDisposed) { return Task.FromResult(false); }
 
-                _offlineRecognizer = new OfflineRecognizer(config);
-                reporter?.Report(new LoadFeedback(metadata, message: $"Loaded offline model: {metadata.modelId}"));
-            });
+                 _offlineRecognizer = new OfflineRecognizer(config);
+                 var initialized = IsSuccessInitializad(_offlineRecognizer);
+
+                 if (initialized)
+                 {
+                     reporter?.Report(new LoadFeedback(metadata, message: $"Loaded offline model: {metadata.modelId}"));
+                 }
+                 return Task.FromResult(initialized);
+             });
         }
 
         private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
@@ -95,6 +107,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     NumThreads = 4,
                     Debug = 0
                 },
+                DecodingMethod = "greedy_search",
                 MaxActivePaths = 4,
                 EnableEndpoint = 1,
                 Rule1MinTrailingSilence = 2.4f,
@@ -107,13 +120,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
-                    config.DecodingMethod = "greedy_search";
                     config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     break;
-
                 case SpeechRecognitionModelType.Online_Transducer:
-                    config.DecodingMethod = isMobilePlatform ? "greedy_search" : "modified_beam_search";
+                    config.DecodingMethod = "modified_beam_search";
                     config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
@@ -139,24 +150,27 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 },
                 DecodingMethod = "greedy_search",
                 MaxActivePaths = 4,
-                HotwordsScore = 1.5f,
                 RuleFsts = string.Empty
             };
 
-
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
-            var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords", int8QuantKeywords)?.First();
-            if (!string.IsNullOrEmpty(hotwordsFile))
-            {
-                config.HotwordsFile = hotwordsFile;
-            }
 
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Offline_Transducer:
+
+                    config.DecodingMethod = "modified_beam_search";
                     config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
+                    if (config.DecodingMethod == "modified_beam_search")
+                    {
+                        var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords")?.First();
+                        if (!string.IsNullOrEmpty(hotwordsFile))
+                        {
+                            config.HotwordsFile = hotwordsFile;
+                        }
+                    }
                     break;
 
                 case SpeechRecognitionModelType.Offline_Paraformer:
@@ -191,6 +205,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     break;
 
                 case SpeechRecognitionModelType.SenseVoice:
+
                     config.ModelConfig.SenseVoice.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
                     config.ModelConfig.SenseVoice.Language = "auto";
@@ -211,6 +226,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 default:
                     throw new NotSupportedException($"Unsupported offline model type: {_modelType}");
             }
+
+
             return config;
         }
 
@@ -222,8 +239,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
 
             return IsOnlineModel ?
-                ProcessOnlineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken) :
-                ProcessOfflineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken);
+              ProcessOnlineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken) :
+              ProcessOfflineTranscriptionAsync(audioSamplesFrame, sampleRate, cancellationToken);
         }
 
         private Task<string> ProcessOnlineTranscriptionAsync(float[] audioSamplesFrame, int sampleRate, CancellationToken cancellationToken)

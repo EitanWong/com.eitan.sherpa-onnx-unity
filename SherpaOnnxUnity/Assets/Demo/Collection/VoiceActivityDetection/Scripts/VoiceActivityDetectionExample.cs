@@ -123,8 +123,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("Cannot start recording during playback.");
                 return;
             }
-
-            Mic.Init();
+            if (!Mic.Initialized)
+            {
+                Mic.Init();
+            }
             var devices = Mic.AvailableDevices;
             if (devices.Count > 0)
             {

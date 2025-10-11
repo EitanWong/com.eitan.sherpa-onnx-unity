@@ -136,8 +136,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private void StartRecording()
         {
-
-            Mic.Init();
+            if (!Mic.Initialized)
+            {
+                Mic.Init();
+            }
             var devices = Mic.AvailableDevices;
             if (devices.Count > 0)
             {

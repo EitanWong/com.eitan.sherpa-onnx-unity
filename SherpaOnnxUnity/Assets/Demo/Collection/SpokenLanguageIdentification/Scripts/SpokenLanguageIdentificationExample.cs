@@ -245,7 +245,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             try
             {
-                Mic.Init();
+                if (!Mic.Initialized)
+                {
+                    Mic.Init();
+                }
                 _ringBuffer = new RingBuffer<float>(SAMPLE_RATE * MAX_RECORDING_DURATION);
 
                 var devices = Mic.AvailableDevices;

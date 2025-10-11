@@ -60,23 +60,23 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
             _recordStopButton.onClick.AddListener(HandleRecordStopButtonClick);
             _enhancementEnabledToggle.onValueChanged.AddListener(HandleEnhancementToggleChanged);
-            
+
             // Set toggle UI to match default enhancement state
             _enhancementEnabledToggle.isOn = _isEnhancementEnabled;
-            
+
             _totalInitProgressBar.gameObject.SetActive(false);
             _initMessageText.gameObject.SetActive(false);
             _tipsText.text = "Please load a Speech Enhancement model first to begin recording.";
-            
+
             // Hide recording-related UI when model is not loaded
             _recordingStatusText.gameObject.SetActive(false);
             _enhancementStatusText.gameObject.SetActive(false);
             _recordStopButton.gameObject.SetActive(false);
             _enhancementEnabledToggle.gameObject.SetActive(false);
-            
+
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _originRecordBtnColor = _recordStopButton.GetComponent<Image>().color;
-            
+
             InitDropdown();
             UpdateUI();
         }
@@ -163,19 +163,22 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _processedAudio.Clear();
 
             // Initialize microphone
-            Mic.Init();
+            if (!Mic.Initialized)
+            {
+                Mic.Init();
+            }
             var devices = Mic.AvailableDevices;
             if (devices.Count > 0)
             {
                 _device = devices[0];
                 _device.OnFrameCollected += HandleAudioFrameCollected;
                 _device.StartRecording(SampleRate, Mathf.RoundToInt(_recordingBufferTime * 1000));
-                
+
                 _isRecording = true;
                 _recordingStatusText.text = "Recording Status: <color=red>● Recording</color>";
                 _enhancementStatusText.text = "Enhancement Status: <color=green>Processing</color>";
                 _tipsText.text = "Recording in progress. Speak into your microphone.\nClick 'Stop Recording' when finished.";
-                
+
                 Debug.Log($"Recording started with device: {_device.Name}");
             }
             else
@@ -244,7 +247,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _audioSource.Stop();
             }
-            
+
             _recordedAudio.Clear();
             _processedAudio.Clear();
             _isRecording = false;
@@ -275,7 +278,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                     // Create a copy for enhancement (in-place processing modifies the original)
                     processedChunk = new float[pcm.Length];
                     Array.Copy(pcm, processedChunk, pcm.Length);
-                    
+
                     // Enhance the audio in-place
                     _speechEnhancement.EnhanceSync(processedChunk, sampleRate);
                 }
@@ -328,9 +331,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 var duration = processedClip.length;
                 var audioType = _isEnhancementEnabled ? "Enhanced" : "Original";
                 var playbackColor = _isEnhancementEnabled ? "blue" : "orange";
-                
+
                 _enhancementStatusText.text = $"Enhancement Status: <color={playbackColor}>Playing {audioType} Audio</color>\nDuration: {duration:F1}s";
-                
+
                 if (_isEnhancementEnabled)
                 {
                     _tipsText.text = $"Playing enhanced audio ({duration:F1}s). Noise reduction and quality improvement applied.";
@@ -370,7 +373,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 {
                     _tipsText.text = "Please load a Speech Enhancement model first to begin recording.";
                 }
-                
+
                 UpdateUI();
             }
         }
@@ -417,17 +420,17 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Unload Model";
                 _modelLoadOrUnloadButton.GetComponent<Image>().color = Color.red;
                 _modelIDDropdown.interactable = false;
-                
+
                 // Hide progress bar and init message when model is loaded
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
-                
+
                 // Show recording UI when model is loaded
                 _recordingStatusText.gameObject.SetActive(true);
                 _enhancementStatusText.gameObject.SetActive(true);
                 _recordStopButton.gameObject.SetActive(true);
                 _enhancementEnabledToggle.gameObject.SetActive(true);
-                
+
                 // Prevent unloading during recording
                 _modelLoadOrUnloadButton.interactable = !_isRecording;
                 if (_isRecording)
@@ -443,7 +446,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _modelIDDropdown.interactable = true;
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
-                
+
                 // Hide recording UI when model is not loaded
                 _recordingStatusText.gameObject.SetActive(false);
                 _enhancementStatusText.gameObject.SetActive(false);
@@ -513,9 +516,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             // Update internal enhancement state
             _isEnhancementEnabled = isEnabled;
-            
+
             UpdateEnhancementStatusText();
-            
+
             if (IsModelLoaded && !_isRecording && !_isPlayingBack)
             {
                 if (isEnabled)

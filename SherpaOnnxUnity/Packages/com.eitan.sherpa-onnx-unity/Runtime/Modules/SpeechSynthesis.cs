@@ -26,7 +26,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             // _unityContext = System.Threading.SynchronizationContext.Current;
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -36,17 +36,24 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
                 this.SampleRate = metadata.SampleRate;
                 var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
-                await runner.RunAsync(cancellationToken =>
+                return await runner.RunAsync<bool>(cancellationToken =>
                 {
                     try
                     {
+
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                        linkedCts.Token.ThrowIfCancellationRequested();
+
+                        if (IsDisposed) { return Task.FromResult(false); }
+
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading TTS model: {metadata.modelId}"));
                         _tts = new OfflineTts(ttsConfig);
-                        if (_tts == null)
+                        var initialized = IsSuccessInitializad(_tts);
+                        if (initialized)
                         {
-                            throw new Exception($"Failed to initialize TTS model: {metadata.modelId}");
+                            reporter?.Report(new LoadFeedback(metadata, message: $"TTS model loaded successfully: {metadata.modelId}"));
                         }
-                        reporter?.Report(new LoadFeedback(metadata, message: $"TTS model loaded successfully: {metadata.modelId}"));
+                        return Task.FromResult(initialized);
                     }
                     catch (System.Exception ex)
                     {

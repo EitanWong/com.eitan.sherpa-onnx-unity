@@ -1,11 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using SherpaOnnx;
 
 namespace Eitan.SherpaOnnxUnity
@@ -23,7 +20,7 @@ namespace Eitan.SherpaOnnxUnity
 
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -32,25 +29,31 @@ namespace Eitan.SherpaOnnxUnity
                 _sampleRate = sampleRate;
                 var config = CreatePunctuationConfig(metadata, isMobilePlatform);
 
-                await runner.RunAsync(cancellationToken =>
-                {
-                    try
-                    {
-                        reporter?.Report(new LoadFeedback(metadata, message: $"Loading Punctuation model: {metadata.modelId}"));
-                        _punct = new OfflinePunctuation(config);
-                        if (_punct == null)
-                        {
-                            throw new Exception($"Failed to initialize Punctuation model: {metadata.modelId}");
-                        }
+                return await runner.RunAsync<bool>(cancellationToken =>
+                  {
+                      try
+                      {
 
-                        reporter?.Report(new LoadFeedback(metadata, message: $"Punctuation model loaded successfully: {metadata.modelId}"));
-                    }
-                    catch (Exception ex)
-                    {
-                        reporter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                        throw;
-                    }
-                });
+                          using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                          linkedCts.Token.ThrowIfCancellationRequested();
+
+                          if (IsDisposed) { return Task.FromResult(false); }
+
+                          reporter?.Report(new LoadFeedback(metadata, message: $"Loading Punctuation model: {metadata.modelId}"));
+                          _punct = new OfflinePunctuation(config);
+                          var initialized = IsSuccessInitializad(_punct);
+                          if (initialized)
+                          {
+                              reporter?.Report(new LoadFeedback(metadata, message: $"Punctuation model loaded successfully: {metadata.modelId}"));
+                          }
+                          return Task.FromResult(initialized);
+                      }
+                      catch (Exception ex)
+                      {
+                          reporter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
+                          throw;
+                      }
+                  });
             }
             catch (Exception ex)
             {

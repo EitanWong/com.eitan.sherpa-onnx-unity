@@ -69,7 +69,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                         reporterAdapter?.Report(new PrepareFeedback(metadata, message: $"{ModuleType} model:{modelID} ready to init"));
 
-                        await Initialization(metadata, sampleRate, isMobilePlatform, reporterAdapter, ct);
+                        Initialized = await Initialization(metadata, sampleRate, isMobilePlatform, reporterAdapter, ct);
 
                         // 初始化成功后再次检查，防止在初始化过程中被销毁
                         if (ct.IsCancellationRequested || IsDisposed)
@@ -77,8 +77,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                             reporterAdapter?.Report(new CancelFeedback(metadata, message: "Initialization was cancelled or disposed."));
                             return;
                         }
+                        if (Initialized)
+                        {
+                            reporterAdapter?.Report(new SuccessFeedback(metadata, message: $"{ModuleType} model:{modelID} init success"));
+                        }
+                        else
+                        {
+                            reporterAdapter?.Report(new FailedFeedback(metadata, message: $"{ModuleType} model:{modelID} init failed"));
+                        }
 
-                        reporterAdapter?.Report(new SuccessFeedback(metadata, message: $"{ModuleType} model:{modelID} init success"));
                     }
                     else
                     {
@@ -93,10 +100,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 catch (Exception ex)
                 {
                     reporterAdapter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                }
-                finally
-                {
-                    Initialized = true;
                 }
             }, policy: Utilities.ExecutionPolicy.Never);
         }
@@ -115,6 +118,31 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             // 如果开发者忘记调用Dispose()，此方法会确保非托管资源被释放
             Dispose(false);
+        }
+
+        protected bool IsSuccessInitializad(object target, string handleFieldName = "_handle")
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target), "Target object is null references.");
+            }
+
+            // 获取对象的类型
+            Type targetType = target.GetType();
+
+            // 获取字段信息
+            System.Reflection.FieldInfo fieldInfo = targetType.GetField(handleFieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+            if (fieldInfo == null)
+            {
+                throw new ArgumentException($"Field '{handleFieldName}' not found in type '{targetType.FullName}'.");
+            }
+
+            // 获取字段的值
+            object fieldValue = fieldInfo.GetValue(target);
+
+            // 检查字段是否为 null 或有效值
+            return fieldValue != null && (fieldValue is System.Runtime.InteropServices.HandleRef handleRef ? handleRef.Handle != IntPtr.Zero : true);
         }
 
         protected void ExecuteOnMainThread(SendOrPostCallback callback, object args = null)
@@ -162,7 +190,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// 子类必须实现的初始化逻辑。
         /// </summary>
-        protected abstract Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct);
+        protected abstract Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct);
 
         /// <summary>
         /// 子类必须实现的资源清理逻辑。

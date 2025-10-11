@@ -53,7 +53,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.VoiceActivityDetection;
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -71,12 +71,27 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 _segmentWorkspace = new float[sampleRate * 15]; // 15 seconds initial capacity
 
-                await runner.RunAsync(cancellationToken =>
-                {
-                    _detector = new VoiceActivityDetector(vadConfig, 60);
-                });
+                var initialized = await runner.RunAsync<bool>(cancellationToken =>
+                 {
 
-                _ = runner.LoopAsync(ProcessAudioLoopIteration, TimeSpan.FromMilliseconds(10), null, ct);
+                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                     linkedCts.Token.ThrowIfCancellationRequested();
+
+                     if (IsDisposed) { return Task.FromResult(false); }
+
+                     _detector = new VoiceActivityDetector(vadConfig, 60);
+                     var initialized = IsSuccessInitializad(_detector);
+                     if (initialized)
+                     {
+                         reporter?.Report(new LoadFeedback(metadata, message: $"VAD model loaded successfully: {metadata.modelId}"));
+                     }
+                     return Task.FromResult(initialized);
+                 });
+                if (initialized)
+                {
+                    _ = runner.LoopAsync(ProcessAudioLoopIteration, TimeSpan.FromMilliseconds(10), null, ct);
+                }
+                return initialized;
             }
             catch (Exception ex)
             {

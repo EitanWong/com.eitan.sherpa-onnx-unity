@@ -23,7 +23,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -32,19 +32,25 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 _sampleRate = sampleRate;
                 var config = CreateSpeechDenoiserConfig(metadata, isMobilePlatform);
 
-                await runner.RunAsync(cancellationToken =>
+                return await runner.RunAsync<bool>(cancellationToken =>
                 {
                     try
                     {
+
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                        linkedCts.Token.ThrowIfCancellationRequested();
+
+                        if (IsDisposed) { return Task.FromResult(false); }
+
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading Speech Enhancement model: {metadata.modelId}"));
                         _denoiser = new OfflineSpeechDenoiser(config);
-
-                        if (_denoiser == null)
+                        var initialized = IsSuccessInitializad(_denoiser);
+                        if (initialized)
                         {
-                            throw new Exception($"Failed to initialize Speech Enhancement model: {metadata.modelId}");
+                            reporter?.Report(new LoadFeedback(metadata, message: $"Speech Enhancement model loaded successfully: {metadata.modelId}"));
                         }
+                        return Task.FromResult(initialized);
 
-                        reporter?.Report(new LoadFeedback(metadata, message: $"Speech Enhancement model loaded successfully: {metadata.modelId}"));
                     }
                     catch (Exception ex)
                     {

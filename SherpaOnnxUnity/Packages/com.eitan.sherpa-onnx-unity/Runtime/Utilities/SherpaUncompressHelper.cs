@@ -17,7 +17,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
     /// <summary>
     /// Represents the result of a decompression operation with detailed metrics.
     /// </summary>
-    public class DecompressionEventArgs:EventArgs
+    public class DecompressionEventArgs : EventArgs
     {
         public bool Success { get; }
         public string ErrorMessage { get; }
@@ -102,9 +102,18 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             long bytesProcessed = 0;
 
             if (string.IsNullOrEmpty(sourceArchivePath) || string.IsNullOrEmpty(destinationDirectory))
+            {
+
                 return new DecompressionEventArgs(false, "Source archive path and destination directory must not be empty.");
+            }
+
+
             if (!File.Exists(sourceArchivePath))
+            {
+
                 return new DecompressionEventArgs(false, $"Source file not found: {sourceArchivePath}");
+            }
+
 
             options ??= DefaultOptions;
             DecompressionEventArgs args;
@@ -113,9 +122,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 Directory.CreateDirectory(destinationDirectory);
 
                 using var fileStream = new FileStream(sourceArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read, options.BufferSize, FileOptions.Asynchronous);
-                
+
                 Progress<float> progressAdapter = new Progress<float>(_progressValue =>
-                { 
+                {
                     progress?.Report(new DecompressionEventArgs(true, null, bytesProcessed, progress: _progressValue, elapsedTime: stopwatch.Elapsed));
                 });
 
@@ -145,7 +154,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                                                      DecompressionOptions options, IProgress<float> progress, CancellationToken ct)
         {
             if (lowerCasePath.EndsWith(".zip"))
+            {
+
                 return ExtractZipAsync(baseStream, destination, options, progress, ct);
+            }
+
 
             if (lowerCasePath.EndsWith(".tar.gz") || lowerCasePath.EndsWith(".tgz"))
             {
@@ -162,8 +175,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
             if (lowerCasePath.EndsWith(".tar"))
+            {
+
                 return ExtractTarStreamAsync(baseStream, baseStream, destination, options, progress, ct);
-            
+            }
+
+
             if (lowerCasePath.EndsWith(".gz"))
             {
                 // FIXED: Remove using statement to prevent premature disposal
@@ -194,7 +211,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 long totalBytesProcessed = 0;
                 var buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
-                
+
                 try
                 {
                     // FIXED: Manage compression stream lifecycle here and implement accurate progress for TAR
@@ -202,7 +219,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     using (var tarInputStream = new TarInputStream(compressionStream, Encoding.UTF8) { IsStreamOwner = false })
                     {
                         IProgressReporter progressReporter;
-                        
+
                         // FIXED: Implement accurate progress reporting for TAR archives
                         if (options.EnableAccurateProgress && compressionStream != baseStream)
                         {
@@ -220,7 +237,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         while ((entry = tarInputStream.GetNextEntry()) != null)
                         {
                             ct.ThrowIfCancellationRequested();
-                            if (entry.IsDirectory) continue;
+                            if (entry.IsDirectory)
+                            {
+                                continue;
+                            }
+
 
                             var entryPath = GetSafeEntryPath(destination, entry.Name);
                             Directory.CreateDirectory(Path.GetDirectoryName(entryPath));
@@ -234,14 +255,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
                                 int bytesRead;
                                 long entryBytesProcessed = 0;
-                                
+
                                 // FIXED: Use synchronous read for CPU-bound decompression, async write for I/O
                                 while ((bytesRead = tarInputStream.Read(buffer, 0, buffer.Length)) > 0)
                                 {
                                     ct.ThrowIfCancellationRequested();
                                     await fileStreamOut.WriteAsync(buffer, 0, bytesRead, ct);
                                     entryBytesProcessed += bytesRead;
-                                    
+
                                     // Report progress based on the type of reporter
                                     if (progressReporter is AccurateProgressReporter accurateReporter)
                                     {
@@ -252,12 +273,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                                         simpleReporter.ReportPosition(baseStream.Position);
                                     }
                                 }
-                                
+
                                 totalBytesProcessed += entryBytesProcessed;
                             }
                         }
                     }
-                    
+
                     return totalBytesProcessed;
                 }
                 finally
@@ -275,11 +296,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             return await Task.Run(() =>
             {
                 long totalSize = 0;
-                
+
                 // Create a new stream from the same source for pre-scanning
                 var originalPosition = compressionStream.Position;
                 compressionStream.Position = 0;
-                
+
                 try
                 {
                     using var tarInputStream = new TarInputStream(compressionStream, Encoding.UTF8) { IsStreamOwner = false };
@@ -298,7 +319,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     // Reset position for actual extraction
                     compressionStream.Position = originalPosition;
                 }
-                
+
                 return totalSize;
             }, ct);
         }
@@ -344,7 +365,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return totalBytesWritten;
             }, ct);
         }
-        
+
         private static void ExtractSingleZipEntry(ZipFile zipFile, ZipEntry entry, string destination, DecompressionOptions options, Action<long> progressCallback, CancellationToken ct)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
@@ -390,7 +411,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 long totalBytesWritten = 0;
                 var buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
                 var progressReporter = new SimpleProgressReporter(progress, baseStream.Length);
-                
+
                 try
                 {
                     // FIXED: Manage source stream lifecycle properly
@@ -407,7 +428,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                             progressReporter.ReportPosition(baseStream.Position);
                         }
                     }
-                    
+
                     return totalBytesWritten;
                 }
                 finally
@@ -459,10 +480,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             public void ReportBytesWritten(long bytes)
             {
-                if (_progress == null || _totalSize <= 0) return;
-                
+                if (_progress == null || _totalSize <= 0)
+                {
+                    return;
+                }
+
+
                 Interlocked.Add(ref _currentTotal, bytes);
-                
+
                 if (_stopwatch.Elapsed > ReportInterval)
                 {
                     var current = Interlocked.Read(ref _currentTotal);
@@ -506,7 +531,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             public void ReportPosition(long currentPosition)
             {
-                if (_progress == null || _totalSize <= 0) return;
+                if (_progress == null || _totalSize <= 0)
+                {
+                    return;
+                }
+
 
                 if (_stopwatch.Elapsed > ReportInterval)
                 {

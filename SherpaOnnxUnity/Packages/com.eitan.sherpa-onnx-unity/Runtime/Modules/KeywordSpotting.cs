@@ -62,7 +62,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             _keywordConfigs = customKeywords;
         }
 
-        protected override async Task Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -70,29 +70,41 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 var config = await CreateKeywordSpotterConfig(metadata, sampleRate, isMobilePlatform, reporter, ct);
 
-                await runner.RunAsync(cancellationToken =>
+                return await runner.RunAsync<bool>(cancellationToken =>
                 {
                     try
                     {
+
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cancellationToken);
+                        linkedCts.Token.ThrowIfCancellationRequested();
+
+                        if (IsDisposed) { return Task.FromResult(false); }
+
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading KWS model: {metadata.modelId}"));
 
                         _keywordSpotter = new KeywordSpotter(config);
-
-                        if (!string.IsNullOrEmpty(_keywordsPayload))
+                        var initialized = IsSuccessInitializad(_keywordSpotter);
+                        if (initialized)
                         {
-                            _stream = _keywordSpotter.CreateStream(_keywordsPayload);
-                        }
-                        else
-                        {
-                            _stream = _keywordSpotter.CreateStream();
-                        }
 
-                        if (_keywordSpotter == null || _stream == null)
-                        {
-                            throw new Exception($"Failed to initialize KWS model: {metadata.modelId}");
-                        }
+                            if (!string.IsNullOrEmpty(_keywordsPayload))
+                            {
+                                _stream = _keywordSpotter.CreateStream(_keywordsPayload);
+                            }
+                            else
+                            {
+                                _stream = _keywordSpotter.CreateStream();
+                            }
 
-                        reporter?.Report(new LoadFeedback(metadata, message: $"KWS model loaded successfully: {metadata.modelId}"));
+                            if (_keywordSpotter == null || _stream == null)
+                            {
+                                throw new Exception($"Failed to initialize KWS model: {metadata.modelId}");
+                            }
+
+                            reporter?.Report(new LoadFeedback(metadata, message: $"KWS model loaded successfully: {metadata.modelId}"));
+                        }
+                        return Task.FromResult(initialized);
+
                     }
                     catch (Exception ex)
                     {
