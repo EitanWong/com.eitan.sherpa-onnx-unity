@@ -72,8 +72,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 Model = new OfflineSpeechDenoiserModelConfig
                 {
-                    Debug = 0,
-                    NumThreads = isMobilePlatform ? 2 : 4
+                    NumThreads = UnityEngine.Device.SystemInfo.processorCount
                 }
             };
 

@@ -34,7 +34,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
-                this.SampleRate = metadata.SampleRate;
+                this.SampleRate = metadata.sampleRate;
                 var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
                 return await runner.RunAsync<bool>(cancellationToken =>
                 {
@@ -78,12 +78,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
             ttsModelConfig.RuleFsts = string.Join(",", metadata.GetModelFilesByExtensionName(".fst"));
             ttsModelConfig.RuleFars = string.Join(",", metadata.GetModelFilesByExtensionName(".far"));
-            ttsModelConfig.Model.NumThreads = 4;
+            ttsModelConfig.Model.NumThreads = UnityEngine.Device.SystemInfo.processorCount;
 
             switch (modelType)
             {
                 case SpeechSynthesisModelType.Vits:
-                    ttsModelConfig.Model.Vits.Model = metadata.GetModelFilePathByKeywords("model", "en_US", "vits", "theresa", "eula", int8QuantKeyword)?.First();
+                    ttsModelConfig.Model.Vits.Model = metadata.GetModelFilePathByKeywords("model", "en_US", "vits", "theresa", "eula", ".onnx", int8QuantKeyword)?.First();
                     ttsModelConfig.Model.Vits.Lexicon = metadata.GetModelFilePathByKeywords("lexicon")?.First();
                     ttsModelConfig.Model.Vits.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
                     ttsModelConfig.Model.Vits.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
@@ -114,6 +114,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     ttsModelConfig.Model.Kokoro.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
                     ttsModelConfig.Model.Kokoro.DictDir = metadata.GetModelFilePathByKeywords("dict")?.First();
                     ttsModelConfig.Model.Kokoro.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
+                    break;
+                case SpeechSynthesisModelType.KittenTTS:
+                    ttsModelConfig.Model.Kitten.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeyword)?.First();
+                    ttsModelConfig.Model.Kitten.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
+                    ttsModelConfig.Model.Kitten.Voices = metadata.GetModelFilePathByKeywords("voices")?.First();
+                    ttsModelConfig.Model.Kitten.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported VAD model type: {modelType}");

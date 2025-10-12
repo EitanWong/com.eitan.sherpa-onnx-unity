@@ -28,7 +28,7 @@ namespace Eitan.SherpaOnnxUnity
 
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
                 var modelType = Runtime.Utilities.SherpaUtils.Model.GetSpokenLanguageIdentificationModelType(metadata.modelId);
-                this.SampleRate = metadata.SampleRate;
+                this.SampleRate = metadata.sampleRate;
 
                 var sliConfig = CreateSliConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
 
@@ -69,7 +69,7 @@ namespace Eitan.SherpaOnnxUnity
 
         private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
-            var sliModelConfig = new SpokenLanguageIdentificationConfig();
+            var sliModelConfig = new SpokenLanguageIdentificationConfig() { NumThreads = UnityEngine.Device.SystemInfo.processorCount };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)

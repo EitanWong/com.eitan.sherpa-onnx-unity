@@ -7,6 +7,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         Vits,
         Matcha,
         Kokoro,
+        KittenTTS
     }
 
 }

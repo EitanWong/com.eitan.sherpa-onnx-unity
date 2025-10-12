@@ -13,7 +13,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public string downloadFileHash;
         public string[] modelFileNames;
         public string[] modelFileHashes;
-        public int SampleRate=16000;
+        public int numberOfSpeakers;
+        public int sampleRate = 16000;
     }
 
     // 这个类代表整个 JSON 文件的根结构

@@ -1,3 +1,5 @@
+
+using System;
 using System.Linq;
 
 
@@ -17,6 +19,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] transducer_keywords = { "zipformer", "conformer", "transducer" };
             private static readonly string[] ctc_keywords = { "ctc" };
             private static readonly string[] nemo_ctc_keywords = { "nemo-ctc" };
+            // NVIDIA NeMo Parakeet/Canary variants
+            private static readonly string[] nemo_parakeet_tdt_ctc_keywords = { "parakeet_tdt_ctc", "parakeet-tdt-ctc", "tdt_ctc" };
+            private static readonly string[] nemo_parakeet_tdt_keywords = { "nemo-parakeet-tdt", "parakeet-tdt", "parakeet_tdt" };
+            private static readonly string[] nemo_canary_keywords = { "nemo-canary", "canary" };
             private static readonly string[] tdnn_keywords = { "tdnn" };
             private static readonly string[] paraformer_keywords = { "paraformer" };
             private static readonly string[] whisper_keywords = { "whisper" };
@@ -39,6 +45,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] vits_keywords = { "vits" };
             private static readonly string[] matcha_keywords = { "matcha", "vocos" };
             private static readonly string[] kokoro_keywords = { "kokoro" };
+
+            private static readonly string[] kitten_keywords = { "kitten" };
             #endregion
 
             #region KeywordSpottingModelKeywords
@@ -51,7 +59,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             #endregion
 
             #region SpokenLanguageIdentification
-            private static readonly string[] spokenLanguageIdentification_whisper_keywords = { "whisper" };
+            // Use specific LID markers to avoid colliding with ASR Whisper models
+            private static readonly string[] spoken_language_id_keywords = { "langid", "language-id", "spoken-language-identification", "lid" };
             #endregion
 
             #region Punctuation
@@ -64,22 +73,33 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             internal static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
             {
+                if (string.IsNullOrEmpty(modelID))
+                { return SherpaOnnxModuleType.Undefined; }
 
+                // Order matters: avoid collisions (e.g., Whisper ASR vs LID)
                 if (IsKeywordSpottingModel(modelID))
                 { return SherpaOnnxModuleType.KeywordSpotting; }
-                else if (GetSpeechRecognitionModelType(modelID) != SpeechRecognitionModelType.None)
+
+                var asrType = GetSpeechRecognitionModelType(modelID);
+                if (asrType != SpeechRecognitionModelType.None)
                 { return SherpaOnnxModuleType.SpeechRecognition; }
-                else if (GetVoiceActivityDetectionModelType(modelID) != VoiceActivityDetectionModelType.None)
-                { return SherpaOnnxModuleType.VoiceActivityDetection; }
-                else if (GetSpeechSynthesisModelType(modelID) != SpeechSynthesisModelType.None)
+
+                var ttsType = GetSpeechSynthesisModelType(modelID);
+                if (ttsType != SpeechSynthesisModelType.None)
                 { return SherpaOnnxModuleType.SpeechSynthesis; }
-                else if (IsSpeechEnhancementModel(modelID))
+
+                var vadType = GetVoiceActivityDetectionModelType(modelID);
+                if (vadType != VoiceActivityDetectionModelType.None)
+                { return SherpaOnnxModuleType.VoiceActivityDetection; }
+
+                if (IsSpeechEnhancementModel(modelID))
                 { return SherpaOnnxModuleType.SpeechEnhancement; }
-                else if (IsKeywordSpottingModel(modelID))
-                { return SherpaOnnxModuleType.KeywordSpotting; }
-                else if (GetSpokenLanguageIdentificationModelType(modelID) != SpokenLanguageIdentificationModelType.None)
+
+                var lidType = GetSpokenLanguageIdentificationModelType(modelID);
+                if (lidType != SpokenLanguageIdentificationModelType.None)
                 { return SherpaOnnxModuleType.SpokenLanguageIdentification; }
-                else if (IsPunctuationModel(modelID))
+
+                if (IsPunctuationModel(modelID))
                 { return SherpaOnnxModuleType.AddPunctuation; }
 
                 return SherpaOnnxModuleType.Undefined;
@@ -90,7 +110,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 if (string.IsNullOrEmpty(modelID))
                 { return SpeechRecognitionModelType.None; }
 
-                string lowerModelID = modelID.ToLower();
+                string lowerModelID = modelID.ToLowerInvariant();
+                // Determine whether it is an online/streaming model early for family-specific branches
+                bool isOnline = ContainsAnyKeyword(lowerModelID, online_streaming_keywords);
 
                 // Check for special models first (they have unique identification)
                 if (ContainsAnyKeyword(lowerModelID, whisper_keywords))
@@ -105,21 +127,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Dolphin; }
                 else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
                 { return SpeechRecognitionModelType.TeleSpeech; }
-                else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
-                { return SpeechRecognitionModelType.Offline_ZipformerCtc; }
                 else if (ContainsAnyKeyword(lowerModelID, nemo_ctc_keywords))
                 { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
                 else if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
                 { return SpeechRecognitionModelType.Tdnn; }
 
+                // NeMo family special cases
+                // 1) Parakeet TDT CTC should map to Nemo CTC explicitly to avoid falling into generic CTC
+                if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_ctc_keywords))
+                { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
 
-                // Check if it's an online model
-                bool isOnline = ContainsAnyKeyword(lowerModelID, online_streaming_keywords);
+                // 2) Parakeet TDT (no explicit CTC) -> treat as Transducer family
+                if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_keywords))
+                { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
+
+                // 3) Canary models (e.g., nemo-canary-180m[-flash]-...) -> treat as Transducer family
+                if (ContainsAnyKeyword(lowerModelID, nemo_canary_keywords))
+                { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
 
                 // Determine architecture type
-
                 if (ContainsAnyKeyword(lowerModelID, ctc_keywords))
                 {
+                    // Generic CTC models (non-Nemo)
                     return isOnline ? SpeechRecognitionModelType.Online_Ctc : SpeechRecognitionModelType.Offline_ZipformerCtc;
                 }
                 else if (ContainsAnyKeyword(lowerModelID, transducer_keywords))
@@ -139,7 +168,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 if (string.IsNullOrEmpty(modelID))
                 { return VoiceActivityDetectionModelType.None; }
 
-                string lowerModelID = modelID.ToLower();
+                string lowerModelID = modelID.ToLowerInvariant();
 
                 // Check for special models first (they have unique identification)
                 if (ContainsAnyKeyword(lowerModelID, silero_keywords))
@@ -163,6 +192,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SpeechSynthesisModelType.Matcha; }
                 else if (ContainsAnyKeyword(lowerModelID, kokoro_keywords))
                 { return SpeechSynthesisModelType.Kokoro; }
+                else if (ContainsAnyKeyword(lowerModelID, kitten_keywords))
+                { return SpeechSynthesisModelType.KittenTTS; }
 
                 return SpeechSynthesisModelType.None;
 
@@ -174,11 +205,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 if (string.IsNullOrEmpty(modelID))
                 { return SpokenLanguageIdentificationModelType.None; }
 
-                string lowerModelID = modelID.ToLower();
+                string lowerModelID = modelID.ToLowerInvariant();
 
-                // Check for special models first (they have unique identification)
-                if (ContainsAnyKeyword(lowerModelID, spokenLanguageIdentification_whisper_keywords))
+                if (ContainsAnyKeyword(lowerModelID, spoken_language_id_keywords))
                 { return SpokenLanguageIdentificationModelType.Whisper; }
+
                 return SpokenLanguageIdentificationModelType.None;
             }
 
@@ -230,11 +261,40 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
             /// <summary>
-            /// Helper method to check if a model ID contains any of the specified keywords
+            /// Helper method to check if a model ID contains any of the specified keywords as distinct segments
+            /// A segment boundary is any non-alphanumeric character (e.g., '-', '_', '.') or string boundaries.
             /// </summary>
             private static bool ContainsAnyKeyword(string modelID, string[] keywords)
             {
-                return keywords.Any(keyword => modelID.Contains(keyword));
+                return keywords.Any(keyword => ContainsSegment(modelID, keyword));
+            }
+
+            /// <summary>
+            /// Returns true if `keyword` appears in `text` delimited by non-alphanumeric boundaries.
+            /// Example: "zipformer" matches in "sherpa-onnx-zipformer-en" but not inside "foozipformerx".
+            /// </summary>
+            private static bool ContainsSegment(string text, string keyword)
+            {
+                if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(keyword))
+                {
+                    return false;
+                }
+
+                int index = text.IndexOf(keyword, StringComparison.Ordinal);
+                while (index >= 0)
+                {
+                    bool leftOk = index == 0 || !char.IsLetterOrDigit(text[index - 1]);
+                    int end = index + keyword.Length;
+                    bool rightOk = end == text.Length || !char.IsLetterOrDigit(text[end]);
+                    if (leftOk && rightOk)
+                    {
+                        return true;
+                    }
+
+
+                    index = text.IndexOf(keyword, index + 1, StringComparison.Ordinal);
+                }
+                return false;
             }
 
             /// <summary>
@@ -268,11 +328,16 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 {
                     case SpeechRecognitionModelType.Online_Transducer:
                     case SpeechRecognitionModelType.Offline_Transducer:
-                        return transducer_keywords;
+                        return transducer_keywords
+                            .Concat(nemo_parakeet_tdt_keywords)
+                            .Concat(nemo_canary_keywords)
+                            .ToArray();
                     case SpeechRecognitionModelType.Online_Ctc:
                         return ctc_keywords;
                     case SpeechRecognitionModelType.Offline_Nemo_Ctc:
-                        return nemo_ctc_keywords;
+                        return nemo_ctc_keywords
+                            .Concat(nemo_parakeet_tdt_ctc_keywords)
+                            .ToArray();
                     case SpeechRecognitionModelType.Online_Paraformer:
                     case SpeechRecognitionModelType.Offline_Paraformer:
                         return paraformer_keywords;

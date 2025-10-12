@@ -1,9 +1,7 @@
-﻿// Licensed under the MIT License. See LICENSE in the project root for license information.
-
-using NUnit.Framework;
-
-namespace EitanWong.SherpaOnnxUnity.Tests
+﻿namespace Eitan.SherpaOnnxUnity.Tests
 {
+    // Licensed under the MIT License. See LICENSE in the project root for license information.
+    using NUnit.Framework;
     internal class ExampleTestScript
     {
         [Test]

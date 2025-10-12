@@ -22,6 +22,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechRecognition;
 
+        public float Rule1MinTrailingSilence = 2.4f;
+        public float Rule2MinTrailingSilence = 1.2f;
+        public float Rule3MinUtteranceLength = 30f;
+
+
         public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
@@ -104,15 +109,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
-                    NumThreads = 4,
+                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
                     Debug = 0
                 },
                 DecodingMethod = "greedy_search",
                 MaxActivePaths = 4,
                 EnableEndpoint = 1,
-                Rule1MinTrailingSilence = 2.4f,
-                Rule2MinTrailingSilence = 1.2f,
-                Rule3MinUtteranceLength = 30f
+                Rule1MinTrailingSilence = Rule1MinTrailingSilence,
+                Rule2MinTrailingSilence = Rule2MinTrailingSilence,
+                Rule3MinUtteranceLength = Rule3MinUtteranceLength
             };
 
             var int8QuantKeywords = isMobilePlatform ? "int8" : null;
@@ -129,7 +134,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
                     config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
                     break;
-
+                case SpeechRecognitionModelType.Online_Ctc:
+                    config.DecodingMethod = "greedy_search";
+                    config.ModelConfig.Zipformer2Ctc.Model = metadata.GetModelFilePathByKeywords("model", "ctc", int8QuantKeywords)?.First();
+                    break;
                 default:
                     throw new NotSupportedException($"Unsupported online model type: {_modelType}");
             }
@@ -144,8 +152,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
-                    NumThreads = 4,
-                    Debug = 0,
+                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
                     ModelType = string.Empty
                 },
                 DecodingMethod = "greedy_search",

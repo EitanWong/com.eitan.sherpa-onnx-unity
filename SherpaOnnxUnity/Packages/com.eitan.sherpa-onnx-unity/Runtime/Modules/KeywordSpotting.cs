@@ -129,8 +129,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Provider = "cpu",
-                    NumThreads = 1,
-                    Debug = 0
+                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
                 },
                 KeywordsScore = _keywordsScore,
                 KeywordsThreshold = _keywordsThreshold

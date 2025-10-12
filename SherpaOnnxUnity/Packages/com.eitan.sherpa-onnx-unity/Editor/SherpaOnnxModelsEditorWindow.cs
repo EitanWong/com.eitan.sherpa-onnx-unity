@@ -74,7 +74,12 @@ namespace Eitan.SherpaOnnxUnity.Editor
         private class ModelEntry
         {
             public string Category;
-            public string Language;
+            // public string Language;
+            public List<string> Languages = new List<string>();  // 单语种列表（去重）
+            public string LanguagesLabel => (Languages != null && Languages.Count > 0)
+                ? string.Join(", ", Languages)                   // 仅用于 UI 展示
+                : "other";
+
             public SherpaOnnxModelMetadata Metadata;
             public bool? IsDownloaded; // null = checking, true = downloaded, false = not downloaded
             public bool Expanded;
@@ -174,18 +179,23 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             foreach (var metadata in manifest.models)
             {
+                var langs = ParseLanguages(metadata.modelId);
                 var entry = new ModelEntry
                 {
                     Category = metadata.moduleType.ToString(),
                     Metadata = metadata,
-                    Language = GuessLanguage(metadata.modelId),
+                    Languages = langs,
                     VerifyFailed = false,
                     VerifyMessage = string.Empty,
                 };
                 _allEntries.Add(entry);
-                if (!string.IsNullOrEmpty(entry.Language) && !_languages.Contains(entry.Language))
+                // 填充下拉：只加入单语种，跳过 "other"
+                foreach (var lang in langs)
                 {
-                    _languages.Add(entry.Language);
+                    if (string.IsNullOrEmpty(lang) || lang == "other")
+                    { continue; }
+                    if (!_languages.Contains(lang))
+                    { _languages.Add(lang); }
                 }
             }
             KickoffDownloadStatusScan();
@@ -478,7 +488,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 // Meta row: Category & Language as compact labels
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("Category: " + entry.Category, EditorStyles.miniLabel);
-                EditorGUILayout.LabelField("Language: " + (string.IsNullOrEmpty(entry.Language) ? "Unknown" : entry.Language), EditorStyles.miniLabel);
+                // 把原来显示 Language 的一行替换为：
+                EditorGUILayout.LabelField("Language: " + entry.LanguagesLabel, EditorStyles.miniLabel);
                 EditorGUILayout.EndHorizontal();
 
                 // Files (compact)
@@ -771,9 +782,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
             }
             // Language filter
 
-            if (_selectedLanguageIndex > 0 && entry.Language != _languages[_selectedLanguageIndex])
+            if (_selectedLanguageIndex > 0)
             {
-                return false;
+                var selected = _languages[_selectedLanguageIndex];
+                if (entry.Languages == null || !entry.Languages.Contains(selected))
+                { return false; }
             }
             // Search filter
 
@@ -787,41 +800,230 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             return true;
         }
-
         /// <summary>
-        /// Attempts to infer the language code from a modelId by checking common language markers.
+        /// 从 modelId 解析受支持语言，返回**单语种**的规范小写名列表；
+        /// 永不返回复合字符串；若未命中则返回 ["other"]。
+        /// 规范集：chinese, cantonese, english, japanese, korean, thai, vietnamese, russian,
+        ///        french, spanish, german, dutch, danish, czech, catalan, arabic
         /// </summary>
-        private static string GuessLanguage(string id)
+        private static List<string> ParseLanguages(string id)
         {
-            if (string.IsNullOrEmpty(id))
+            var order = new List<string> {
+        "chinese","cantonese","english","japanese","korean","thai","vietnamese","russian",
+        "french","spanish","german","dutch","danish","czech","catalan","arabic"
+    };
+            var canon = new HashSet<string>(order);
+            var found = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(id))
             {
 
-                return "unknown";
+                return new List<string> { "other" };
             }
 
 
-            string[] known = { "zh", "en", "fr", "vi", "ru", "ja", "ko", "th", "yue", "cantonese", "multi" };
-            foreach (var k in known)
+            string s = id.ToLowerInvariant();
+
+            void Add(string label)
             {
-                if (id.Contains($"-{k}-") || id.EndsWith($"-{k}") || id.StartsWith($"{k}-") || id.Contains($"_{k}_"))
+                if (canon.Contains(label) && !found.Contains(label))
                 {
-                    return k;
+                    found.Add(label);
                 }
 
             }
-            // fallback: look for two-letter known codes in segments
-            var parts = id.Split(new[] { '-', '_' }, System.StringSplitOptions.RemoveEmptyEntries);
+
+            // 直观关键词（避免两字母误伤，例如 "ar"）
+            if (s.Contains("chinese") || s.Contains("mandarin"))
+            {
+                Add("chinese");
+            }
+
+
+            if (s.Contains("cantonese"))
+            {
+                Add("cantonese");
+            }
+
+
+            if (s.Contains("english"))
+            {
+                Add("english");
+            }
+
+
+            if (s.Contains("japanese"))
+            {
+                Add("japanese");
+            }
+
+
+            if (s.Contains("korean"))
+            {
+                Add("korean");
+            }
+
+
+            if (s.Contains("thai"))
+            {
+                Add("thai");
+            }
+
+
+            if (s.Contains("vietnamese"))
+            {
+                Add("vietnamese");
+            }
+
+
+            if (s.Contains("russian"))
+            {
+                Add("russian");
+            }
+
+
+            if (s.Contains("french"))
+            {
+                Add("french");
+            }
+
+
+            if (s.Contains("spanish"))
+            {
+                Add("spanish");
+            }
+
+
+            if (s.Contains("german"))
+            {
+                Add("german");
+            }
+
+
+            if (s.Contains("dutch"))
+            {
+                Add("dutch");
+            }
+
+            if (s.Contains("danish"))
+            {
+                Add("danish");
+            }
+
+            if (s.Contains("czech"))
+            {
+                Add("czech");
+            }
+
+            if (s.Contains("catalan"))
+            {
+                Add("catalan");
+            }
+
+            if (s.Contains("arabic"))
+            {
+                Add("arabic");
+            }
+
+            // 代码/locale 扫描（支持 zh/en/ja/ko/th/vi/ru/fr/es/de/nl/da/cs/ca/ar/yue 等）
+
+            char[] seps = new[] { '-', '_', '.', '/', ' ', '+' };
+            var parts = s.Split(seps, StringSplitOptions.RemoveEmptyEntries);
             foreach (var p in parts)
             {
-                if (p.Length == 2 && known.Contains(p))
+                if (p == "zh" || p.StartsWith("zh"))
                 {
-                    return p;
+                    Add("chinese");
+                }
+
+                else if (p == "yue" || p.Contains("cant"))
+                {
+                    Add("cantonese");
+                }
+
+                else if (p == "en" || p.StartsWith("en"))
+                {
+                    Add("english");
+                }
+
+                else if (p == "ja" || p.StartsWith("ja"))
+                {
+                    Add("japanese");
+                }
+
+                else if (p == "ko" || p.StartsWith("ko"))
+                {
+                    Add("korean");
+                }
+
+                else if (p == "th" || p.StartsWith("th"))
+                {
+                    Add("thai");
+                }
+
+                else if (p == "vi" || p.StartsWith("vi"))
+                {
+                    Add("vietnamese");
+                }
+
+                else if (p == "ru" || p.StartsWith("ru"))
+                {
+                    Add("russian");
+                }
+
+                else if (p == "fr" || p.StartsWith("fr"))
+                {
+                    Add("french");
+                }
+
+                else if (p == "es" || p.StartsWith("es"))
+                {
+                    Add("spanish");
+                }
+
+                else if (p == "de" || p.StartsWith("de"))
+                {
+                    Add("german");
+                }
+
+                else if (p == "nl" || p.StartsWith("nl"))
+                {
+                    Add("dutch");
+                }
+
+                else if (p == "da" || p.StartsWith("da"))
+                {
+                    Add("danish");
+                }
+
+                else if (p == "cs" || p.StartsWith("cs"))
+                {
+                    Add("czech");
+                }
+
+                else if (p == "ca" || p.StartsWith("ca"))
+                {
+                    Add("catalan");
+                }
+
+                else if (p == "ar" || p.StartsWith("ar"))
+                {
+                    Add("arabic");
                 }
 
             }
-            return "unknown";
-        }
 
+            if (found.Count == 0)
+            {
+
+                return new List<string> { "other" };
+            }
+
+            // 稳定顺序（按 order 排）
+
+            found.Sort((a, b) => order.IndexOf(a).CompareTo(order.IndexOf(b)));
+            return found;
+        }
         /// <summary>
         /// Initiates a download for the given model metadata if a download URL is present.
         /// </summary>

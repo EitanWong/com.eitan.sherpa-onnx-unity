@@ -65,7 +65,7 @@ namespace Eitan.SherpaOnnxUnity
         private OfflinePunctuationConfig CreatePunctuationConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform)
         {
             var config = new OfflinePunctuationConfig();
-
+            config.Model.NumThreads = UnityEngine.Device.SystemInfo.processorCount;
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             // Configure GTCRN model
@@ -73,7 +73,6 @@ namespace Eitan.SherpaOnnxUnity
 
             if (!string.IsNullOrEmpty(ctTransformerModelPath))
             {
-                config.Model.NumThreads = 1;
                 config.Model.CtTransformer = ctTransformerModelPath;
             }
             else
@@ -82,7 +81,6 @@ namespace Eitan.SherpaOnnxUnity
                 var modelPath = metadata.GetModelFilesByExtensionName(".onnx")?.FirstOrDefault();
                 if (!string.IsNullOrEmpty(modelPath))
                 {
-                    config.Model.NumThreads = 1;
                     config.Model.CtTransformer = modelPath;
                 }
                 else
