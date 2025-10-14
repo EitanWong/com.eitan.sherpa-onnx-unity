@@ -72,7 +72,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             InitializeApplication();
             InitializeUI();
             InitializeEventListeners();
-            InitializeDropdown();
+            _ = InitializeDropdownAsync();
         }
 
         /// <summary>
@@ -129,11 +129,15 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// <summary>
         /// 异步初始化下拉菜单 / Asynchronously initialize dropdown
         /// </summary>
-        private void InitializeDropdown()
+        private async Task InitializeDropdownAsync()
         {
             try
             {
-                var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+                _modelIDDropdown.options.Clear();
+                _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+                _modelLoadOrUnloadButton.gameObject.SetActive(false);
+                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+                _modelLoadOrUnloadButton.gameObject.SetActive(true);
                 PopulateModelDropdown(manifest);
             }
             catch (Exception ex)
@@ -245,7 +249,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             try
             {
-                Mic.Init();
+                if (!Mic.Initialized)
+                {
+                    Mic.Init();
+                }
                 _ringBuffer = new RingBuffer<float>(SAMPLE_RATE * MAX_RECORDING_DURATION);
 
                 var devices = Mic.AvailableDevices;

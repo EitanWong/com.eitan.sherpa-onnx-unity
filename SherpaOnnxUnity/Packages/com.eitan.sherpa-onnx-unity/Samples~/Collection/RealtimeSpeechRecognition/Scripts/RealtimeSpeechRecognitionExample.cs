@@ -47,7 +47,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _transcriptionText.text = "Please click the button to load the model";
             _tipsText.text = string.Empty;
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            InitDropdown();
+            _ = InitDropdownAsync();
             UpdateLoadButtonUI();
         }
 
@@ -93,8 +93,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private void StartRecording()
         {
-
-            Mic.Init();
+            if (!Mic.Initialized)
+            {
+                Mic.Init();
+            }
             var devices = Mic.AvailableDevices;
             if (devices.Count > 0)
             {
@@ -120,9 +122,13 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private void InitDropdown()
+        private async Task InitDropdownAsync()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+            _modelIDDropdown.options.Clear();
+            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+            _modelLoadOrUnloadButton.gameObject.SetActive(false);
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

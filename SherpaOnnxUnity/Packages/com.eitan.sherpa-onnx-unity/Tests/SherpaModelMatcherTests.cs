@@ -368,6 +368,93 @@ namespace Eitan.SherpaOnnxUnity.Tests
             yield return BoolCase("sherpa-onnx-zipformer-ru-2024-09-18", false);
         }
 
+        // --------------- Extra boundary & subtype cases ---------------
+
+        [Test]
+        public void SegmentMatcher_BoundaryCases_Work()
+        {
+            // Positive boundaries
+            Assert.IsTrue(ContainsSeg("foo-ctc-bar", "ctc"), "Hyphen-delimited segment should match.");
+            Assert.IsTrue(ContainsSeg("ctc", "ctc"), "Whole-token match should work.");
+            Assert.IsTrue(ContainsSeg("silero_vad", "silero"), "Underscore delimiter should act as a boundary.");
+            Assert.IsTrue(ContainsSeg("silero-vad", "silero"), "Hyphen is a boundary.");
+
+            // Negative boundaries (no right/left boundary)
+            Assert.IsFalse(ContainsSeg("context", "ctc"), "'ctc' inside 'context' must not match.");
+            Assert.IsFalse(ContainsSeg("whispers", "whisper"), "'whisper' followed by 's' (a letter) is not a boundary.");
+        }
+
+        [Test]
+        public void ModuleType_LID_Boundaries_Work()
+        {
+            // Positive: multiple accepted variants
+            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+                SherpaUtils.Model.GetModuleTypeByModelId("foo-langid-bar"),
+                "langid should map to SpokenLanguageIdentification");
+
+            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+                SherpaUtils.Model.GetModuleTypeByModelId("foo-language-id-bar"),
+                "language-id should map to SpokenLanguageIdentification");
+
+            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+                SherpaUtils.Model.GetModuleTypeByModelId("foo-lid-bar"),
+                "lid should map to SpokenLanguageIdentification");
+
+            // Negative: 'lid' as part of 'lidar' should NOT match
+            Assert.AreEqual(SherpaOnnxModuleType.Undefined,
+                SherpaUtils.Model.GetModuleTypeByModelId("foo-lidar-sensor"),
+                "'lidar' must not be treated as 'lid'");
+        }
+
+        [Test]
+        public void VAD_Ten_Subtype_Boundaries_Work()
+        {
+            // Positive boundaries for TEN
+            Assert.AreEqual(VoiceActivityDetectionModelType.TenVad,
+                SherpaUtils.Model.GetVoiceActivityDetectionModelType("ten-vad"),
+                "ten-vad should map to TenVad");
+            Assert.AreEqual(VoiceActivityDetectionModelType.TenVad,
+                SherpaUtils.Model.GetVoiceActivityDetectionModelType("vad-ten"),
+                "vad-ten should map to TenVad");
+            Assert.AreEqual(VoiceActivityDetectionModelType.TenVad,
+                SherpaUtils.Model.GetVoiceActivityDetectionModelType("foo-ten-bar"),
+                "foo-ten-bar should map to TenVad");
+
+            // Negative: 'ten' inside another token should NOT match
+            Assert.AreEqual(VoiceActivityDetectionModelType.None,
+                SherpaUtils.Model.GetVoiceActivityDetectionModelType("attention-vad"),
+                "'ten' inside 'attention' must not produce TenVad");
+
+            // Silero sanity
+            Assert.AreEqual(VoiceActivityDetectionModelType.SileroVad,
+                SherpaUtils.Model.GetVoiceActivityDetectionModelType("silero-vad"),
+                "silero-vad should map to SileroVad");
+        }
+
+        [Test]
+        public void TTS_Subtype_Keyword_Matches()
+        {
+            Assert.AreEqual(SpeechSynthesisModelType.Matcha,
+                SherpaUtils.Model.GetSpeechSynthesisModelType("foo-matcha-bar"),
+                "matcha should map to Matcha");
+
+            Assert.AreEqual(SpeechSynthesisModelType.Matcha,
+                SherpaUtils.Model.GetSpeechSynthesisModelType("foo-vocos-bar"),
+                "vocos should map to Matcha (vocos backend)");
+
+            Assert.AreEqual(SpeechSynthesisModelType.Vits,
+                SherpaUtils.Model.GetSpeechSynthesisModelType("foo-vits-bar"),
+                "vits should map to VITS");
+
+            Assert.AreEqual(SpeechSynthesisModelType.Kokoro,
+                SherpaUtils.Model.GetSpeechSynthesisModelType("foo-kokoro-bar"),
+                "kokoro should map to Kokoro");
+
+            Assert.AreEqual(SpeechSynthesisModelType.KittenTTS,
+                SherpaUtils.Model.GetSpeechSynthesisModelType("foo-kitten-tts-bar"),
+                "kitten-tts should map to KittenTTS");
+        }
+
         // ---------------- Tests ----------------
 
         [Test, TestCaseSource(nameof(AsrTypeCases))]

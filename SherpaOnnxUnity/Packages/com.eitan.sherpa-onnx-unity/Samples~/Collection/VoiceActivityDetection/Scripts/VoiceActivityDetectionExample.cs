@@ -56,7 +56,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _tipsText.text = "Load a model to begin.";
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            InitDropdown();
+            _ = InitDropdownAsync();
             UpdateLoadButtonUI();
         }
 
@@ -123,8 +123,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("Cannot start recording during playback.");
                 return;
             }
-
-            Mic.Init();
+            if (!Mic.Initialized)
+            {
+                Mic.Init();
+            }
             var devices = Mic.AvailableDevices;
             if (devices.Count > 0)
             {
@@ -174,10 +176,13 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region UI and Initialization
-        private void InitDropdown()
+        private async Task InitDropdownAsync()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
-
+            _modelIDDropdown.options.Clear();
+            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+            _modelLoadOrUnloadButton.gameObject.SetActive(false);
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            _modelLoadOrUnloadButton.gameObject.SetActive(true);
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {

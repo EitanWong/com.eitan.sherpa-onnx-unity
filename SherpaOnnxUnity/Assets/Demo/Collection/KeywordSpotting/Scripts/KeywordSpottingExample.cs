@@ -81,7 +81,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _originalFontSize = _keywordText.fontSize;
             }
-            _ = InitDropdown();
+            _ = InitDropdownAsync();
             InitKeywordsPanelUI();
             UpdateUI();
 
@@ -181,9 +181,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private async Task InitDropdown()
+        private async Task InitDropdownAsync()
         {
+            _modelIDDropdown.options.Clear();
+
+            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+            _modelLoadOrUnloadButton.gameObject.SetActive(false);
             var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

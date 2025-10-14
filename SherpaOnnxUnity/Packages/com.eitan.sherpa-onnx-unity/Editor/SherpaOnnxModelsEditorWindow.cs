@@ -486,7 +486,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             SherpaOnnxModelManifest _mfCheck;
             if (_isLoadingManifest || reg.IsInitializing || !reg.TryGetManifest(out _mfCheck))
             {
-                DrawLoadingSpinner("Fetching model manifest from GitHub… (proxy respected)");
+                DrawLoadingSpinner("Fetching model manifest from GitHub…");
                 return;
             }
 

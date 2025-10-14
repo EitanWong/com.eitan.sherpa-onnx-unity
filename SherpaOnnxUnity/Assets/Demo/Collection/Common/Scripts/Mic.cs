@@ -466,13 +466,41 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
+        private void OnApplicationQuit()
+        {
+            ShutdownDevices();
+        }
+
         private void OnDestroy()
         {
-            // Clean up all devices
-            foreach (var kvp in deviceDataMap)
+            ShutdownDevices();
+        }
+
+        private void ShutdownDevices()
+        {
+            if (deviceDataMap.Count == 0)
             {
-                kvp.Value.Clear();
+                return;
             }
+
+            var devices = new List<Device>(deviceDataMap.Keys);
+            foreach (var device in devices)
+            {
+                if (device == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    device.StopRecording();
+                }
+                catch (Exception ex)
+                {
+                    Debug.unityLogger.LogWarning(TAG, $"Failed to stop microphone '{device.Name}': {ex.Message}");
+                }
+            }
+
             deviceDataMap.Clear();
         }
     }

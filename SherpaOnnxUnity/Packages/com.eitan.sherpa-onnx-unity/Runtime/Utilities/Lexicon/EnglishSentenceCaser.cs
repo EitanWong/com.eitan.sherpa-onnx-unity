@@ -181,6 +181,31 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
         private static readonly ProperCaseLexicon s_lexicon = ProperCaseLexicon.CreateDefault();
         private static readonly char[] s_sentenceEnders = { '.', '!', '?' };
 
+        // Heuristics for reconstructing missing "'s" in ASR all-caps (e.g., ITS -> It's, WHATS -> What's)
+        private static readonly HashSet<string> s_AposSWhitelist = new HashSet<string>(new[]
+        {
+            "it","that","what","who","where","when","why","how","there","here","let"
+        }, StringComparer.OrdinalIgnoreCase);
+
+        // Hints that "its" is likely a contraction ("it's ...") rather than a possessive.
+        private static readonly HashSet<string> s_ItsNextHints = new HashSet<string>(new[]
+        {
+            "a","an","the","not","never","no","got","been","being","going","gonna","ok","okay","fine",
+            "so","too","very","just","probably","definitely","already","also","almost","only","ever","even"
+        }, StringComparer.OrdinalIgnoreCase);
+
+        // Common verb-y next words after "let's ..."
+        private static readonly HashSet<string> s_LetsNextVerbs = new HashSet<string>(new[]
+        {
+            // Core
+            "go","get","see","try","do","use","start","begin","move","keep","take","make","play","eat","talk","run","walk",
+            "build","test","check","learn","read","write","watch","listen","work","study","create","design","debug","optimize","improve","fix",
+            "open","close","show","hide","add","remove","delete","update","upgrade","install","uninstall","reset","restart","reboot",
+            "call","meet","discuss","plan","prepare","review","ship","launch","deploy","release","commit","push","pull","merge",
+            "train","tune","measure","benchmark","profile","compile","render","record","capture","save","load","export","import","analyze",
+            "build","pack","publish","generate","synthesize","simulate","test","validate","verify","evaluate"
+        }, StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// Converts an all-uppercase string to sentence case according to English grammar rules.
         /// Designed to run in real-time on ASR outputs with massive lexicons.
@@ -194,14 +219,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
         {
             if (string.IsNullOrEmpty(allCapsText))
             {
-
                 return string.Empty;
             }
-
 
             var lx = s_lexicon;
             var sb = new StringBuilder(allCapsText.Length);
             bool capitalizeNext = true;
+            bool lastWasLets = false;
 
             // Fixed-size lookahead buffer to avoid List.RemoveAt/RemoveRange churn
             int capacity = lx.MaxPhraseLen;
@@ -209,7 +233,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
             {
                 capacity = 1;
             }
-
 
             var buffer = new Token[capacity];
             int bufferCount = 0;
@@ -235,28 +258,22 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                         {
                             sb.Append(' ');
                         }
-
-
                         needSpace = true;
-
                         // Use the lexicon's exact-cased phrase tokens
                         sb.Append(phrase[j]);
-
                         // Append original trailing punctuation (if any) directly from source
                         if (tok.PuncLen > 0)
                         {
                             sb.Append(allCapsText, tok.PuncStart, tok.PuncLen);
                         }
-
                     }
-
                     // Update capitalization state from the last token emitted
                     var lastTok = buffer[consumed - 1];
                     capitalizeNext = lastTok.HasSentenceEnder;
-
+                    // Phrase emission clears "let's" context (we only special-case the immediate next token).
+                    lastWasLets = false;
                     // Consume tokens from the front by shifting the window
                     ShiftLeft(buffer, consumed, ref bufferCount);
-
                     // Refill lookahead
                     FillLookahead(allCapsText, capacity - bufferCount, ref idx, buffer, ref bufferCount);
                     continue;
@@ -268,12 +285,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                 {
                     sb.Append(' ');
                 }
-
-
                 needSpace = true;
-
-                EmitSingleToken(allCapsText, t, sb, lx, ref capitalizeNext);
-
+                EmitSingleToken(allCapsText, t, sb, lx, ref capitalizeNext, ref lastWasLets, bufferCount > 1, bufferCount > 1 ? buffer[1] : default);
                 // Consume one token and refill
                 ShiftLeft(buffer, 1, ref bufferCount);
                 FillLookahead(allCapsText, capacity - bufferCount, ref idx, buffer, ref bufferCount);
@@ -301,12 +314,202 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
             bufferCount = Math.Max(remaining, 0);
         }
 
+        // Detect if the previous non-space character is a *non-Latin* letter (e.g., CJK),
+        // in which case we treat the next English token like the start of a segment and capitalize it.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsLatinLetter(char c) => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ShouldCapitalizeAfterNonLatin(string source, int wordStart)
+        {
+            int i = wordStart - 1;
+            // Skip spaces
+            while (i >= 0 && source[i] == ' ')
+            {
+                i--;
+            }
+            if (i < 0)
+            {
+                return false;
+            }
+
+            char prev = source[i];
+            // If previous char is Latin letter/digit or apostrophe, do not force-capitalize
+            if (IsLatinLetter(prev) || char.IsDigit(prev) || prev == '\'' || prev == '’')
+            {
+                return false;
+            }
+
+            // If previous is a letter but not Latin (e.g., CJK), treat as new English segment
+            return char.IsLetter(prev) && !IsLatinLetter(prev);
+        }
+
         // Emit a single token using Single/Upper lexicons and sentence-capitalization rules
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void EmitSingleToken(string source, Token t, StringBuilder sb, ProperCaseLexicon lx, ref bool capitalizeNext)
+        private static bool ContainsLower(ReadOnlySpan<char> span)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (char.IsLower(span[i]))
+                {
+                    return true;
+                }
+
+            }
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsLetsTokenCore(ReadOnlySpan<char> core)
+        {
+            if (core.Length != 5)
+            {
+                return false;
+            }
+
+
+            char c0 = core[0], c1 = core[1], c2 = core[2], c3 = core[3], c4 = core[4];
+            return ((c0 == 'l' || c0 == 'L') &&
+                    (c1 == 'e' || c1 == 'E') &&
+                    (c2 == 't' || c2 == 'T') &&
+                    (c3 == '\'' || c3 == '’') &&
+                    (c4 == 's' || c4 == 'S'));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (bool IsLatinWord, string Lower) GetPrevLatinWordLower(string source, int wordStart)
+        {
+            int i = wordStart - 1;
+            // Skip spaces
+            while (i >= 0 && source[i] == ' ')
+            {
+                i--;
+            }
+
+            if (i < 0)
+            {
+                return (false, string.Empty);
+            }
+
+            // Find the start of previous non-space run
+
+            int end = i + 1; // exclusive
+            int start = i;
+            while (start >= 0 && source[start] != ' ')
+            {
+                start--;
+            }
+
+
+            start++;
+
+            // Split trailing punctuation for the previous run
+            int last = end - 1;
+            while (last >= start)
+            {
+                char c = source[last];
+                if (char.IsLetterOrDigit(c) || c == '\'' || c == '’')
+                {
+                    break;
+                }
+
+
+                last--;
+            }
+            if (last < start)
+            {
+                return (false, string.Empty);
+            }
+
+            // Now [start, last] is the "core" of the previous token
+
+            bool hasLatin = false;
+            for (int k = start; k <= last; k++)
+            {
+                char c = source[k];
+                if (IsLatinLetter(c)) { hasLatin = true; break; }
+            }
+            string lower = source.AsSpan(start, last - start + 1).ToString().ToLowerInvariant();
+            return (hasLatin, lower);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void EmitSingleToken(string source, Token t, StringBuilder sb, ProperCaseLexicon lx, ref bool capitalizeNext, ref bool lastWasLets, bool hasNext, Token nextTok)
         {
             // Slice for the full token (no allocation)
             ReadOnlySpan<char> wordSpan = source.AsSpan(t.WordStart, t.WordLen);
+
+            // If previous token was "let's", force this token to be lowercased (verb form),
+            // ignoring Single/Upper lexicon matches like the programming language "Go".
+            if (lastWasLets)
+            {
+                // Identify leading punctuation so we preserve it.
+                int leadTmp = 0;
+                while (leadTmp < wordSpan.Length)
+                {
+                    char c = wordSpan[leadTmp];
+                    if (char.IsLetterOrDigit(c) || c == '\'' || c == '’')
+                    {
+                        break;
+                    }
+                    leadTmp++;
+                }
+
+                ReadOnlySpan<char> coreTmp = wordSpan.Slice(leadTmp);
+
+                string wordStringTmp = wordSpan.ToString();
+                // Consider trailing punctuation combos like C# / C++ as a single ALWAYS-UPPER token
+                string? puncStrTmp = t.PuncLen > 0 ? source.AsSpan(t.PuncStart, t.PuncLen).ToString() : null;
+                bool isAlwaysUpper = lx.IsUpper(wordStringTmp);
+                if (!isAlwaysUpper && !string.IsNullOrEmpty(puncStrTmp))
+                {
+                    if (puncStrTmp == "#" || puncStrTmp == "++")
+                    {
+                        var combined = wordStringTmp + puncStrTmp;
+                        if (lx.IsUpper(combined))
+                        {
+                            isAlwaysUpper = true;
+                        }
+                    }
+                }
+                bool coreStartsWithLetter = coreTmp.Length > 0 && char.IsLetter(coreTmp[0]);
+
+                // If the next token is non-letter (e.g., 123, emoji), emit it and KEEP the "let's" context for the following token.
+                if (!coreStartsWithLetter)
+                {
+                    // Emit token as-is (word + trailing punctuation)
+                    sb.Append(source, t.WordStart, t.WordLen);
+                    if (t.PuncLen > 0)
+                    {
+                        sb.Append(source, t.PuncStart, t.PuncLen);
+                    }
+                    capitalizeNext = t.HasSentenceEnder;
+                    // Do NOT clear lastWasLets — we want to lower the next letter-starting token.
+                    return;
+                }
+
+                // If not ALWAYS-UPPER and starts with a letter, force-lowercase this token (verb-ish) and clear context.
+                if (!isAlwaysUpper)
+                {
+                    if (leadTmp > 0)
+                    {
+                        sb.Append(source, t.WordStart, leadTmp);
+                    }
+                    for (int k = 0; k < coreTmp.Length; k++)
+                    {
+                        sb.Append(char.ToLowerInvariant(coreTmp[k]));
+                    }
+                    if (t.PuncLen > 0)
+                    {
+                        sb.Append(source, t.PuncStart, t.PuncLen);
+                    }
+                    capitalizeNext = t.HasSentenceEnder;
+                    lastWasLets = false;
+                    return;
+                }
+
+                // Otherwise it's ALWAYS-UPPER; fall through to normal processing and CLEAR the context (only immediate token is affected).
+                lastWasLets = false;
+            }
 
             // Identify leading punctuation so we can capitalize the first alphabetic after it.
             int lead = 0;
@@ -318,37 +521,46 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                     break;
                 }
                 // Keep apostrophe as part of the core for cases like '80s (rare in ASR); treat opening quotes/parens as leading.
-
                 if (c == '\'' || c == '’')
                 {
                     break;
                 }
-
-
                 lead++;
             }
 
             ReadOnlySpan<char> coreSpan = wordSpan.Slice(lead);
+            bool coreStartsLatin = coreSpan.Length > 0 && IsLatinLetter(coreSpan[0]);
+            bool segmentStart = capitalizeNext || (coreStartsLatin && ShouldCapitalizeAfterNonLatin(source, t.WordStart));
+
             string? wordString = null; // full token string (may include leading punctuation)
-            string? coreString = null; // token without leading punctuation
+            string? coreString = null;  // token without leading punctuation
+            bool emittedLets = false;
 
-            // Special-case single-letter I (no leading punctuation)
-            if (coreSpan.Length == 1 && (coreSpan[0] == 'I' || coreSpan[0] == 'i') && lead == 0)
-            {
-                sb.Append('I');
-                goto AppendPuncAndFinish;
-            }
+            // Treat the start of an English segment (sentence start or after non‑Latin) as a capitalization trigger.
+            // (defined above as `segmentStart`)
 
-            // First, respect ALWAYS-UPPER entries (e.g., ".NET", NASA). This uses the full token (with leading punctuation).
+            // Always‑upper items (e.g., ".NET", HTTP) — use the full token so leading punctuation is honored.
             wordString ??= wordSpan.ToString();
-            if (lx.IsUpper(wordString))
+            bool alwaysUpperHit = lx.IsUpper(wordString);
+            if (!alwaysUpperHit && t.PuncLen > 0)
             {
-                // Uppercase the entire token (including any leading punctuation like ".net" -> ".NET").
-                sb.Append(wordString.ToUpperInvariant());
+                string puncStr = source.AsSpan(t.PuncStart, t.PuncLen).ToString();
+                if (puncStr == "#" || puncStr == "++")
+                {
+                    var combined = wordString + puncStr; // e.g., "C#", "C++"
+                    if (lx.IsUpper(combined))
+                    {
+                        alwaysUpperHit = true;
+                    }
+                }
+            }
+            if (alwaysUpperHit)
+            {
+                sb.Append(wordString.ToUpperInvariant()); // trailing punctuation appended later
                 goto AppendPuncAndFinish;
             }
 
-            // Proper-case single-word dictionary on the core (no leading punctuation)
+            // Proper‑cased single tokens (e.g., "OpenAI", "GitHub").
             if (coreSpan.Length > 0)
             {
                 coreString ??= coreSpan.ToString();
@@ -365,7 +577,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                 }
             }
 
-            // Keep pronoun I uppercase with common contractions mid-sentence: I'm, I'd, I've, I'll  (also handles curly apostrophe)
+            // Single‑letter pronoun "I" at any position (no leading punctuation)
+            if (coreSpan.Length == 1 && (coreSpan[0] == 'I' || coreSpan[0] == 'i') && lead == 0)
+            {
+                sb.Append('I');
+                goto AppendPuncAndFinish;
+            }
+
+            // Keep "I'm/I've/I'd/I'll" with capital I even mid‑sentence (ASCII or curly apostrophe)
             if (coreSpan.Length >= 2 && (coreSpan[0] == 'I' || coreSpan[0] == 'i') && (coreSpan[1] == '\'' || coreSpan[1] == '’'))
             {
                 if (lead > 0)
@@ -384,23 +603,177 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                 goto AppendPuncAndFinish;
             }
 
+            // ---------- Heuristic reconstruction of missing "'s" (contractions like it's / what's / let's) ----------
+            // Only attempt if there is no apostrophe in the core and it ends with 's' (case-insensitive).
+            bool coreHasApostrophe = coreSpan.IndexOf('\'') >= 0 || coreSpan.IndexOf('’') >= 0;
+            if (!coreHasApostrophe && coreSpan.Length >= 2)
+            {
+                char last = coreSpan[coreSpan.Length - 1];
+                if (last == 's' || last == 'S')
+                {
+                    ReadOnlySpan<char> baseSpan = coreSpan.Slice(0, coreSpan.Length - 1);
+                    string baseLower = baseSpan.ToString().ToLowerInvariant();
+
+                    if (s_AposSWhitelist.Contains(baseLower))
+                    {
+                        bool ok = true;
+
+                        // Special handling for ambiguous cases:
+                        if (baseLower == "it")
+                        {
+                            // Favor "it's" at sentence start or when next token hints at a predicate/adjective/aux.
+                            ok = segmentStart;
+
+                            if (!ok && hasNext)
+                            {
+                                // Extract next token's core (without leading punctuation).
+                                ReadOnlySpan<char> nSpan = source.AsSpan(nextTok.WordStart, nextTok.WordLen);
+                                int nLead = 0;
+                                while (nLead < nSpan.Length)
+                                {
+                                    char c = nSpan[nLead];
+                                    if (char.IsLetterOrDigit(c) || c == '\'' || c == '’')
+                                    {
+                                        break;
+                                    }
+                                    nLead++;
+                                }
+                                ReadOnlySpan<char> nCore = nSpan.Slice(nLead);
+                                if (!nCore.IsEmpty)
+                                {
+                                    string nextLower = nCore.ToString().ToLowerInvariant();
+                                    ok = s_ItsNextHints.Contains(nextLower) || nextLower.EndsWith("ing", StringComparison.Ordinal);
+                                }
+                            }
+                        }
+                        else if (baseLower == "let")
+                        {
+                            // Prefer the contraction at sentence/segment start, or when the next token looks like a verb.
+                            ok = segmentStart;
+
+                            // Look ahead
+                            if (hasNext && !ok)
+                            {
+                                ReadOnlySpan<char> nSpan = source.AsSpan(nextTok.WordStart, nextTok.WordLen);
+                                int nLead = 0;
+                                while (nLead < nSpan.Length)
+                                {
+                                    char c = nSpan[nLead];
+                                    if (char.IsLetterOrDigit(c) || c == '\'' || c == '’')
+                                    {
+                                        break;
+                                    }
+
+
+                                    nLead++;
+                                }
+                                ReadOnlySpan<char> nCore = nSpan.Slice(nLead);
+                                if (!nCore.IsEmpty)
+                                {
+                                    string nextLower = nCore.ToString().ToLowerInvariant();
+                                    // Heuristic: base-form verb list or common -ing continuation.
+                                    ok = s_LetsNextVerbs.Contains(nextLower) || nextLower.EndsWith("ing", StringComparison.Ordinal);
+                                }
+                            }
+
+                            // Look behind to avoid false positives like "He lets us ..."
+                            if (ok)
+                            {
+                                var (prevIsLatin, prevLower) = GetPrevLatinWordLower(source, t.WordStart);
+                                if (prevIsLatin && hasNext)
+                                {
+                                    // If the next word is "us" and there's a Latin subject before, it's likely "lets us" (3rd person), not "let's".
+                                    ReadOnlySpan<char> nSpan2 = source.AsSpan(nextTok.WordStart, nextTok.WordLen);
+                                    int nLead2 = 0;
+                                    while (nLead2 < nSpan2.Length)
+                                    {
+                                        char c = nSpan2[nLead2];
+                                        if (char.IsLetterOrDigit(c) || c == '\'' || c == '’')
+                                        {
+                                            break;
+                                        }
+
+
+                                        nLead2++;
+                                    }
+                                    ReadOnlySpan<char> nCore2 = nSpan2.Slice(nLead2);
+                                    if (!nCore2.IsEmpty)
+                                    {
+                                        string nextLower2 = nCore2.ToString().ToLowerInvariant();
+                                        if (nextLower2 == "us")
+                                        {
+                                            ok = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // For "what/that/who/where/when/why/how/there/here" we almost always want the contraction.
+                            ok = true;
+                        }
+
+                        if (ok)
+                        {
+                            if (lead > 0)
+                            {
+                                sb.Append(source, t.WordStart, lead);
+                            }
+
+                            // Emit base with proper casing. Capitalize at sentence start OR when starting an English
+                            // segment immediately after a non-Latin token (e.g., CJK + space + LETS -> "Let's").
+                            bool capThis = segmentStart;
+                            if (baseSpan.Length > 0)
+                            {
+                                // First letter
+                                sb.Append(capThis ? char.ToUpperInvariant(baseSpan[0]) : char.ToLowerInvariant(baseSpan[0]));
+                                // Rest lower
+                                for (int k = 1; k < baseSpan.Length; k++)
+                                {
+                                    sb.Append(char.ToLowerInvariant(baseSpan[k]));
+                                }
+                            }
+                            sb.Append("'s");
+                            emittedLets = baseLower == "let";
+                            goto AppendPuncAndFinish;
+                        }
+                    }
+                }
+            }
+            // ---------- End "'s" reconstruction ----------
+
+            // Preserve already‑mixed case when not at a segment start and not matched above.
+            if (ContainsLower(wordSpan) && !segmentStart)
+            {
+                sb.Append(source, t.WordStart, t.WordLen);
+                // If the core token is exactly "let’s"/"let's", propagate the lowering context.
+                if (IsLetsTokenCore(coreSpan))
+                {
+                    emittedLets = true;
+                }
+                goto AppendPuncAndFinish;
+            }
+
             // General casing:
-            if (capitalizeNext && coreSpan.Length > 0)
+            if (segmentStart && coreSpan.Length > 0)
             {
                 // Preserve leading punctuation, capitalize the first alphabetic char, lower the rest
                 if (lead > 0)
                 {
                     sb.Append(source, t.WordStart, lead);
                 }
-
                 // Capitalize first char of core
-
                 sb.Append(char.ToUpperInvariant(coreSpan[0]));
                 for (int k = 1; k < coreSpan.Length; k++)
                 {
                     sb.Append(char.ToLowerInvariant(coreSpan[k]));
                 }
-
+                // If this token is "let's" (ASCII or curly apostrophe), mark for lowering the next token.
+                if (IsLetsTokenCore(coreSpan))
+                {
+                    emittedLets = true;
+                }
             }
             else
             {
@@ -409,13 +782,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
                 {
                     sb.Append(source, t.WordStart, lead);
                 }
-
-
                 for (int k = 0; k < coreSpan.Length; k++)
                 {
                     sb.Append(char.ToLowerInvariant(coreSpan[k]));
                 }
-
+                // If this token is "let's" (ASCII or curly apostrophe), mark for lowering the next token.
+                if (IsLetsTokenCore(coreSpan))
+                {
+                    emittedLets = true;
+                }
             }
 
         AppendPuncAndFinish:
@@ -426,8 +801,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
             }
 
             // Update sentence-capitalization flag
-
             capitalizeNext = t.HasSentenceEnder;
+            // Update "let's" context for the next token.
+            if (emittedLets)
+            {
+                lastWasLets = true;
+            }
+            else
+            {
+                // Clear unless explicitly set by this token.
+                lastWasLets = false;
+            }
         }
 
         /// <summary>
@@ -642,6 +1026,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
         private static readonly string[] Upper = new string[]
         {
             // Tech & Computing
+            ".NET","C#","C++",
             "CPU","GPU","APU","RAM","ROM","SSD","HDD","API","HTTP","HTTPS","TCP","UDP","TLS","SSL","SSH","DNS","DHCP","MQTT","AMQP",
             "JSON","XML","YAML","CSV","TSV","HTML","CSS","SVG","WASM","SDK","IDE","USB","VGA","HDMI","REST","SOAP","RPC","GRPC","JWT",
             "AI","ML","DL","NLP","CV","RL","LLM","ASR","TTS","VAD","VITS","DSP","BERT","GPT","T5","GAN","CNN","RNN","LSTM",

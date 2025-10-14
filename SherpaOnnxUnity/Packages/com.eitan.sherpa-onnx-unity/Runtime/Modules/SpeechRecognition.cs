@@ -154,7 +154,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
                     NumThreads = UnityEngine.Device.SystemInfo.processorCount,
+                    Provider="coreml",
                     ModelType = string.Empty
+
                 },
                 DecodingMethod = "greedy_search",
                 MaxActivePaths = 4,

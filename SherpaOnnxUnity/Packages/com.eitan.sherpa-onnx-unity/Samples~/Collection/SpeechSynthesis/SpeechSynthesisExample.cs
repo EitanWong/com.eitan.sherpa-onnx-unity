@@ -36,7 +36,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private Color _originLoadBtnColor;
         private readonly string defaultModelID = "vits-melo-tts-zh_en";
-        
+
         private AudioSource audioSource;
         private bool _isGenerating = false;
         private AudioClip _lastGeneratedClip;
@@ -60,7 +60,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _tipsText.text = "Load a model to begin.";
             _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            InitDropdown();
+            _ = InitDropdownAsync();
             UpdateLoadButtonUI();
             SetOperationContainerDisplay(false);
         }
@@ -79,7 +79,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _generateButton.onClick.RemoveListener(HandleGenerateButtonClick);
             }
-            if( _speedSlider != null)
+            if (_speedSlider != null)
             {
                 _speedSlider.onValueChanged.RemoveListener(OnSpeedSliderChanged);
             }
@@ -100,8 +100,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
 
             var reporter = new SherpaOnnxFeedbackReporter(null, this);
-            TTS = new SpeechSynthesis(modelID,  reporter: reporter);
-            
+            TTS = new SpeechSynthesis(modelID, reporter: reporter);
+
             UpdateLoadButtonUI();
 
         }
@@ -121,7 +121,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
             _tipsText.text = "Load a model to begin.";
             UpdateLoadButtonUI();
-            SetOperationContainerDisplay(false); 
+            SetOperationContainerDisplay(false);
         }
 
         /// <summary>
@@ -138,17 +138,20 @@ namespace Eitan.SherpaOnnxUnity.Samples
             if (TTS != null)
             {
                 TTS?.Dispose();
-                TTS=null;
+                TTS = null;
             }
         }
         #endregion
 
         #region UI and Initialization
 
-        private void InitDropdown()
+        private async Task InitDropdownAsync()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
-
+            _modelIDDropdown.options.Clear();
+            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+            _modelLoadOrUnloadButton.gameObject.SetActive(false);
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            _modelLoadOrUnloadButton.gameObject.SetActive(true);
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
@@ -187,7 +190,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
                 _tipsText.text = "Load a model to begin.";
-                
+
             }
         }
 
@@ -362,9 +365,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _initMessageText.text = feedback.Message;
         }
         #endregion
-        
+
         #region Enhanced UX Methods
-        
+
         private void InitializeDefaultValues()
         {
             // Set helpful defaults
@@ -373,22 +376,22 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _voiceInputField.text = "0";
                 _voiceInputField.placeholder.GetComponent<Text>().text = "Voice ID (0, 1, 2...)";
             }
-            
+
             if (_speedSlider != null)
             {
                 _speedSlider.value = 1f;
                 _speedSlider.minValue = 0.5f;
                 _speedSlider.maxValue = 2.0f;
             }
-            
+
             if (_contentInputField != null)
             {
                 _contentInputField.placeholder.GetComponent<Text>().text = "Enter text to synthesize speech...";
             }
         }
-        
-        
-        
+
+
+
         private void OnSpeedSliderChanged(float value)
         {
             // Show speed value in tips when changing
@@ -398,7 +401,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _speedValueText.text = $"Speed {value:F2}x：";
             }
         }
-        
+
         private bool ValidateInputs()
         {
             if (string.IsNullOrWhiteSpace(_contentInputField.text))
@@ -407,37 +410,37 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _speechSynthesisStatusText.text = "<color=orange>⚠ Input Required</color>";
                 return false;
             }
-            
+
             if (!int.TryParse(_voiceInputField.text, out int voiceID) || voiceID < 0)
             {
                 _tipsText.text = "<b><color=orange>⚠ Invalid Voice ID</color></b>\nPlease enter a valid voice ID number.\n\n<b>Common Values:</b> 0, 1, 2, 3...";
                 _speechSynthesisStatusText.text = "<color=orange>⚠ Invalid Voice ID</color>";
                 return false;
             }
-            
+
             if (!IsModelLoaded)
             {
                 _tipsText.text = "<b><color=red>❌ No Model Loaded</color></b>\nPlease load a TTS model first.\n\n<b>Steps:</b>\n1. Select model from dropdown\n2. Click 'Load Model'\n3. Wait for loading to complete";
                 _speechSynthesisStatusText.text = "<color=red>❌ Model Required</color>";
                 return false;
             }
-            
+
             if (_isGenerating)
             {
                 _tipsText.text = "<b><color=yellow>⏳ Generation in Progress</color></b>\nPlease wait for current generation to complete.";
                 return false;
             }
-            
+
             return true;
         }
-        
+
         private void UpdateGenerateButtonState()
         {
             if (_generateButton != null)
             {
                 bool canGenerate = IsModelLoaded && !_isGenerating;
                 _generateButton.interactable = canGenerate;
-                
+
                 var buttonText = _generateButton.GetComponentInChildren<Text>();
                 if (buttonText != null)
                 {

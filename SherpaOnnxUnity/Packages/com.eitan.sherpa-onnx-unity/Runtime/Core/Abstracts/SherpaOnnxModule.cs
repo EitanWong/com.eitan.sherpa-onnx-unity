@@ -58,11 +58,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }, feedbackArgs);
                 });
 
-                var metadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync(modelID);
+                var metadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync(modelID, ct);
 
                 try
                 {
-                    var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelAsync(metadata, reporterAdapter);
+                    var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelAsync(metadata, reporterAdapter, ct);
 
                     if (prepareResult)
                     {

@@ -21,6 +21,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public bool IsInitializing { get; private set; }
         private readonly object _initLock = new object();
         private Task _initTask;
+        private CancellationTokenSource _initCts;
         private int _initGeneration = 0;
 
         public event Action Initialized;
@@ -37,6 +38,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             lock (_initLock)
             {
                 // Bump generation to invalidate any older init completions
+                _initCts?.Cancel();
+                _initCts?.Dispose();
+                _initCts = null;
                 _initGeneration++;
                 _manifest = null;
                 _modelData.Clear();
@@ -51,8 +55,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// Initialize the registry from the default manifest once, asynchronously.
         /// Safe to call multiple times; concurrent callers await the same task.
         /// </summary>
-        public Task InitializeAsync()
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
         {
+            Task initTask;
+            CancellationTokenSource currentCts;
+
             lock (_initLock)
             {
                 if (IsInitialized)
@@ -60,17 +67,78 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     return Task.CompletedTask;
                 }
 
-                if (_initTask == null)
+                if (_initTask == null || _initTask.IsFaulted || _initTask.IsCanceled)
                 {
+                    _initCts?.Dispose();
+                    _initCts = new CancellationTokenSource();
+                    currentCts = _initCts;
                     IsInitializing = true;
                     int gen = ++_initGeneration; // capture new generation for this init
-                    _initTask = InitializeInternalAsync(gen);
+                    _initTask = InitializeInternalAsync(gen, _initCts.Token);
                 }
-                return _initTask;
+                else
+                {
+                    currentCts = _initCts;
+                }
+
+                initTask = _initTask;
+            }
+
+            CancellationTokenRegistration registration = default;
+            try
+            {
+                if (cancellationToken.CanBeCanceled && currentCts != null)
+                {
+                    registration = cancellationToken.Register(() =>
+                    {
+                        if (!currentCts.IsCancellationRequested)
+                        {
+                            currentCts.Cancel();
+                        }
+                    }, useSynchronizationContext: false);
+                }
+
+                if (!cancellationToken.CanBeCanceled)
+                {
+                    return initTask;
+                }
+
+                return WaitForInitTaskAsync(initTask, cancellationToken);
+            }
+            finally
+            {
+                registration.Dispose();
             }
         }
 
-        private async Task InitializeInternalAsync(int generation)
+        private static async Task WaitForInitTaskAsync(Task initTask, CancellationToken cancellationToken)
+        {
+            if (initTask == null)
+            {
+                return;
+            }
+
+            if (initTask.IsCompleted)
+            {
+                await initTask.ConfigureAwait(true);
+                return;
+            }
+
+            var completionTcs = new TaskCompletionSource<bool>();
+
+            using (cancellationToken.Register(() => completionTcs.TrySetCanceled(), useSynchronizationContext: false))
+            {
+                var completed = await Task.WhenAny(initTask, completionTcs.Task).ConfigureAwait(true);
+                if (completed != initTask)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+
+            await initTask.ConfigureAwait(true);
+        }
+
+        private async Task InitializeInternalAsync(int generation, CancellationToken cancellationToken)
         {
             if (IsInitialized)
             {
@@ -80,8 +148,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Build manifest without blocking the main thread.
                 _manifest = await Constants.SherpaOnnxConstants.GetDefaultManifestAsync().ConfigureAwait(true);
+                cancellationToken.ThrowIfCancellationRequested();
                 _resolvedModelIds.Clear();
                 PopulateDictionaryFromManifest(_manifest);
 
@@ -106,6 +176,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     UnityEngine.Debug.LogWarning($"Initialized callback error: {cbEx.Message}");
                 }
             }
+            catch (OperationCanceledException)
+            {
+                IsInitialized = false;
+                throw;
+            }
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogError($"Failed to initialize model registry: {ex.GetType().Name}: {ex.Message}.");
@@ -120,6 +195,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     if (generation == _initGeneration)
                     {
                         _initTask = null;
+                        _initCts?.Dispose();
+                        _initCts = null;
                     }
                 }
             }
@@ -222,9 +299,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Async version of GetMetadata; awaits initialization if needed.
         /// </summary>
-        public async Task<SherpaOnnxModelMetadata> GetMetadataAsync(string modelId)
+        public async Task<SherpaOnnxModelMetadata> GetMetadataAsync(string modelId, CancellationToken cancellationToken = default)
         {
-            await InitializeAsync().ConfigureAwait(true);
+            await InitializeAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return GetMetadata(modelId);
         }
 
@@ -244,17 +322,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// </summary>
         public async Task<SherpaOnnxModelManifest> WaitForManifestAsync(CancellationToken cancellationToken = default)
         {
-            var t = InitializeAsync();
-            while (!t.IsCompleted)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-
-
-                await Task.Yield(); // keep UI thread responsive
-            }
+            await InitializeAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return _manifest;
         }
 
@@ -274,9 +343,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Async version of GetManifest; awaits initialization if needed.
         /// </summary>
-        public async Task<SherpaOnnxModelManifest> GetManifestAsync()
+        public async Task<SherpaOnnxModelManifest> GetManifestAsync(CancellationToken cancellationToken = default)
         {
-            await InitializeAsync().ConfigureAwait(true);
+            await InitializeAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return _manifest;
         }
     }

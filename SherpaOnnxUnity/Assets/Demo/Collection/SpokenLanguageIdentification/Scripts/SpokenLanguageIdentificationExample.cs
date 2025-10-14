@@ -133,7 +133,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             try
             {
+                _modelIDDropdown.options.Clear();
+                _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+                _modelLoadOrUnloadButton.gameObject.SetActive(false);
                 var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+                _modelLoadOrUnloadButton.gameObject.SetActive(true);
                 PopulateModelDropdown(manifest);
             }
             catch (Exception ex)

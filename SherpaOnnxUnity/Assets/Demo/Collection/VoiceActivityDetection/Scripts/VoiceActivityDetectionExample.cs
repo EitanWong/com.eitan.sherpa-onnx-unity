@@ -178,8 +178,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #region UI and Initialization
         private async Task InitDropdownAsync()
         {
+            _modelIDDropdown.options.Clear();
+            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
+            _modelLoadOrUnloadButton.gameObject.SetActive(false);
             var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
-
+            _modelLoadOrUnloadButton.gameObject.SetActive(true);
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {

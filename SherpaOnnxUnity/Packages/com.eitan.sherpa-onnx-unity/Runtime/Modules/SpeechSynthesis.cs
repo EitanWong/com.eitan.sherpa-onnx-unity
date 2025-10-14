@@ -93,7 +93,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                     break;
                 case SpeechSynthesisModelType.Matcha:
-                    var vocoderMetaData = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ");
+                    var vocoderMetaData = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
                     if (modelType == SpeechSynthesisModelType.Matcha)
                     {
                         //prepare vocoder
@@ -148,6 +148,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                var combinedToken = linkedCts.Token;
+                combinedToken.ThrowIfCancellationRequested();
+
                 OfflineTtsGeneratedAudio generatedAudio = _tts.Generate(text, speed, voiceID);
 
                 if (generatedAudio == null)
@@ -157,6 +161,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 var tcs = new TaskCompletionSource<AudioClip>();
+                using var registration = combinedToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
 
                 void CreateAudioClipOnMainThread()
                 {
@@ -164,16 +169,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     {
                         var audioClip = AudioClip.Create($"tts_{voiceID}_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
                         audioClip.SetData(generatedAudio.Samples, 0);
-                        tcs.SetResult(audioClip);
+                        tcs.TrySetResult(audioClip);
                     }
                     catch (Exception ex)
                     {
-                        tcs.SetException(ex);
+                        tcs.TrySetException(ex);
                     }
                 }
+
                 ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
 
-                return await tcs.Task;
+                var clip = await tcs.Task.ConfigureAwait(false);
+                combinedToken.ThrowIfCancellationRequested();
+                return clip;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
@@ -197,6 +205,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                var combinedToken = linkedCts.Token;
+                combinedToken.ThrowIfCancellationRequested();
+
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallback(text, speed, voiceID, callback);
 
                 if (generatedAudio == null)
@@ -206,6 +218,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 var tcs = new TaskCompletionSource<AudioClip>();
+                using var registration = combinedToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
 
                 void CreateAudioClipOnMainThread()
                 {
@@ -213,19 +226,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     {
                         var audioClip = AudioClip.Create($"tts_{voiceID}_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
                         audioClip.SetData(generatedAudio.Samples, 0);
-                        tcs.SetResult(audioClip);
+                        tcs.TrySetResult(audioClip);
                     }
                     catch (Exception ex)
                     {
-                        tcs.SetException(ex);
+                        tcs.TrySetException(ex);
                     }
                 }
-                ExecuteOnMainThread(_ =>
-                {
-                    CreateAudioClipOnMainThread();
-                });
 
-                return await tcs.Task;
+                ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
+
+                var clip = await tcs.Task.ConfigureAwait(false);
+                combinedToken.ThrowIfCancellationRequested();
+                return clip;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
@@ -249,6 +262,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                var combinedToken = linkedCts.Token;
+                combinedToken.ThrowIfCancellationRequested();
+
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
                 if (generatedAudio == null)
                 {
@@ -257,6 +274,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 }
 
                 var tcs = new TaskCompletionSource<AudioClip>();
+                using var registration = combinedToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
 
                 void CreateAudioClipOnMainThread()
                 {
@@ -266,18 +284,20 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         {
                             var audioClip = AudioClip.Create($"tts_{voiceID}_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
                             audioClip.SetData(generatedAudio.Samples, 0);
-                            tcs.SetResult(audioClip);
+                            tcs.TrySetResult(audioClip);
                         }
                     }
                     catch (Exception ex)
                     {
-                        tcs.SetException(ex);
+                        tcs.TrySetException(ex);
                     }
                 }
 
                 ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
 
-                return await tcs.Task;
+                var clip = await tcs.Task.ConfigureAwait(false);
+                combinedToken.ThrowIfCancellationRequested();
+                return clip;
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
