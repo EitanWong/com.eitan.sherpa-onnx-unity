@@ -11,8 +11,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public SherpaOnnxModuleType moduleType;
         public string downloadUrl;
         public string downloadFileHash;
-        public string[] modelFileNames;
-        public string[] modelFileHashes;
+        // public string[] modelFileNames;
+        // public string[] modelFileHashes;
         public int numberOfSpeakers;
         public int sampleRate = 16000;
     }

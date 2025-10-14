@@ -44,6 +44,14 @@ namespace Eitan.SherpaOnnxUnity.Editor
         private Vector2 _scrollPosition;
         private bool isDownloading = false;
         private bool _needsRepaint = false;
+        private bool _isLoadingManifest = false;
+        private System.Threading.CancellationTokenSource _loadCts;
+        private int _spinnerFrame = 0;
+
+        // Cached popup arrays to avoid ToArray allocations every frame
+        private string[] _categoriesArray = System.Array.Empty<string>();
+        private string[] _languagesArray = System.Array.Empty<string>();
+
 
         // Background repaint pump so progress stays live even when window loses focus
         private EditorApplication.CallbackFunction _backgroundRepaintHandler;
@@ -61,6 +69,16 @@ namespace Eitan.SherpaOnnxUnity.Editor
             _selectedLanguageIndex = 0;
             GUI.FocusControl(null);
             _needsRepaint = true;
+        }
+
+        /// <summary>
+        /// Rebuild cached arrays for popups to avoid per-frame allocations.
+        /// Call whenever _categories/_languages lists change.
+        /// </summary>
+        private void RebuildPopupArrays()
+        {
+            _categoriesArray = _categories.ToArray();
+            _languagesArray = _languages.ToArray();
         }
 
 
@@ -85,6 +103,10 @@ namespace Eitan.SherpaOnnxUnity.Editor
             public bool Expanded;
             public bool VerifyFailed;      // set when post-install verification fails
             public string VerifyMessage;   // optional message for the UI
+
+            // Minimal layout snapshot computed during Layout
+            public bool ProgressVisible;
+            public float HelpHeight;
         }
 
         // Representation of an active download
@@ -111,6 +133,17 @@ namespace Eitan.SherpaOnnxUnity.Editor
             window.titleContent = new GUIContent("Sherpa ONNX Models");
             window.Show();
         }
+
+        // [MenuItem("Window/Sherpa Onnx/Reset Registry")]
+        // private static void ResetRegistryMenu()
+        // {
+        //     // Clear registry state and open the window with a forced refresh
+        //     SherpaOnnxModelRegistry.Instance.Uninitialize();
+        //     var window = GetWindow<SherpaOnnxModelsEditorWindow>();
+        //     window.titleContent = new GUIContent("Sherpa ONNX Models");
+        //     window.Show();
+        //     window.ForceRefreshManifest();
+        // }
 
         private void OnEnable()
         {
@@ -141,6 +174,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 };
                 EditorApplication.update += _backgroundRepaintHandler;
             }
+            // Auto-refresh when the registry finishes initializing
+            SherpaOnnxModelRegistry.Instance.Initialized += OnRegistryInitialized;
         }
         private void OnDisable()
         {
@@ -150,6 +185,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
                 _backgroundRepaintHandler = null;
             }
+            try { SherpaOnnxModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
+            try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
             CancelAllActiveOperations();
         }
         private void OnDestroy()
@@ -159,6 +196,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
                 _backgroundRepaintHandler = null;
             }
+            try { SherpaOnnxModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
+            try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
             CancelAllActiveOperations();
         }
         /// <summary>
@@ -174,8 +213,126 @@ namespace Eitan.SherpaOnnxUnity.Editor
             _categories.Add("All");
             _languages.Add("All");
             _categories.AddRange(Enum.GetNames(typeof(SherpaOnnxModuleType)));
+            RebuildPopupArrays();
 
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+            var reg = SherpaOnnxModelRegistry.Instance;
+            SherpaOnnxModelManifest manifest;
+            if (!reg.TryGetManifest(out manifest))
+            {
+                // Still initializing – show spinner and wait asynchronously (on MAIN thread)
+                _isLoadingManifest = true;
+                _loadCts?.Cancel();
+                _loadCts = new System.Threading.CancellationTokenSource();
+                var token = _loadCts.Token;
+
+                // Schedule the async wait from the main thread to avoid creating UnityWebRequest off-thread
+                EditorApplication.delayCall += async () =>
+                {
+                    try
+                    {
+                        var mf = await reg.WaitForManifestAsync(token);
+                        if (token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+
+                        _isLoadingManifest = false;
+                        BuildFromManifest(mf);
+                        RebuildPopupArrays();
+                        KickoffDownloadStatusScan();
+                        _needsRepaint = true;
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
+                    {
+                        _isLoadingManifest = false;
+                        ShowNotification(new GUIContent("Manifest load failed: " + ex.Message));
+                        _needsRepaint = true;
+                    }
+                };
+
+                _needsRepaint = true; // keep the spinner animating
+                return;
+            }
+
+            // Already initialized – build immediately
+            BuildFromManifest(manifest);
+            RebuildPopupArrays();
+            KickoffDownloadStatusScan();
+        }
+
+        /// <summary>
+        /// Hard refresh: Uninitialize registry, clear local UI caches, show spinner, and re-fetch manifest on main thread.
+        /// Also triggers a full rescan when finished.
+        /// </summary>
+        private void ForceRefreshManifest()
+        {
+            // Stop any ongoing downloads/progress UI first
+            CancelAllActiveOperations();
+
+            // Reset UI caches and filters
+            _allEntries.Clear();
+            _categories.Clear();
+            _languages.Clear();
+
+            // Rebuild base dropdown items ("All" + categories)
+            _categories.Add("All");
+            _languages.Add("All");
+            _categories.AddRange(Enum.GetNames(typeof(SherpaOnnxModuleType)));
+            RebuildPopupArrays();
+
+            // Enter loading state and keep spinner alive
+            _isLoadingManifest = true;
+            _needsRepaint = true;
+
+            // Reset any previous load waits
+            try { _loadCts?.Cancel(); } catch { }
+            try { _loadCts?.Dispose(); } catch { }
+            _loadCts = new System.Threading.CancellationTokenSource();
+            var token = _loadCts.Token;
+
+            // Clear the registry so any in-flight init won't pollute new state
+            var reg = SherpaOnnxModelRegistry.Instance;
+            reg.Uninitialize();
+
+            // Kick the async re-fetch from the main thread to respect UnityWebRequest threading rules
+            EditorApplication.delayCall += async () =>
+            {
+                try
+                {
+                    var mf = await reg.WaitForManifestAsync(token);
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    _isLoadingManifest = false;
+                    BuildFromManifest(mf);
+                    RebuildPopupArrays();
+                    KickoffDownloadStatusScan(); // full rescan after refresh
+                    _needsRepaint = true;
+                }
+                catch (OperationCanceledException)
+                {
+                    // silent: user navigated away / another refresh issued
+                }
+                catch (Exception ex)
+                {
+                    _isLoadingManifest = false;
+                    ShowNotification(new GUIContent("Manifest reload failed: " + ex.Message));
+                    _needsRepaint = true;
+                }
+            };
+        }
+
+        private void BuildFromManifest(SherpaOnnxModelManifest manifest)
+        {
+            if (manifest == null || manifest.models == null)
+            {
+                return;
+            }
+
 
             foreach (var metadata in manifest.models)
             {
@@ -189,16 +346,25 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     VerifyMessage = string.Empty,
                 };
                 _allEntries.Add(entry);
-                // 填充下拉：只加入单语种，跳过 "other"
+
+                // Populate language dropdown: single languages only, skip "other"
                 foreach (var lang in langs)
                 {
                     if (string.IsNullOrEmpty(lang) || lang == "other")
-                    { continue; }
+                    {
+                        continue;
+                    }
+
+
                     if (!_languages.Contains(lang))
-                    { _languages.Add(lang); }
+                    {
+                        _languages.Add(lang);
+                    }
+
                 }
             }
-            KickoffDownloadStatusScan();
+            // Rebuild cached popup arrays after languages list may have grown
+            RebuildPopupArrays();
         }
 
         private void OnInspectorUpdate()
@@ -315,8 +481,39 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             EditorGUILayout.LabelField("Sherpa ONNX Model Manager", EditorStyles.boldLabel);
             DrawToolbar();
+
+            var reg = SherpaOnnxModelRegistry.Instance;
+            SherpaOnnxModelManifest _mfCheck;
+            if (_isLoadingManifest || reg.IsInitializing || !reg.TryGetManifest(out _mfCheck))
+            {
+                DrawLoadingSpinner("Fetching model manifest from GitHub… (proxy respected)");
+                return;
+            }
+
             DrawModelList();
             DrawActiveDownloads();
+        }
+        private void DrawLoadingSpinner(string message = "Fetching model manifest…")
+        {
+            _spinnerFrame = (int)(EditorApplication.timeSinceStartup * 10) % 12;
+            var icon = EditorGUIUtility.IconContent($"WaitSpin{_spinnerFrame:00}");
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                GUILayout.Label(icon, GUILayout.Width(20), GUILayout.Height(20));
+                GUILayout.Label(message, EditorStyles.wordWrappedLabel);
+            }
+            _needsRepaint = true; // keep the animation running via the repaint pump
+        }
+
+        private void OnRegistryInitialized()
+        {
+            // Ensure main-thread UI update
+            EditorApplication.delayCall += () =>
+            {
+                _isLoadingManifest = false;
+                RefreshData();
+                _needsRepaint = true;
+            };
         }
 
         /// <summary>
@@ -333,13 +530,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 _searchField = new SearchField();
             }
 
-
             if (!isNarrow)
             {
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
                 {
                     // Search field (toolbar height)
-
                     float searchMin = Mathf.Min(180f, viewWidth * 0.60f);
                     Rect searchRect = GUILayoutUtility.GetRect(
                         searchMin, 320f,
@@ -354,7 +549,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Label("Category", EditorStyles.miniLabel);
                     _selectedCategoryIndex = EditorGUILayout.Popup(
                         _selectedCategoryIndex,
-                        _categories.ToArray(),
+                        _categoriesArray,
                         EditorStyles.toolbarPopup,
                         GUILayout.MaxWidth(Mathf.Min(260f, viewWidth * 0.25f)),
                         GUILayout.MinWidth(120f),
@@ -366,7 +561,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Label("Language", EditorStyles.miniLabel);
                     _selectedLanguageIndex = EditorGUILayout.Popup(
                         _selectedLanguageIndex,
-                        _languages.ToArray(),
+                        _languagesArray,
                         EditorStyles.toolbarPopup,
                         GUILayout.MaxWidth(Mathf.Min(220f, viewWidth * 0.20f)),
                         GUILayout.MinWidth(100f),
@@ -380,7 +575,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         {
                             var menu = new GenericMenu();
                             menu.AddItem(new GUIContent("Clear"), false, () => { ResetFilters(); });
-                            menu.AddItem(new GUIContent("Refresh"), false, () => { RefreshData(); });
+                            menu.AddItem(new GUIContent("Refresh"), false, () => { ForceRefreshManifest(); });
                             menu.AddItem(new GUIContent("Rescan"), false, () => { KickoffDownloadStatusScan(); });
                             var r = GUILayoutUtility.GetLastRect();
                             menu.DropDown(new Rect(r.x, r.y + r.height, 0, 0));
@@ -394,18 +589,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
                             ResetFilters();
                         }
 
-
-                        if (GUILayout.Button(new GUIContent("Refresh", "Reload manifest and rebuild the list"), EditorStyles.toolbarButton, GUILayout.Width(70)))
+                        if (GUILayout.Button(new GUIContent("Refresh", "Force-reload manifest (Uninitialize + re-fetch)"), EditorStyles.toolbarButton, GUILayout.Width(70)))
                         {
-                            RefreshData();
+                            ForceRefreshManifest();
                         }
-
 
                         if (GUILayout.Button(new GUIContent("Rescan", "Re-check download status for all models"), EditorStyles.toolbarButton, GUILayout.Width(70)))
                         {
                             KickoffDownloadStatusScan();
                         }
-
                     }
                 }
                 EditorGUILayout.Space(3);
@@ -426,18 +618,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         ResetFilters();
                     }
 
-
-                    if (GUILayout.Button(new GUIContent("Refresh", "Reload manifest and rebuild the list"), EditorStyles.toolbarButton, GUILayout.Width(70)))
+                    if (GUILayout.Button(new GUIContent("Refresh", "Force-reload manifest (Uninitialize + re-fetch)"), EditorStyles.toolbarButton, GUILayout.Width(70)))
                     {
-                        RefreshData();
+                        ForceRefreshManifest();
                     }
-
 
                     if (GUILayout.Button(new GUIContent("Rescan", "Re-check download status for all models"), EditorStyles.toolbarButton, GUILayout.Width(70)))
                     {
                         KickoffDownloadStatusScan();
                     }
-
                 }
 
                 // Row 2: Filters (expand to available width)
@@ -446,7 +635,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Label("Category", EditorStyles.miniLabel, GUILayout.Width(60));
                     _selectedCategoryIndex = EditorGUILayout.Popup(
                         _selectedCategoryIndex,
-                        _categories.ToArray(),
+                        _categoriesArray,
                         EditorStyles.toolbarPopup,
                         GUILayout.ExpandWidth(true));
 
@@ -455,7 +644,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Label("Language", EditorStyles.miniLabel, GUILayout.Width(60));
                     _selectedLanguageIndex = EditorGUILayout.Popup(
                         _selectedLanguageIndex,
-                        _languages.ToArray(),
+                        _languagesArray,
                         EditorStyles.toolbarPopup,
                         GUILayout.ExpandWidth(true));
                 }
@@ -465,181 +654,396 @@ namespace Eitan.SherpaOnnxUnity.Editor
         }
 
         /// <summary>
-        /// Draws the scrollable list of model entries.
+        /// Draws the scrollable list of model entries with occlusion culling (virtualization) based on scroll position and window size.
         /// </summary>
         private void DrawModelList()
         {
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            foreach (var entry in _allEntries)
+            // Determine viewport after toolbar; this operates reliably since DrawModelList()
+            // is called after header + toolbar have been laid out.
+            float prevBottom = GUILayoutUtility.GetLastRect().yMax;
+            float viewHeight = Mathf.Max(64f, position.height - prevBottom - 6f);
+            float viewWidth = Mathf.Max(200f, position.width - 20f); // leave space for scrollbar
+
+            // Precompute total content height + the first and last visible items using a buffered window.
+            // The buffer reduces redraw pop-in during fast scrolling.
+            const float buffer = 400f;
+            float startY = Mathf.Max(0f, _scrollPosition.y - buffer);
+            float endY = _scrollPosition.y + viewHeight + buffer;
+
+            float totalHeight = 0f;
+            float topPadding = 0f;
+            float drawnHeight = 0f;
+            bool hasAny = false;
+
+            // Identify first visible item index and compute top padding.
+            int firstIndex = -1;
+            // We iterate twice at most: once to find the visible range, once to finalize total height if we break early.
+            for (int i = 0; i < _allEntries.Count; i++)
             {
+                var entry = _allEntries[i];
                 if (!IsVisible(entry))
                 {
-                    continue;
+                    continue; // filtered-out entries do not contribute to height or scroll range
                 }
 
-                EditorGUILayout.BeginVertical("box");
-                // Header row: Foldout + Model ID ... (status pill right-aligned)
-                EditorGUILayout.BeginHorizontal();
-                entry.Expanded = EditorGUILayout.Foldout(entry.Expanded, new GUIContent(entry.Metadata.modelId), true);
-                GUILayout.FlexibleSpace();
-                DrawDownloadStatusPill(entry);
-                EditorGUILayout.EndHorizontal();
+                float h = CalcEntryHeight(entry, viewWidth);
+                float next = totalHeight + h;
 
-                // Meta row: Category & Language as compact labels
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Category: " + entry.Category, EditorStyles.miniLabel);
-                // 把原来显示 Language 的一行替换为：
-                EditorGUILayout.LabelField("Language: " + entry.LanguagesLabel, EditorStyles.miniLabel);
-                EditorGUILayout.EndHorizontal();
-
-                // Files (compact)
-                EditorGUILayout.LabelField("Files: " + (entry.Metadata.modelFileNames?.Length ?? 0), EditorStyles.miniLabel);
-
-                // Download URL display
-                var url = entry.Metadata.downloadUrl;
-                using (new EditorGUILayout.HorizontalScope())
+                if (firstIndex < 0 && next >= startY)
                 {
-                    EditorGUILayout.LabelField("URL: ", EditorStyles.miniLabel, GUILayout.Width(40));
-                    if (string.IsNullOrEmpty(url))
+                    firstIndex = i;
+                    topPadding = totalHeight;
+                    hasAny = true;
+                }
+
+                // If we've passed the end of the buffered window, we can stop early, but we still need total height.
+                if (next >= endY && hasAny)
+                {
+                    // Count the current item before finishing the rest to keep scroll math stable.
+                    totalHeight = next;
+                    // Finish computing total by scanning the remainder without drawing.
+                    for (int j = i + 1; j < _allEntries.Count; j++)
                     {
-                        EditorGUILayout.LabelField("—", EditorStyles.miniLabel);
+                        var e2 = _allEntries[j];
+                        if (!IsVisible(e2)) { continue; }
+                        totalHeight += CalcEntryHeight(e2, viewWidth);
                     }
-                    else
-                    {
-                        // Selectable so users can copy
-                        EditorGUILayout.SelectableLabel(url, EditorStyles.miniLabel, GUILayout.Height(EditorGUIUtility.singleLineHeight));
-                    }
+                    break;
                 }
-
-                // Expandable file list
-                if (entry.Expanded)
-                {
-                    EditorGUI.indentLevel++;
-                    var files = entry.Metadata.modelFileNames ?? Array.Empty<string>();
-                    foreach (var f in files)
-                    {
-                        EditorGUILayout.LabelField(f, EditorStyles.miniLabel);
-                    }
-                    EditorGUI.indentLevel--;
-                    EditorGUILayout.Space(2);
-                }
-
-                // Actions row
-                EditorGUILayout.BeginHorizontal();
-                bool hasUrlInMetadata = !string.IsNullOrEmpty(entry.Metadata.downloadUrl);
-                bool isDownloadingThis = _activeDownloads.Any(d => d.Metadata == entry.Metadata);
-
-                // Push all operation buttons to the RIGHT
-                GUILayout.FlexibleSpace();
-
-                // Copy Name button (copy to clipboard + notification)
-                if (GUILayout.Button(new GUIContent("Copy Name", "Copy modelId to clipboard"), GUILayout.Width(90)))
-                {
-                    EditorGUIUtility.systemCopyBuffer = entry.Metadata.modelId;
-                    ShowNotification(new GUIContent($"Copied: {entry.Metadata.modelId}"));
-                }
-
-                // Copy URL button
-                if (GUILayout.Button(new GUIContent("Copy URL", "Copy download URL to clipboard"), GUILayout.Width(80)))
-                {
-                    if (!string.IsNullOrEmpty(entry.Metadata.downloadUrl))
-                    {
-                        EditorGUIUtility.systemCopyBuffer = entry.Metadata.downloadUrl;
-                        ShowNotification(new GUIContent("Copied URL"));
-                    }
-                    else
-                    {
-                        ShowNotification(new GUIContent("No URL"));
-                    }
-                }
-
-                // Open/Reveal button if directory exists (even if not yet verified)
-                string moduleRoot = SherpaPathResolver.GetModuleRootPath(entry.Metadata.moduleType);
-                string modelDir = Path.Combine(moduleRoot, entry.Metadata.modelId);
-                EditorGUI.BeginDisabledGroup(!Directory.Exists(modelDir));
-                if (GUILayout.Button(new GUIContent("Reveal", "Reveal model folder in Finder/Explorer"), GUILayout.Width(70)))
-                {
-                    EditorUtility.RevealInFinder(modelDir);
-                }
-                EditorGUI.EndDisabledGroup();
-
-                // Rescan button
-                if (GUILayout.Button(new GUIContent("Rescan", "Re-check whether this model is fully downloaded & verified"), GUILayout.Width(70)))
-                {
-                    RescanSingle(entry.Metadata);
-                }
-
-                // Download button
-                EditorGUI.BeginDisabledGroup(!hasUrlInMetadata || isDownloadingThis || entry.IsDownloaded == true);
-                string dlLabel = entry.VerifyFailed ? "Re-download" : "Download";
-                var dlContent = hasUrlInMetadata
-                    ? new GUIContent(dlLabel, entry.VerifyFailed
-                        ? "Verification failed previously. Click to re-download."
-                        : "Download model archive")
-                    : new GUIContent("No URL", "No download URL in metadata");
-
-                if (GUILayout.Button(dlContent, GUILayout.Width(90)))
-                {
-                    if (hasUrlInMetadata)
-                    {
-                        StartDownload(entry.Metadata);
-                    }
-                }
-                EditorGUI.EndDisabledGroup();
-
-                // Delete button (only if folder exists)
-                bool canDelete = Directory.Exists(modelDir);
-                EditorGUI.BeginDisabledGroup(!canDelete);
-                if (GUILayout.Button(new GUIContent("Delete", "Delete local model files"), GUILayout.Width(70)))
-                {
-                    bool confirm = EditorUtility.DisplayDialog("Delete Model",
-                        $"Are you sure you want to delete local files for '{entry.Metadata.modelId}'?",
-                        "Delete", "Cancel");
-                    if (confirm)
-                    {
-                        if (DeleteModelFolder(entry.Metadata, modelDir))
-                        {
-                            ShowNotification(new GUIContent($"Deleted: {entry.Metadata.modelId}"));
-                            // Ensure any progress UI is removed for this entry
-                            _activeDownloads.RemoveAll(d => d.Metadata == entry.Metadata);
-                            _needsRepaint = true;
-                            RescanSingle(entry.Metadata);
-                        }
-                        else
-                        {
-                            ShowNotification(new GUIContent($"Delete failed: {entry.Metadata.modelId}"));
-                        }
-                    }
-                }
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUILayout.EndHorizontal();
-                // Explicit verification failure message
-                if (entry.VerifyFailed && !string.IsNullOrEmpty(entry.VerifyMessage))
-                {
-                    EditorGUILayout.HelpBox(entry.VerifyMessage, MessageType.Error);
-                }
-                // Progress bar if active download
-                var currentDownload = _activeDownloads.FirstOrDefault(d => d.Metadata == entry.Metadata);
-                if (currentDownload != null)
-                {
-                    Rect rect = GUILayoutUtility.GetRect(18, 18, "TextField");
-                    EditorGUI.ProgressBar(rect, currentDownload.Progress, currentDownload.Status);
-                    using (new EditorGUILayout.HorizontalScope())
-                    {
-                        GUILayout.FlexibleSpace();
-                        EditorGUI.BeginDisabledGroup(currentDownload.IsCanceled);
-                        if (GUILayout.Button("Cancel", GUILayout.Width(70)))
-                        {
-                            CancelDownload(currentDownload, "Canceled by user");
-                        }
-                        EditorGUI.EndDisabledGroup();
-                    }
-                }
-                EditorGUILayout.EndVertical();
-                EditorGUILayout.Space();
+                totalHeight = next;
             }
+
+            // If nothing matched filters, draw an empty scroll area with minimal height.
+            if (!hasAny)
+            {
+                // Ensure totalHeight reflects the sum for scrollbars (even if zero).
+                totalHeight = 0f;
+                foreach (var e in _allEntries)
+                {
+                    if (!IsVisible(e)) { continue; }
+                    totalHeight += CalcEntryHeight(e, viewWidth);
+                }
+                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                if (Mathf.Approximately(totalHeight, 0f))
+                {
+                    EditorGUILayout.HelpBox("No models match the current filters.", MessageType.Info);
+                }
+                else
+                {
+                    GUILayout.Space(totalHeight);
+                }
+                EditorGUILayout.EndScrollView();
+                return;
+            }
+
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+
+            // Top spacer to skip all items above the first visible one.
+            GUILayout.Space(topPadding);
+
+            // Draw visible window until we pass endY
+            float currentY = topPadding;
+            for (int i = firstIndex; i < _allEntries.Count; i++)
+            {
+                var entry = _allEntries[i];
+                if (!IsVisible(entry)) { continue; }
+
+                float h = CalcEntryHeight(entry, viewWidth);
+
+                if (currentY > endY) { break; } // we've drawn beyond the buffered window
+
+                DrawEntry(entry);
+                drawnHeight += h;
+                currentY += h;
+            }
+
+            float bottomPadding = Mathf.Max(0f, totalHeight - topPadding - drawnHeight);
+            GUILayout.Space(bottomPadding);
+
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>
+        /// Compute a tiny layout snapshot during Layout so both Layout and Repaint use the same structure.
+        /// </summary>
+        private void UpdateLayoutSnapshot(ModelEntry entry, float viewWidth)
+        {
+            if (Event.current.type != EventType.Layout)
+            {
+                return;
+            }
+
+            // Whether to show progress area this frame
+            entry.ProgressVisible = _activeDownloads.Any(x => x.Metadata == entry.Metadata);
+
+            // Pre-compute helpbox height for verification message
+            bool showVerify = entry.VerifyFailed && !string.IsNullOrEmpty(entry.VerifyMessage);
+            if (showVerify)
+            {
+                float usableWidth = Mathf.Max(60f, viewWidth - 40f);
+                entry.HelpHeight = EditorStyles.helpBox.CalcHeight(new GUIContent(entry.VerifyMessage), usableWidth);
+            }
+            else
+            {
+                entry.HelpHeight = 0f;
+            }
+        }
+
+        /// <summary>
+        /// Predicts the vertical space that a `ModelEntry` will occupy in the list, given the current window width.
+        /// Keep this in sync with `DrawEntry` layout to ensure smooth virtualization.
+        /// </summary>
+        private float CalcEntryHeight(ModelEntry entry, float viewWidth)
+        {
+            float h = 0f;
+            float line = EditorGUIUtility.singleLineHeight;
+            // bool hasFiles = entry.Metadata?.modelFileNames != null && entry.Metadata.modelFileNames.Length > 0;
+
+            // Compute minimal layout snapshot (only during Layout)
+            UpdateLayoutSnapshot(entry, viewWidth);
+            bool showProgress = entry.ProgressVisible;
+
+            // Approximate padding/margins from the "box" container
+            h += 6f;                 // top inner padding
+
+            // Header row
+            h += line;               // foldout or bold label
+
+            // Meta row (Category + Language)
+            h += line;
+
+            // Files count (only if there are files)
+            // if (hasFiles)
+            // {
+            //     h += line;
+            // }
+
+            // URL row
+            h += line;
+
+            // Expanded file list
+            // if (hasFiles && entry.Expanded)
+            // {
+            //     int n = entry.Metadata.modelFileNames.Length;
+            //     h += 2f + n * line;
+            // }
+
+            // Actions row
+            h += line;
+
+            // Verification message: always emit one control; height 0 when hidden
+            if (entry.HelpHeight > 0f)
+            {
+                h += entry.HelpHeight;
+            }
+
+            // Progress UI: always emit two controls; height 0 when hidden
+            h += showProgress ? 18f : 0f;   // progress bar rect
+            h += showProgress ? line : 0f;  // Cancel button row
+
+            // Bottom spacing between entries
+            h += 10f;
+
+            return h;
+        }
+
+        /// <summary>
+        /// Draw a single entry row (compact). Hides Files row and foldout when there are no files.
+        /// </summary>
+        private void DrawEntry(ModelEntry entry)
+        {
+            // bool hasFiles = entry.Metadata?.modelFileNames != null && entry.Metadata.modelFileNames.Length > 0;
+
+            // Compute minimal snapshot for this frame
+            float viewWidth = Mathf.Max(200f, position.width - 20f);
+            UpdateLayoutSnapshot(entry, viewWidth);
+
+            EditorGUILayout.BeginVertical("box");
+
+            // Header row: Only show foldout if there are files; otherwise show a bold label.
+            EditorGUILayout.BeginHorizontal();
+            // if (hasFiles)
+            // {
+            //     entry.Expanded = EditorGUILayout.Foldout(entry.Expanded, entry.Metadata.modelId, true);
+            // }
+            // else
+            // {
+            GUILayout.Label(entry.Metadata.modelId, EditorStyles.boldLabel);
+            entry.Expanded = false; // ensure not expanded when no files
+            // }
+            GUILayout.FlexibleSpace();
+            DrawDownloadStatusPill(entry);
+            EditorGUILayout.EndHorizontal();
+
+            // Meta row: Category & Language as compact labels
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Category: " + entry.Category, EditorStyles.miniLabel);
+
+            // Language list label (already comma-joined)
+            EditorGUILayout.LabelField("Language: " + entry.LanguagesLabel, EditorStyles.miniLabel);
+            EditorGUILayout.EndHorizontal();
+
+            // Files count row (only if files exist)
+            // if (hasFiles)
+            // {
+            //     EditorGUILayout.LabelField("Files: " + entry.Metadata.modelFileNames.Length, EditorStyles.miniLabel);
+            // }
+
+            // Download URL display
+            var url = entry.Metadata.downloadUrl;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("URL: ", EditorStyles.miniLabel, GUILayout.Width(40));
+                if (string.IsNullOrEmpty(url))
+                {
+                    EditorGUILayout.LabelField("—", EditorStyles.miniLabel);
+                }
+                else
+                {
+                    EditorGUILayout.SelectableLabel(url, EditorStyles.miniLabel, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                }
+            }
+
+            // Expandable file list (only if has files)
+            // if (hasFiles && entry.Expanded)
+            // {
+            //     EditorGUI.indentLevel++;
+            //     var files = entry.Metadata.modelFileNames;
+            //     for (int i = 0; i < files.Length; i++)
+            //     {
+            //         EditorGUILayout.LabelField(files[i], EditorStyles.miniLabel);
+            //     }
+            //     EditorGUI.indentLevel--;
+            //     EditorGUILayout.Space(2);
+            // }
+
+            // Actions row
+            EditorGUILayout.BeginHorizontal();
+            bool hasUrlInMetadata = !string.IsNullOrEmpty(entry.Metadata.downloadUrl);
+            bool isDownloadingThis = _activeDownloads.Any(d => d.Metadata == entry.Metadata);
+
+            // Push all operation buttons to the RIGHT
+            GUILayout.FlexibleSpace();
+
+            // Copy Name button
+            if (GUILayout.Button(new GUIContent("Copy Name", "Copy modelId to clipboard"), GUILayout.Width(90)))
+            {
+                EditorGUIUtility.systemCopyBuffer = entry.Metadata.modelId;
+                ShowNotification(new GUIContent($"Copied: {entry.Metadata.modelId}"));
+            }
+
+            // Copy URL button
+            if (GUILayout.Button(new GUIContent("Copy URL", "Copy download URL to clipboard"), GUILayout.Width(80)))
+            {
+                if (!string.IsNullOrEmpty(entry.Metadata.downloadUrl))
+                {
+                    EditorGUIUtility.systemCopyBuffer = entry.Metadata.downloadUrl;
+                    ShowNotification(new GUIContent("Copied URL"));
+                }
+                else
+                {
+                    ShowNotification(new GUIContent("No URL"));
+                }
+            }
+
+            // Reveal button
+            string moduleRoot = SherpaPathResolver.GetModuleRootPath(entry.Metadata.moduleType);
+            string modelDir = Path.Combine(moduleRoot, entry.Metadata.modelId);
+            EditorGUI.BeginDisabledGroup(!Directory.Exists(modelDir));
+            if (GUILayout.Button(new GUIContent("Reveal", "Reveal model folder in Finder/Explorer"), GUILayout.Width(70)))
+            {
+                EditorUtility.RevealInFinder(modelDir);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            // Rescan button
+            if (GUILayout.Button(new GUIContent("Rescan", "Re-check whether this model is fully downloaded & verified"), GUILayout.Width(70)))
+            {
+                RescanSingle(entry.Metadata);
+            }
+
+            // Download button
+            EditorGUI.BeginDisabledGroup(!hasUrlInMetadata || isDownloadingThis || entry.IsDownloaded == true);
+            string dlLabel = entry.VerifyFailed ? "Re-download" : "Download";
+            var dlContent = hasUrlInMetadata
+                ? new GUIContent(dlLabel, entry.VerifyFailed
+                    ? "Verification failed previously. Click to re-download."
+                    : "Download model archive")
+                : new GUIContent("No URL", "No download URL in metadata");
+
+            if (GUILayout.Button(dlContent, GUILayout.Width(90)))
+            {
+                if (hasUrlInMetadata)
+                {
+                    StartDownload(entry.Metadata);
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            // Delete button
+            bool canDelete = Directory.Exists(modelDir);
+            EditorGUI.BeginDisabledGroup(!canDelete);
+            if (GUILayout.Button(new GUIContent("Delete", "Delete local model files"), GUILayout.Width(70)))
+            {
+                bool confirm = EditorUtility.DisplayDialog("Delete Model",
+                    $"Are you sure you want to delete local files for '{entry.Metadata.modelId}'?",
+                    "Delete", "Cancel");
+                if (confirm)
+                {
+                    if (DeleteModelFolder(entry.Metadata, modelDir))
+                    {
+                        ShowNotification(new GUIContent($"Deleted: {entry.Metadata.modelId}"));
+                        _activeDownloads.RemoveAll(d => d.Metadata == entry.Metadata);
+                        _needsRepaint = true;
+                        RescanSingle(entry.Metadata);
+                    }
+                    else
+                    {
+                        ShowNotification(new GUIContent($"Delete failed: {entry.Metadata.modelId}"));
+                    }
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUILayout.EndHorizontal();
+
+            // Verification message: always emit one control; height 0 when hidden
+            Rect verifyRect = EditorGUILayout.GetControlRect(false, entry.HelpHeight);
+            if (entry.HelpHeight > 0f)
+            {
+                EditorGUI.HelpBox(verifyRect, entry.VerifyMessage, MessageType.Error);
+            }
+
+            // Progress UI: always emit two controls; height 0 when hidden
+            var currentDownload = _activeDownloads.FirstOrDefault(d => d.Metadata == entry.Metadata);
+            bool showProgress = entry.ProgressVisible;
+            float prog = currentDownload?.Progress ?? 0f;
+            string status = currentDownload?.Status ?? string.Empty;
+
+            // Progress bar line
+            Rect pRect = EditorGUILayout.GetControlRect(false, showProgress ? 18f : 0f);
+            if (showProgress)
+            {
+                EditorGUI.ProgressBar(pRect, Mathf.Clamp01(prog), string.IsNullOrEmpty(status) ? "Working…" : status);
+            }
+
+            // Cancel row (draw manually to keep control count constant without extra GUILayout containers)
+            Rect cancelRect = EditorGUILayout.GetControlRect(false, showProgress ? EditorGUIUtility.singleLineHeight : 0f);
+            if (showProgress)
+            {
+                Rect btnRect = new Rect(cancelRect.xMax - 70f, cancelRect.y, 70f, cancelRect.height);
+                bool canCancel = currentDownload != null && !currentDownload.IsCanceled;
+                using (new EditorGUI.DisabledScope(!canCancel))
+                {
+                    if (GUI.Button(btnRect, "Cancel") && currentDownload != null)
+                    {
+                        CancelDownload(currentDownload, "Canceled by user");
+                    }
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space();
         }
 
         private void DrawDownloadStatusPill(ModelEntry entry)
@@ -686,10 +1090,10 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Active Downloads", EditorStyles.boldLabel);
-            foreach (var download in _activeDownloads)
+            foreach (var download in _activeDownloads.ToArray())
             {
                 EditorGUILayout.LabelField(download.Metadata.modelId + (string.IsNullOrEmpty(download.CurrentPhase) ? string.Empty : $"  •  {download.CurrentPhase}"));
-                Rect rect = GUILayoutUtility.GetRect(18, 18, "TextField");
+                Rect rect = EditorGUILayout.GetControlRect(false, 18f);
                 EditorGUI.ProgressBar(rect, download.Progress, download.Status);
 
                 using (new EditorGUILayout.HorizontalScope())

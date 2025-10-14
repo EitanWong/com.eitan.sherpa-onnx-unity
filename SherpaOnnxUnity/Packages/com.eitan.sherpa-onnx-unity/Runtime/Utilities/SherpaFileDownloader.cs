@@ -216,7 +216,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(
                     cancellationToken, _cancellationTokenSource.Token).Token;
-
                 await InitializeDownloadAsync(url, filePath, linkedToken);
 
                 // Check if download is already completed
@@ -265,7 +264,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
-                ReportProgress(ex.Message);
+                ReportProgress(ex.ToString());
                 return false;
             }
             finally

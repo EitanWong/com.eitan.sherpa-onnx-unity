@@ -47,6 +47,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] kokoro_keywords = { "kokoro" };
 
             private static readonly string[] kitten_keywords = { "kitten" };
+
+            private static readonly string[] zipvoice_keywords = { "zipvoice" };
             #endregion
 
             #region KeywordSpottingModelKeywords
@@ -194,6 +196,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SpeechSynthesisModelType.Kokoro; }
                 else if (ContainsAnyKeyword(lowerModelID, kitten_keywords))
                 { return SpeechSynthesisModelType.KittenTTS; }
+                else if (ContainsAnyKeyword(lowerModelID, zipvoice_keywords))
+                { return SpeechSynthesisModelType.ZipVoice; }
 
                 return SpeechSynthesisModelType.None;
 

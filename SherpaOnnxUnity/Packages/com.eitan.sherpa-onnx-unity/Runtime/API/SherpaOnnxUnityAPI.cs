@@ -4,6 +4,7 @@
 #nullable enable
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For SherpaOnnxEnvironment
 
@@ -15,7 +16,7 @@ public static class SherpaOnnxUnityAPI
 {
     /// <summary>
     /// Set a GitHub download acceleration proxy. Examples:
-    /// "https://ghfast.sourcegcdn.com/" or "https://mirror.ghproxy.com/".
+    /// "https://ghfast.top".
     /// Pass null or empty to clear.
     /// </summary>
     public static void SetGithubProxy(string? proxy)
@@ -40,9 +41,9 @@ public static class SherpaOnnxUnityAPI
         SherpaOnnxEnvironment.Remove(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy);
     }
 
-    public static string[] GetModelIDByType(SherpaOnnxModuleType type)
+    public static async Task<string[]> GetModelIDByTypeAsync(SherpaOnnxModuleType type)
     {
-        var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+        var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
         return manifest.Filter(m => m.moduleType == type).Select(m => m.modelId).ToArray();
     }
 

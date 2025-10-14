@@ -47,7 +47,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// <summary>
         /// True if the Speech Enhancement model is loaded.
         /// </summary>
-        private bool IsModelLoaded => _speechEnhancement != null;
+        private bool IsModelLoaded { get; set; }
 
         #region Unity Lifecycle Methods
         private void Start()
@@ -77,7 +77,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _originRecordBtnColor = _recordStopButton.GetComponent<Image>().color;
 
-            InitDropdown();
+            _ = InitDropdownAsync();
             UpdateUI();
         }
 
@@ -380,9 +380,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region UI and Initialization
-        private void InitDropdown()
+        private async Task InitDropdownAsync()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
@@ -598,6 +598,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         public void OnFeedback(SuccessFeedback feedback)
         {
+            IsModelLoaded = true;
             SetProgressActive(false);
             UpdateOverallProgress(1f, "Success");
             _initMessageText.text = string.Empty;

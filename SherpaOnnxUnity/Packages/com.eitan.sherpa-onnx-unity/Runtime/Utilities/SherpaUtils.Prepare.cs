@@ -29,6 +29,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             ".zip", ".tar", ".tar.gz", ".tar.bz2", ".rar", ".7z",
             ".gz", ".bz2", ".xz", ".lz4", ".tgz", ".tbz2", ".zst"
         };
+            private static readonly string[] MODEL_SIGNATURE_EXTENSIONS = {
+                ".onnx"
+            };
             #endregion
 
             private readonly struct ModelPaths
@@ -218,29 +221,18 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     return false;
                 }
 
-                if (metadata.modelFileNames == null || metadata.modelFileNames.Length == 0)
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: No model files declared."));
-                    return false;
-                }
-
                 if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download URL is missing."));
                     return false;
                 }
 
-                var missingModelFileHashes = GetModelFilesMissingHashes(metadata);
+                // We no longer require listing specific model file names or per-file hashes.
+                // When hash enforcement is enabled, we require ONLY the archive hash.
                 var downloadHashMissing = string.IsNullOrWhiteSpace(metadata.downloadFileHash);
 
                 if (forceHashValidation)
                 {
-                    if (missingModelFileHashes.Count > 0)
-                    {
-                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: File hashes are required for all model files when {FORCE_HASH_VALIDATION_KEY}=true."));
-                        return false;
-                    }
-
                     if (downloadHashMissing)
                     {
                         ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download file hash is required when {FORCE_HASH_VALIDATION_KEY}=true."));
@@ -249,17 +241,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 }
                 else
                 {
-                    if (missingModelFileHashes.Count > 0)
-                    {
-                        var missingList = string.Join(", ", missingModelFileHashes);
-                        var message = $"{metadata.modelId}: Hash verification skipped for model files without hashes: {missingList}. Enable {FORCE_HASH_VALIDATION_KEY}=true to enforce.";
-                        ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: metadata.modelId));
-                        UnityEngine.Debug.LogWarning(message);
-                    }
-
                     if (downloadHashMissing)
                     {
-                        var message = $"{metadata.modelId}: Hash verification skipped for the downloaded archive because no hash is configured. Enable {FORCE_HASH_VALIDATION_KEY}=true to enforce.";
+                        var message = $"{metadata.modelId}: Hash verification for the downloaded archive will be skipped because no hash is configured. Enable {FORCE_HASH_VALIDATION_KEY}=true to enforce.";
                         ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: metadata.downloadUrl));
                         UnityEngine.Debug.LogWarning(message);
                     }
@@ -395,56 +379,68 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 ModelPaths paths,
                 SherpaOnnxFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
             {
-                ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Validating model {metadata.modelId} (attempt {attempt + 1}/{MAX_ATTEMPTS})", filePath: paths.ModelDirectory, progress: 0));
+                ReportSafe(reporter, new VerifyFeedback(
+                    metadata,
+                    message: $"Validating model {metadata.modelId} (attempt {attempt + 1}/{MAX_ATTEMPTS})",
+                    filePath: paths.ModelDirectory,
+                    progress: 0));
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (!Directory.Exists(paths.ModelDirectory))
                 {
-                    ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Model directory does not exist (attempt {attempt + 1}/{MAX_ATTEMPTS}): {paths.ModelDirectory}", filePath: paths.ModelDirectory, progress: 0));
+                    ReportSafe(reporter, new VerifyFeedback(
+                        metadata,
+                        message: $"Model directory does not exist (attempt {attempt + 1}/{MAX_ATTEMPTS}): {paths.ModelDirectory}",
+                        filePath: paths.ModelDirectory,
+                        progress: 0));
                     return false;
                 }
 
                 try
                 {
-                    var verificationTasks = new List<Task<(int Index, FileVerificationEventArgs Result)>>();
+                    // Detection rule: consider the model "installed" if we can find at least one
+                    // signature model file (e.g., *.onnx) inside the model directory (recursive scan).
+                    bool hasSignature = false;
 
-                    for (var i = 0; i < metadata.modelFileNames.Length; i++)
-                    {
-                        var index = i;
-                        var relativeFilePath = metadata.modelFileNames[index];
-                        var fullFilePath = Path.Combine(paths.ModelDirectory, relativeFilePath);
-                        var expectedSha256 = (metadata.modelFileHashes != null && index < metadata.modelFileHashes.Length)
-                            ? metadata.modelFileHashes[index]
-                            : null;
-
-                        var task = VerifyFileWithIndexAsync(metadata, index, fullFilePath, expectedSha256, reporter, cancellationToken);
-                        verificationTasks.Add(task);
-                    }
-
-                    var verificationResults = await Task.WhenAll(verificationTasks).ConfigureAwait(false);
-
-                    foreach (var (_, result) in verificationResults)
+                    foreach (var ext in MODEL_SIGNATURE_EXTENSIONS)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        if (result.Status != FileVerificationStatus.Success)
+                        // Enumerate lazily to reduce memory pressure on large folders.
+                        var any = Directory.EnumerateFiles(paths.ModelDirectory, "*" + ext, SearchOption.AllDirectories)
+                                           .Any(p => !p.EndsWith(".meta", StringComparison.OrdinalIgnoreCase));
+                        if (any)
                         {
-                            if (SherpaFileUtils.PathExists(paths.ModelDirectory))
-                            {
-                                SherpaFileUtils.Delete(paths.ModelDirectory);
-                            }
-
-                            return false;
+                            hasSignature = true;
+                            break;
                         }
                     }
 
-                    ReportSafe(reporter, new VerifyFeedback(metadata, message: "All files verified successfully", filePath: paths.ModelDirectory, progress: 100));
+                    if (!hasSignature)
+                    {
+                        ReportSafe(reporter, new VerifyFeedback(
+                            metadata,
+                            message: $"No signature model files found (looking for {string.Join(", ", MODEL_SIGNATURE_EXTENSIONS)}) in {paths.ModelDirectory}.",
+                            filePath: paths.ModelDirectory,
+                            progress: 0));
+                        return false;
+                    }
 
+                    ReportSafe(reporter, new VerifyFeedback(
+                        metadata,
+                        message: "Model files detected. Verification succeeded.",
+                        filePath: paths.ModelDirectory,
+                        progress: 100));
+
+                    // Optional cleanup: if the download was a compressed archive and it still exists, delete it.
                     if (paths.IsCompressed && SherpaFileUtils.PathExists(paths.DownloadFilePath))
                     {
                         ReportSafe(reporter, new CleanFeedback(metadata, filePath: paths.DownloadFilePath, message: $"Cleaning up {paths.DownloadFilePath}"));
                         SherpaFileUtils.Delete(paths.DownloadFilePath);
                     }
 
+                    await Task.Yield(); // keep method truly async
                     return true;
                 }
                 catch (OperationCanceledException)
@@ -491,7 +487,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     {
                         return false;
                     }
-
                     using var downloader = new SherpaFileDownloader(metadata);
 
                     if (reporter != null)
@@ -644,25 +639,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     return false;
                 }
 
-                var effectiveUrl = rawUrl;
-
-                if (SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy))
+                if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var resolvedUri))
                 {
-                    var proxy = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)?.Trim();
-                    if (!string.IsNullOrEmpty(proxy))
-                    {
-                        if (!proxy.EndsWith("/", StringComparison.Ordinal))
-                        {
-                            proxy += "/";
-                        }
-
-                        effectiveUrl = proxy + rawUrl.TrimStart('/');
-                    }
-                }
-
-                if (!Uri.TryCreate(effectiveUrl, UriKind.Absolute, out var resolvedUri))
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"Invalid download URL: {effectiveUrl}"));
+                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"Invalid download URL: {rawUrl}"));
                     return false;
                 }
 
@@ -697,28 +676,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             private static bool IsHashValidationForced() =>
                 SherpaOnnxEnvironment.GetBool(FORCE_HASH_VALIDATION_KEY, @default: false);
-
-            private static List<string> GetModelFilesMissingHashes(SherpaOnnxModelMetadata metadata)
-            {
-                var missing = new List<string>();
-                if (metadata?.modelFileNames == null || metadata.modelFileNames.Length == 0)
-                {
-                    return missing;
-                }
-
-                var hashes = metadata.modelFileHashes ?? Array.Empty<string>();
-
-                for (var i = 0; i < metadata.modelFileNames.Length; i++)
-                {
-                    var expectedHash = i < hashes.Length ? hashes[i] : null;
-                    if (string.IsNullOrWhiteSpace(expectedHash))
-                    {
-                        missing.Add(metadata.modelFileNames[i]);
-                    }
-                }
-
-                return missing;
-            }
 
             private static void EnsureTargetDirectories(ModelPaths paths)
             {

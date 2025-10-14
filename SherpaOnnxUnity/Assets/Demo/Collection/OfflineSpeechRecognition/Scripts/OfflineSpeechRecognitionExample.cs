@@ -74,7 +74,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             InitializeApplication();
             InitializeUI();
             InitializeEventListeners();
-            InitializeDropdown();
+            _ = InitializeDropdownAsync();
         }
 
         /// <summary>
@@ -131,11 +131,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// <summary>
         /// 异步初始化下拉菜单 / Asynchronously initialize dropdown
         /// </summary>
-        private void InitializeDropdown()
+        private async Task InitializeDropdownAsync()
         {
             try
             {
-                var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
                 PopulateModelDropdown(manifest);
             }
             catch (Exception ex)

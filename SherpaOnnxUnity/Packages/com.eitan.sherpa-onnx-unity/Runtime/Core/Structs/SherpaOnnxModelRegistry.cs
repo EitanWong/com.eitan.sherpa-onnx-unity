@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Eitan.SherpaOnnxUnity.Runtime.Constants;
+using System.Threading;
+using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using UnityEngine;
 
@@ -17,32 +18,110 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         private SherpaOnnxModelManifest _manifest;
 
         public bool IsInitialized { get; private set; }
+        public bool IsInitializing { get; private set; }
+        private readonly object _initLock = new object();
+        private Task _initTask;
+        private int _initGeneration = 0;
+
+        public event Action Initialized;
 
         private SherpaOnnxModelRegistry() { }
 
 
         /// <summary>
-        /// Initialize the registry from the default manifest once. Safe to call multiple times.
+        /// Clear the loaded manifest and internal caches, marking the registry as uninitialized.
+        /// Safe to call from Editor (main thread). Any in-flight initialization will be ignored.
         /// </summary>
-        private void InitializeInternal()
+        public void Uninitialize()
+        {
+            lock (_initLock)
+            {
+                // Bump generation to invalidate any older init completions
+                _initGeneration++;
+                _manifest = null;
+                _modelData.Clear();
+                _resolvedModelIds.Clear();
+                IsInitialized = false;
+                IsInitializing = false;
+                _initTask = null;
+            }
+        }
+
+        /// <summary>
+        /// Initialize the registry from the default manifest once, asynchronously.
+        /// Safe to call multiple times; concurrent callers await the same task.
+        /// </summary>
+        public Task InitializeAsync()
+        {
+            lock (_initLock)
+            {
+                if (IsInitialized)
+                {
+                    return Task.CompletedTask;
+                }
+
+                if (_initTask == null)
+                {
+                    IsInitializing = true;
+                    int gen = ++_initGeneration; // capture new generation for this init
+                    _initTask = InitializeInternalAsync(gen);
+                }
+                return _initTask;
+            }
+        }
+
+        private async Task InitializeInternalAsync(int generation)
         {
             if (IsInitialized)
             {
+                IsInitializing = false;
                 return;
             }
 
-
             try
             {
-                _manifest = SherpaOnnxConstants.GetDefaultManifest();
+                // Build manifest without blocking the main thread.
+                _manifest = await Constants.SherpaOnnxConstants.GetDefaultManifestAsync().ConfigureAwait(true);
                 _resolvedModelIds.Clear();
                 PopulateDictionaryFromManifest(_manifest);
+
+                // If a reset occurred during initialization, ignore this result
+                lock (_initLock)
+                {
+                    if (generation != _initGeneration)
+                    {
+                        // Stale init; do not touch state
+                        return;
+                    }
+                }
+
+                // Only set IsInitialized after we have fully populated dictionaries.
                 IsInitialized = true;
+                try
+                {
+                    Initialized?.Invoke();
+                }
+                catch (Exception cbEx)
+                {
+                    UnityEngine.Debug.LogWarning($"Initialized callback error: {cbEx.Message}");
+                }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to parse model manifest with JsonUtility: {ex.Message}.");
+                UnityEngine.Debug.LogError($"Failed to initialize model registry: {ex.GetType().Name}: {ex.Message}.");
                 IsInitialized = false;
+                throw;
+            }
+            finally
+            {
+                IsInitializing = false;
+                lock (_initLock)
+                {
+                    if (generation == _initGeneration)
+                    {
+                        _initTask = null;
+                    }
+                }
             }
         }
 
@@ -113,11 +192,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
         /// </summary>
-        public SherpaOnnxModelMetadata GetMetadata(string modelId)
+        private SherpaOnnxModelMetadata GetMetadata(string modelId)
         {
             if (!IsInitialized)
             {
-                InitializeInternal();
+                UnityEngine.Debug.LogWarning("SherpaOnnxModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
+                return null;
             }
 
             if (_modelData.TryGetValue(modelId, out var metadata))
@@ -125,10 +205,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 // Resolve model file names to absolute paths only once per modelId
                 if (!_resolvedModelIds.Contains(modelId))
                 {
-                    for (int i = 0; i < metadata.modelFileNames.Length; i++)
-                    {
-                        metadata.modelFileNames[i] = SherpaPathResolver.GetModelFilePath(modelId, metadata.modelFileNames[i]);
-                    }
+                    // for (int i = 0; i < metadata.modelFileNames.Length; i++)
+                    // {
+                    //     metadata.modelFileNames[i] = SherpaPathResolver.GetModelFilePath(modelId, metadata.modelFileNames[i]);
+                    // }
                     _resolvedModelIds.Add(modelId);
                 }
 
@@ -139,16 +219,64 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return null;
         }
 
+        /// <summary>
+        /// Async version of GetMetadata; awaits initialization if needed.
+        /// </summary>
+        public async Task<SherpaOnnxModelMetadata> GetMetadataAsync(string modelId)
+        {
+            await InitializeAsync().ConfigureAwait(true);
+            return GetMetadata(modelId);
+        }
+
+
+        /// <summary>
+        /// Try to get the manifest without waiting. Returns true if initialized and manifest is not null.
+        /// </summary>
+        public bool TryGetManifest(out SherpaOnnxModelManifest manifest)
+        {
+            manifest = _manifest;
+            return IsInitialized && manifest != null;
+        }
+
+        /// <summary>
+        /// Await until the registry has finished initialization and then return the manifest.
+        /// Does not block the main thread.
+        /// </summary>
+        public async Task<SherpaOnnxModelManifest> WaitForManifestAsync(CancellationToken cancellationToken = default)
+        {
+            var t = InitializeAsync();
+            while (!t.IsCompleted)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+
+                await Task.Yield(); // keep UI thread responsive
+            }
+            return _manifest;
+        }
 
         /// <summary>
         /// Get the loaded manifest. Triggers lazy initialization if necessary.
         /// </summary>
-        public SherpaOnnxModelManifest GetManifest()
+        // public SherpaOnnxModelManifest GetManifest()
+        // {
+        //     if (!IsInitialized)
+        //     {
+        //         UnityEngine.Debug.LogWarning("SherpaOnnxModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing the manifest.");
+        //         return null;
+        //     }
+        //     return _manifest;
+        // }
+
+        /// <summary>
+        /// Async version of GetManifest; awaits initialization if needed.
+        /// </summary>
+        public async Task<SherpaOnnxModelManifest> GetManifestAsync()
         {
-            if (!IsInitialized)
-            {
-                InitializeInternal();
-            }
+            await InitializeAsync().ConfigureAwait(true);
             return _manifest;
         }
     }

@@ -4,6 +4,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
@@ -80,7 +81,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _originalFontSize = _keywordText.fontSize;
             }
-            InitDropdown();
+            _ = InitDropdown();
             InitKeywordsPanelUI();
             UpdateUI();
 
@@ -180,9 +181,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
         }
 
-        private void InitDropdown()
+        private async Task InitDropdown()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

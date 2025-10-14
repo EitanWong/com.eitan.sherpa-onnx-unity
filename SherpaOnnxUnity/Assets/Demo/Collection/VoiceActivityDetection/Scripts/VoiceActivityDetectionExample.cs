@@ -56,7 +56,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _tipsText.text = "Load a model to begin.";
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            InitDropdown();
+            _ = InitDropdownAsync();
             UpdateLoadButtonUI();
         }
 
@@ -176,9 +176,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region UI and Initialization
-        private void InitDropdown()
+        private async Task InitDropdownAsync()
         {
-            var manifest = SherpaOnnxModelRegistry.Instance.GetManifest();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

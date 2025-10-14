@@ -36,6 +36,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
                 this.SampleRate = metadata.sampleRate;
                 var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
+
                 return await runner.RunAsync<bool>(cancellationToken =>
                 {
                     try
@@ -61,6 +62,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         throw;
                     }
                 });
+
             }
             catch (Exception ex)
             {
@@ -91,7 +93,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
                     break;
                 case SpeechSynthesisModelType.Matcha:
-                    var vocoderMetaData = SherpaOnnxModelRegistry.Instance.GetMetadata("vocos-22khz-univ");
+                    var vocoderMetaData = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ");
                     if (modelType == SpeechSynthesisModelType.Matcha)
                     {
                         //prepare vocoder
@@ -124,6 +126,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 default:
                     throw new NotSupportedException($"Unsupported VAD model type: {modelType}");
             }
+
             return ttsModelConfig;
         }
 

@@ -6,9 +6,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using System.Runtime.CompilerServices;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon;
     using SherpaOnnx;
-    using UnityEngine;
 
     public class SpeechRecognition : SherpaOnnxModule
     {
@@ -288,7 +289,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         _onlineRecognizer.Reset(_onlineStream);
                     }
 
-                    return Task.FromResult(result?.Text ?? string.Empty);
+                    var text = result?.Text ?? string.Empty;
+                    var cased = PostProcessCasing(text);
+                    return Task.FromResult(cased);
                 }
             });
         }
@@ -318,6 +321,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     combinedCt.ThrowIfCancellationRequested();
                     _offlineRecognizer.Decode(offlineStream);
                     result = offlineStream.Result.Text;
+                    result = PostProcessCasing(result);
                 }
                 return Task.FromResult(result);
             });
@@ -341,6 +345,54 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             _onlineStream.AcceptWaveform(sampleRate, tailPadding);
 
             DecodeOnlineStream(cancellationToken);
+        }
+
+        // --- English sentence casing post-processor (fast + safe for mixed languages) ---
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HasAsciiLetter(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+            {
+                return false;
+            }
+
+
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                // Fast bounds check: map to uint to avoid branch mispredictions
+                if ((uint)(c - 'A') <= ('Z' - 'A') || (uint)(c - 'a') <= ('z' - 'a'))
+                {
+
+                    return true;
+                }
+
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Apply English sentence casing only when the text contains ASCII letters.
+        /// /// Non-English scripts (CJK, etc.) are returned unchanged. Mixed content is safe:
+        /// non-Latin characters are unaffected by the caser.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string PostProcessCasing(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return string.Empty;
+            }
+            // If the text has no ASCII letters, skip casing to avoid touching other languages.
+
+            if (!HasAsciiLetter(text))
+            {
+                return text;
+            }
+
+            // Delegate to the high-performance caser (handles punctuation, acronyms, phrases, etc.)
+
+            return EnglishSentenceCaser.ToSentenceCase(text);
         }
 
         protected override void OnDestroy()
