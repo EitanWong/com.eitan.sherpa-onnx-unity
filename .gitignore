@@ -30,6 +30,7 @@ TextMesh Pro.meta
 TextMesh Pro/
 UIElementsSchema/
 *packages-lock.json
+mono_crash.*.json
 
 # ============ #
 # Certificates #
@@ -88,5 +89,4 @@ StreamingAssets.meta
 # ====================== #
 
 SherpaOnnxUnity/.config/
-
 *.blob

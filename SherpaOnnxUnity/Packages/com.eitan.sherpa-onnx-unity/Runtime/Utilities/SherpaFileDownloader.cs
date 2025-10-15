@@ -1,20 +1,314 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 {
+    internal static class UnityMainThreadScheduler
+    {
+        private static readonly object InitLock = new object();
+        private static SynchronizationContext _context;
+        private static int _mainThreadId;
+        private static bool _initialized;
 
-    /// <summary>
-    /// Chunk download information for persistence
-    /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset()
+        {
+            lock (InitLock)
+            {
+                _context = null;
+                _mainThreadId = 0;
+                _initialized = false;
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        private static void InitializeOnLoad()
+        {
+            EnsureInitialized();
+        }
+
+        public static void EnsureInitialized()
+        {
+            if (_initialized) { return; }
+
+            lock (InitLock)
+            {
+                if (_initialized) { return; }
+
+                _context = SynchronizationContext.Current ?? new SynchronizationContext();
+                _mainThreadId = Thread.CurrentThread.ManagedThreadId;
+                _initialized = true;
+            }
+        }
+
+        public static bool IsMainThread => _initialized && Thread.CurrentThread.ManagedThreadId == _mainThreadId;
+
+        public static void Post(Action action)
+        {
+            if (action == null) { return; }
+            EnsureInitialized();
+
+            if (IsMainThread)
+            {
+                action();
+                return;
+            }
+
+            _context.Post(static state =>
+            {
+                try
+                {
+                    ((Action)state)?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }, action);
+        }
+
+        public static Task Run(Action action)
+        {
+            EnsureInitialized();
+
+            if (IsMainThread)
+            {
+                action();
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _context.Post(state =>
+            {
+                try
+                {
+                    ((Action)state)?.Invoke();
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }, action);
+
+            return tcs.Task;
+        }
+
+        public static Task Run(Func<Task> func)
+        {
+            EnsureInitialized();
+
+            if (IsMainThread)
+            {
+                return func();
+            }
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _context.Post(async state =>
+            {
+                try
+                {
+                    await ((Func<Task>)state)().ConfigureAwait(false);
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }, func);
+
+            return tcs.Task;
+        }
+
+        public static Task<T> Run<T>(Func<T> func)
+        {
+            EnsureInitialized();
+
+            if (IsMainThread)
+            {
+                return Task.FromResult(func());
+            }
+
+            var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _context.Post(state =>
+            {
+                try
+                {
+                    tcs.SetResult(((Func<T>)state)());
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }, func);
+
+            return tcs.Task;
+        }
+
+        public static Task<T> Run<T>(Func<Task<T>> func)
+        {
+            EnsureInitialized();
+
+            if (IsMainThread)
+            {
+                return func();
+            }
+
+            var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _context.Post(async state =>
+            {
+                try
+                {
+                    var result = await ((Func<Task<T>>)state)().ConfigureAwait(false);
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }, func);
+
+            return tcs.Task;
+        }
+
+        public static Task AwaitAsyncOperation(AsyncOperation operation, CancellationToken token)
+        {
+            if (operation == null) { throw new ArgumentNullException(nameof(operation)); }
+
+            if (operation.isDone)
+            {
+                token.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void Completed(AsyncOperation _)
+            {
+                operation.completed -= Completed;
+                tcs.TrySetResult(true);
+            }
+
+            operation.completed += Completed;
+
+            if (token.CanBeCanceled)
+            {
+                token.Register(() =>
+                {
+                    operation.completed -= Completed;
+                    tcs.TrySetCanceled(token);
+                });
+            }
+
+            return tcs.Task;
+        }
+    }
+
+    internal static class UnityPauseWatcher
+    {
+        public static event Action<bool> PauseChanged;
+
+        private static bool _subscribed;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset()
+        {
+            if (!_subscribed) { return; }
+            Application.focusChanged -= OnPauseStateChanged;
+            _subscribed = false;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        private static void Initialize()
+        {
+            if (_subscribed) { return; }
+            Application.focusChanged += OnPauseStateChanged;
+            _subscribed = true;
+        }
+
+        private static void OnPauseStateChanged(bool focus)
+        {
+            PauseChanged?.Invoke(!focus);
+        }
+    }
+
+    internal sealed class AsyncManualResetEvent
+    {
+        private volatile TaskCompletionSource<bool> _tcs;
+
+        public AsyncManualResetEvent(bool initialState = false)
+        {
+            _tcs = CreateTaskSource(initialState);
+        }
+
+        public Task WaitAsync(CancellationToken token)
+        {
+            if (!token.CanBeCanceled)
+            {
+                return _tcs.Task;
+            }
+
+            return WaitWithCancellationAsync(token);
+        }
+
+        public void Set()
+        {
+            var tcs = _tcs;
+            if (!tcs.Task.IsCompleted)
+            {
+                tcs.TrySetResult(true);
+            }
+        }
+
+        public void Reset()
+        {
+            while (true)
+            {
+                var tcs = _tcs;
+                if (!tcs.Task.IsCompleted)
+                {
+                    return;
+                }
+
+                var newSource = CreateTaskSource(false);
+                if (Interlocked.CompareExchange(ref _tcs, newSource, tcs) == tcs)
+                {
+                    return;
+                }
+            }
+        }
+
+        private async Task WaitWithCancellationAsync(CancellationToken token)
+        {
+            using (token.Register(() => _tcs.TrySetCanceled(token), useSynchronizationContext: false))
+            {
+                await _tcs.Task.ConfigureAwait(false);
+            }
+        }
+
+        private static TaskCompletionSource<bool> CreateTaskSource(bool set)
+        {
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (set)
+            {
+                source.TrySetResult(true);
+            }
+
+            return source;
+        }
+    }
+
     [Serializable]
     internal class ChunkInfo
     {
@@ -23,13 +317,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         public long End;
         public long Downloaded;
         public bool IsCompleted;
+        public string TempFileName;
         public string ErrorMessage;
         public int RetryCount;
+
+        public long ExpectedLength => End - Start + 1;
     }
 
-    /// <summary>
-    /// Download metadata for persistence
-    /// </summary>
     [Serializable]
     internal class DownloadMetadata : ISerializationCallbackReceiver
     {
@@ -38,151 +332,209 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         public long TotalSize;
         public long ChunkSize;
         public List<ChunkInfo> Chunks = new List<ChunkInfo>();
-        // public SherpaDownloadFeedback.DownloadStatus Status;
+        public bool SupportsRangeRequests;
+        public string WorkingDirectory;
         public string CreatedTimeString;
         public string LastModifiedTimeString;
 
-        [NonSerialized]
-        public DateTime CreatedTime;
-        [NonSerialized]
-        public DateTime LastModifiedTime;
+        [NonSerialized] public DateTime CreatedTime;
+        [NonSerialized] public DateTime LastModifiedTime;
 
         public void OnBeforeSerialize()
         {
-            CreatedTimeString = CreatedTime.ToString("o");
-            LastModifiedTimeString = LastModifiedTime.ToString("o");
+            CreatedTimeString = CreatedTime.ToString("o", CultureInfo.InvariantCulture);
+            LastModifiedTimeString = LastModifiedTime.ToString("o", CultureInfo.InvariantCulture);
         }
 
         public void OnAfterDeserialize()
         {
             if (!string.IsNullOrEmpty(CreatedTimeString))
-            { DateTime.TryParse(CreatedTimeString, null, System.Globalization.DateTimeStyles.RoundtripKind, out CreatedTime); }
+            {
+                DateTime.TryParse(CreatedTimeString, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out CreatedTime);
+            }
+
             if (!string.IsNullOrEmpty(LastModifiedTimeString))
-            { DateTime.TryParse(LastModifiedTimeString, null, System.Globalization.DateTimeStyles.RoundtripKind, out LastModifiedTime); }
+            {
+                DateTime.TryParse(LastModifiedTimeString, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out LastModifiedTime);
+            }
         }
     }
 
-    /// <summary>
-    /// Memory-safe download handler for chunked downloads
-    /// </summary>
-    internal class ChunkDownloadHandler : DownloadHandlerScript
+    internal sealed class ChunkDownloadHandler : DownloadHandlerScript, IDisposable
     {
-        private readonly FileStream _fileStream;
-        private readonly long _startPosition;
-        private readonly long _endPosition;
-        private readonly ChunkInfo _chunkInfo;
-        private readonly Action<long> _onProgressUpdate;
-        private readonly object _fileLock;
+        private const int BufferSize = 64 * 1024;
 
-        private long _receivedBytes;
-        private readonly byte[] _buffer;
-        private const int BufferSize = 64 * 1024; // 64KB buffer to minimize GC
+        private readonly FileStream _stream;
+        private readonly ChunkInfo _chunk;
+        private readonly long _expectedLength;
+        private readonly long _initialDownloaded;
+        private readonly Action<long> _onProgress;
 
-        public ChunkDownloadHandler(FileStream fileStream, ChunkInfo chunkInfo, Action<long> onProgressUpdate, object fileLock)
+        private long _bytesWritten;
+
+        public long BytesWritten => _bytesWritten;
+
+        public ChunkDownloadHandler(FileStream stream, ChunkInfo chunk, long expectedLength, Action<long> onProgress)
             : base(new byte[BufferSize])
         {
-            _fileStream = fileStream;
-            _chunkInfo = chunkInfo;
-            _startPosition = chunkInfo.Start + chunkInfo.Downloaded;
-            _endPosition = chunkInfo.End;
-            _onProgressUpdate = onProgressUpdate;
-            _fileLock = fileLock;
-            _buffer = new byte[BufferSize];
+            _stream = stream ?? throw new ArgumentNullException(nameof(stream));
+            _chunk = chunk ?? throw new ArgumentNullException(nameof(chunk));
+            _expectedLength = expectedLength;
+            _initialDownloaded = Math.Min(chunk.Downloaded, expectedLength);
+            _onProgress = onProgress;
         }
 
         protected override bool ReceiveData(byte[] data, int dataLength)
         {
             if (data == null || dataLength <= 0)
-            { return true; }
-
-            try
             {
-                var remaining = (_endPosition - _startPosition + 1) - _receivedBytes;
-                if (remaining <= 0)
-                {
-                    _chunkInfo.IsCompleted = true;
-                    return true;
-                }
-
-                var bytesToWrite = Math.Min((long)dataLength, remaining);
-
-                // Write to file at correct position
-                lock (_fileLock)
-                {
-                    _fileStream.Seek(_startPosition + _receivedBytes, SeekOrigin.Begin);
-                    _fileStream.Write(data, 0, (int)bytesToWrite);
-                    _fileStream.Flush();
-                }
-
-                _receivedBytes += bytesToWrite;
-                _chunkInfo.Downloaded += bytesToWrite;
-                _onProgressUpdate?.Invoke(bytesToWrite);
-
-                if (_receivedBytes >= (_endPosition - _startPosition + 1))
-                {
-                    _chunkInfo.IsCompleted = true;
-                }
-
                 return true;
             }
-            catch (Exception ex)
+
+            var remaining = _expectedLength - _bytesWritten;
+            if (remaining <= 0)
             {
-                _chunkInfo.ErrorMessage = ex.Message;
                 return false;
             }
+
+            var bytesToWrite = (int)Math.Min(remaining, dataLength);
+
+            _stream.Write(data, 0, bytesToWrite);
+            _bytesWritten += bytesToWrite;
+
+            var downloaded = _initialDownloaded + _bytesWritten;
+            Volatile.Write(ref _chunk.Downloaded, Math.Min(downloaded, _expectedLength));
+            if (_chunk.Downloaded >= _expectedLength)
+            {
+                _chunk.IsCompleted = true;
+            }
+
+            _onProgress?.Invoke(bytesToWrite);
+            return true;
         }
 
         protected override void CompleteContent()
         {
-            _chunkInfo.IsCompleted = _receivedBytes >= (_endPosition - _startPosition + 1);
+            try
+            {
+                _stream.Flush(flushToDisk: false);
+            }
+            catch (IOException)
+            {
+                // Ignore flush errors; they will surface when we reopen the stream.
+            }
+
             base.CompleteContent();
         }
 
-        protected override byte[] GetData() => null;
-        protected override string GetText() => null;
-        protected override float GetProgress() =>
-            _endPosition > _startPosition ? (float)_receivedBytes / (_endPosition - _startPosition + 1) : 0f;
+        public override void Dispose()
+        {
+            // if (disposing)
+            // {
+            _stream.Dispose();
+            // }
+
+            base.Dispose();
+        }
     }
 
-    /// <summary>
-    /// High-performance chunked file downloader with breakpoint resumption
-    /// </summary>
+    internal readonly struct UnityWebRequestResponse
+    {
+        public readonly UnityWebRequest.Result Result;
+        public readonly long ResponseCode;
+        public readonly string Error;
+        public readonly Dictionary<string, string> Headers;
+
+        public UnityWebRequestResponse(
+            UnityWebRequest.Result result,
+            long responseCode,
+            string error,
+            Dictionary<string, string> headers)
+        {
+            Result = result;
+            ResponseCode = responseCode;
+            Error = error;
+            Headers = headers;
+        }
+    }
+
+    internal readonly struct ChunkRequestResult
+    {
+        public readonly UnityWebRequest.Result Result;
+        public readonly long ResponseCode;
+        public readonly string Error;
+        public readonly string AcceptRanges;
+        public readonly string ContentRange;
+        public readonly long BytesDownloaded;
+
+        public ChunkRequestResult(
+            UnityWebRequest.Result result,
+            long responseCode,
+            string error,
+            string acceptRanges,
+            string contentRange,
+            long bytesDownloaded)
+        {
+            Result = result;
+            ResponseCode = responseCode;
+            Error = error;
+            AcceptRanges = acceptRanges;
+            ContentRange = contentRange;
+            BytesDownloaded = bytesDownloaded;
+        }
+    }
+
+    internal sealed class RangeDowngradeException : Exception
+    {
+        public static readonly RangeDowngradeException Instance = new RangeDowngradeException();
+
+        private RangeDowngradeException() : base("Server ignored range request; downgrading to single-threaded download.") { }
+    }
+
     internal class SherpaFileDownloader : IDisposable
     {
-        private readonly SemaphoreSlim _concurrencyLimiter;
-        private readonly ConcurrentDictionary<int, UnityWebRequest> _activeRequests;
-        private readonly object _progressLock = new object();
-        private readonly object _fileLock = new object();
-        private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly Stopwatch _stopwatch;
+        private const string MetadataFileExtension = ".download.metadata";
+        private const string DownloadTempFileExtension = ".download";
+        private const string ChunkDirectorySuffix = ".chunks";
 
-        // Configuration
+        private static readonly object InstancesLock = new object();
+        private static readonly HashSet<WeakReference<SherpaFileDownloader>> Instances = new HashSet<WeakReference<SherpaFileDownloader>>();
+
+        static SherpaFileDownloader()
+        {
+            UnityMainThreadScheduler.EnsureInitialized();
+            UnityPauseWatcher.PauseChanged += HandleGlobalPauseChanged;
+        }
+
+        private readonly WeakReference<SherpaFileDownloader> _selfReference;
+        private readonly SherpaOnnxModelMetadata _modelMetadata;
         private readonly int _maxConcurrentChunks;
         private readonly long _defaultChunkSize;
         private readonly int _maxRetryAttempts;
-        private readonly TimeSpan _retryDelay;
         private readonly int _timeoutSeconds;
+        private readonly string _userAgent;
+        private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(2);
 
-        // State
+        private readonly object _stateLock = new object();
+        private readonly AsyncManualResetEvent _pauseSignal = new AsyncManualResetEvent(true);
+        private readonly object _progressLock = new object();
+
         private DownloadMetadata _metadata;
-        private FileStream _fileStream;
+        private string _finalFilePath;
         private string _tempFilePath;
         private string _metadataFilePath;
+        private string _chunkDirectory;
+
+        private CancellationTokenSource _manualCancellationSource = new CancellationTokenSource();
+        private CancellationTokenSource _pauseCancellationSource = new CancellationTokenSource();
+        private SemaphoreSlim _concurrencyLimiter;
+
+        private volatile bool _isPaused;
         private volatile bool _isDisposed;
-        private long _totalDownloadedBytes;
-        private DateTime _lastProgressUpdate;
-        private long _lastDownloadedBytes;
         private double _currentSpeed;
+        private long _lastReportedBytes;
+        private DateTime _lastProgressTimestamp = DateTime.UtcNow;
 
-        private SherpaOnnxModelMetadata _modelMetadata;
-
-        #region Constants
-        private const string MetadataFileExtension = ".download.metadata";
-        private const string DownloadTempFileExtension = ".download";
-        private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
-        #endregion
-
-        // Events
         public event Action<IFeedback> Feedback;
 
         public SherpaFileDownloader(
@@ -190,71 +542,80 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             int maxConcurrentChunks = 4,
             long chunkSizeMB = 10,
             int maxRetryAttempts = 3,
-            int timeoutSeconds = 30)
+            int timeoutSeconds = 60)
         {
             _modelMetadata = metadata;
-            _maxConcurrentChunks = Math.Max(1, Math.Min(maxConcurrentChunks, 8)); // Limit to reasonable range
-            _defaultChunkSize = Math.Max(1024 * 1024, chunkSizeMB * 1024 * 1024); // Min 1MB
-            _maxRetryAttempts = maxRetryAttempts;
-            _retryDelay = TimeSpan.FromSeconds(2);
-            _timeoutSeconds = timeoutSeconds;
+            _maxConcurrentChunks = Mathf.Clamp(maxConcurrentChunks, 1, 8);
+            _defaultChunkSize = Math.Max(1024 * 1024, chunkSizeMB * 1024 * 1024);
+            _maxRetryAttempts = Mathf.Max(1, maxRetryAttempts);
 
-            _concurrencyLimiter = new SemaphoreSlim(_maxConcurrentChunks, _maxConcurrentChunks);
-            _activeRequests = new ConcurrentDictionary<int, UnityWebRequest>();
-            _cancellationTokenSource = new CancellationTokenSource();
-            _stopwatch = new Stopwatch();
+            var platformTimeout = Application.platform == RuntimePlatform.IPhonePlayer || Application.platform == RuntimePlatform.Android
+                ? Math.Max(timeoutSeconds, 120)
+                : Math.Max(timeoutSeconds, 60);
+            _timeoutSeconds = platformTimeout;
+            _userAgent = BuildUserAgent();
+
+            ResetConcurrencyLimiter(_maxConcurrentChunks);
+
+            _selfReference = new WeakReference<SherpaFileDownloader>(this);
+            lock (InstancesLock)
+            {
+                Instances.Add(_selfReference);
+            }
         }
 
-        /// <summary>
-        /// Download file with chunked approach and breakpoint resumption
-        /// </summary>
         public async Task<bool> DownloadAsync(string url, string filePath, CancellationToken cancellationToken = default)
         {
             if (_isDisposed) { throw new ObjectDisposedException(nameof(SherpaFileDownloader)); }
+            if (string.IsNullOrEmpty(url)) { throw new ArgumentNullException(nameof(url)); }
+            if (string.IsNullOrEmpty(filePath)) { throw new ArgumentNullException(nameof(filePath)); }
+
+            EnsureWritablePath(filePath);
+
+            using var linkedUserCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _manualCancellationSource.Token);
+            var userToken = linkedUserCancellation.Token;
 
             try
             {
-                var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken, _cancellationTokenSource.Token).Token;
-                await InitializeDownloadAsync(url, filePath, linkedToken);
-
-                // Check if download is already completed
-                if (IsDownloadCompleted())
-                {
-                    await FinalizeDownloadAsync();
-                    return true;
-                }
-
-                _stopwatch.Start();
+                await InitializeDownloadAsync(url, filePath, userToken).ConfigureAwait(false);
                 ReportProgress();
 
-                // Start concurrent chunk downloads
-                var downloadTasks = new List<Task>();
-
-                for (int i = 0; i < _metadata.Chunks.Count; i++)
+                while (true)
                 {
-                    var chunk = _metadata.Chunks[i];
-                    if (!chunk.IsCompleted)
+                    userToken.ThrowIfCancellationRequested();
+                    await _pauseSignal.WaitAsync(userToken).ConfigureAwait(false);
+
+                    if (IsDownloadCompleted())
                     {
-                        var task = DownloadChunkAsync(chunk, linkedToken);
-                        downloadTasks.Add(task);
+                        await FinalizeDownloadAsync().ConfigureAwait(false);
+                        ReportProgress();
+                        return true;
                     }
-                }
 
-                // Wait for all chunks to complete
-                await Task.WhenAll(downloadTasks);
+                    var pendingChunks = _metadata.Chunks.Where(c => !c.IsCompleted).OrderBy(c => c.Index).ToList();
+                    if (pendingChunks.Count == 0)
+                    {
+                        await SaveMetadataAsync().ConfigureAwait(false);
+                        continue;
+                    }
 
-                // Verify download completion
-                if (IsDownloadCompleted())
-                {
-                    await FinalizeDownloadAsync();
-                    ReportProgress();
-                    return true;
-                }
-                else
-                {
-                    ReportProgress("Download incomplete");
-                    return false;
+                    try
+                    {
+                        await DownloadChunksAsync(pendingChunks, userToken).ConfigureAwait(false);
+                    }
+                    catch (RangeDowngradeException)
+                    {
+                        await HandleRangeDowngradeAsync().ConfigureAwait(false);
+                        CalculateDownloadedBytes();
+                        ReportProgress();
+                        continue;
+                    }
+                    catch (OperationCanceledException) when (_isPaused && !userToken.IsCancellationRequested)
+                    {
+                        await SaveMetadataAsync().ConfigureAwait(false);
+                        await WaitForResumeAsync(userToken).ConfigureAwait(false);
+                        continue;
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -267,253 +628,36 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 ReportProgress(ex.ToString());
                 return false;
             }
-            finally
-            {
-                _stopwatch.Stop();
-                CleanupActiveRequests();
-            }
         }
 
-        /// <summary>
-        /// Initialize download metadata and file streams
-        /// </summary>
-        private async Task InitializeDownloadAsync(string url, string filePath, CancellationToken cancellationToken)
+        private async Task DownloadChunksAsync(IEnumerable<ChunkInfo> chunks, CancellationToken userToken)
         {
-
-            _tempFilePath = filePath + DownloadTempFileExtension;
-            _metadataFilePath = filePath + MetadataFileExtension;
-            ReportProgress();
-
-
-            // Try to resume from existing metadata
-            if (File.Exists(_metadataFilePath))
+            var concurrency = GetAllowedConcurrency();
+            if (concurrency <= 1)
             {
-                try
+                foreach (var chunk in chunks)
                 {
-                    await LoadMetadataAsync();
-                    if (_metadata.Url == url)
-                    {
-                        // Resume existing download
-                        await OpenFileStreamAsync();
-                        CalculateDownloadedBytes();
-                        ReportProgress();
-                        return;
-                    }
+                    await DownloadChunkWithRetryAsync(chunk, userToken).ConfigureAwait(false);
                 }
-                // 捕获特定的文件I/O异常 (Sharing Violation会在此被捕获)
-                catch (System.IO.IOException ioEx)
-                {
-                    UnityEngine.Debug.LogWarning($"Could not access temp file to resume, likely due to a file lock. Error: {ioEx.Message}. Starting fresh download.");
-                }
-                // 捕获其他所有未预料到的异常
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogWarning($"An unexpected error occurred while trying to resume download: {ex.Message}. Starting fresh download.");
-                }
+                return;
             }
 
-            // Start new download
-            await InitializeNewDownloadAsync(url, filePath, cancellationToken);
+            var tasks = new List<Task>();
+            foreach (var chunk in chunks)
+            {
+                tasks.Add(DownloadChunkAsync(chunk, userToken));
+            }
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Initialize new download
-        /// </summary>
-        private async Task InitializeNewDownloadAsync(string url, string filePath, CancellationToken cancellationToken)
+        private async Task DownloadChunkAsync(ChunkInfo chunk, CancellationToken userToken)
         {
-
-            // Get file size and check if server supports range requests
-            var (fileSize, supportsRangeRequests) = await GetFileInfoAsync(url, cancellationToken);
-
-            if (!supportsRangeRequests)
-            {
-                // Fall back to single-threaded download
-                // _maxConcurrentChunks = 1;
-                UnityEngine.Debug.LogWarning("Server does not support range requests. Using single-threaded download.");
-            }
-
-            // Calculate optimal chunk size
-            var chunkSize = supportsRangeRequests ?
-                Math.Min(_defaultChunkSize, Math.Max(1024 * 1024, fileSize / _maxConcurrentChunks)) :
-                fileSize;
-
-            var chunks = new List<ChunkInfo>();
-            long currentPosition = 0;
-            int chunkIndex = 0;
-
-            while (currentPosition < fileSize)
-            {
-                var chunkEnd = Math.Min(currentPosition + chunkSize - 1, fileSize - 1);
-                chunks.Add(new ChunkInfo
-                {
-                    Index = chunkIndex++,
-                    Start = currentPosition,
-                    End = chunkEnd,
-                    Downloaded = 0,
-                    IsCompleted = false
-                });
-                currentPosition = chunkEnd + 1;
-            }
-
-            // Create metadata
-            _metadata = new DownloadMetadata
-            {
-                Url = url,
-                FileName = Path.GetFileName(filePath),
-                TotalSize = fileSize,
-                ChunkSize = chunkSize,
-                CreatedTime = DateTime.Now,
-                LastModifiedTime = DateTime.Now,
-                Chunks = chunks,
-            };
-
-            // Create temp file and save metadata
-            await CreateTempFileAsync(fileSize);
-            await SaveMetadataAsync();
-            await OpenFileStreamAsync();
-        }
-
-        /// <summary>
-        /// Get file information from server
-        /// </summary>
-        private async Task<(long fileSize, bool supportsRangeRequests)> GetFileInfoAsync(string url, CancellationToken cancellationToken)
-        {
-            // Try HEAD request first
-            using var headRequest = UnityWebRequest.Head(url);
-            headRequest.timeout = _timeoutSeconds;
-            headRequest.SetRequestHeader("User-Agent", UserAgent);
-
-            var headOperation = headRequest.SendWebRequest();
-
-            while (!headOperation.isDone)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await Task.Delay(50, cancellationToken);
-            }
-
-            long fileSize = 0;
-            bool supportsRangeRequests = false;
-
-            if (headRequest.result == UnityWebRequest.Result.Success)
-            {
-                var contentLengthHeader = headRequest.GetResponseHeader("Content-Length");
-                if (long.TryParse(contentLengthHeader, out fileSize))
-                {
-                    var acceptRangesHeader = headRequest.GetResponseHeader("Accept-Ranges");
-                    supportsRangeRequests = !string.IsNullOrEmpty(acceptRangesHeader) && acceptRangesHeader.Contains("bytes");
-                }
-            }
-
-            // If HEAD request failed, try range request
-            if (fileSize == 0)
-            {
-                using var rangeRequest = UnityWebRequest.Get(url);
-                rangeRequest.timeout = _timeoutSeconds;
-                rangeRequest.SetRequestHeader("User-Agent", UserAgent);
-                rangeRequest.SetRequestHeader("Range", "bytes=0-1023");
-
-                var rangeOperation = rangeRequest.SendWebRequest();
-
-                while (!rangeOperation.isDone)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await Task.Delay(50, cancellationToken);
-                }
-
-                if (rangeRequest.result == UnityWebRequest.Result.Success &&
-                    rangeRequest.responseCode == 206)
-                {
-                    var contentRangeHeader = rangeRequest.GetResponseHeader("Content-Range");
-                    if (!string.IsNullOrEmpty(contentRangeHeader))
-                    {
-                        var parts = contentRangeHeader.Split('/');
-                        if (parts.Length == 2 && long.TryParse(parts[1], out fileSize))
-                        {
-                            supportsRangeRequests = true;
-                        }
-                    }
-                }
-            }
-
-            if (fileSize == 0)
-            {
-                throw new InvalidOperationException("Unable to determine file size");
-            }
-
-            return (fileSize, supportsRangeRequests);
-        }
-
-        /// <summary>
-        /// Create temporary file with specified size
-        /// </summary>
-        private async Task CreateTempFileAsync(long fileSize)
-        {
-            var directory = Path.GetDirectoryName(_tempFilePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            using var fs = new FileStream(_tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            fs.SetLength(fileSize);
-            await fs.FlushAsync();
-        }
-
-        /// <summary>
-        /// Open file stream for writing
-        /// </summary>
-        private async Task OpenFileStreamAsync()
-        {
-            const int maxRetries = 3;
-            const int delayMs = 100;
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    _fileStream = new FileStream(_tempFilePath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
-                    await Task.CompletedTask;
-                    return; // Success
-                }
-                catch (IOException)
-                {
-                    if (i == maxRetries - 1)
-                    {
-                        throw; // Last attempt failed, re-throw the exception
-                    }
-                    await Task.Delay(delayMs * (i + 1)); // Wait a bit longer each time
-                }
-            }
-        }
-
-        /// <summary>
-        /// Download individual chunk
-        /// </summary>
-        private async Task DownloadChunkAsync(ChunkInfo chunk, CancellationToken cancellationToken)
-        {
-            await _concurrencyLimiter.WaitAsync(cancellationToken);
+            await _concurrencyLimiter.WaitAsync(userToken).ConfigureAwait(false);
 
             try
             {
-                for (int retry = 0; retry < _maxRetryAttempts; retry++)
-                {
-                    try
-                    {
-                        await DownloadChunkWithRetryAsync(chunk, cancellationToken);
-                        break;
-                    }
-                    catch (Exception ex) when (retry < _maxRetryAttempts - 1)
-                    {
-                        chunk.ErrorMessage = ex.Message;
-                        chunk.RetryCount = retry + 1;
-                        await Task.Delay(_retryDelay, cancellationToken);
-                    }
-                }
-
-                if (!chunk.IsCompleted)
-                {
-                    throw new InvalidOperationException($"Chunk {chunk.Index} failed after {_maxRetryAttempts} attempts");
-                }
+                await DownloadChunkWithRetryAsync(chunk, userToken).ConfigureAwait(false);
             }
             finally
             {
@@ -521,297 +665,854 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
         }
 
-        /// <summary>
-        /// Download chunk with retry logic
-        /// </summary>
-        private async Task DownloadChunkWithRetryAsync(ChunkInfo chunk, CancellationToken cancellationToken)
+        private async Task DownloadChunkWithRetryAsync(ChunkInfo chunk, CancellationToken userToken)
         {
-            var currentStart = chunk.Start + chunk.Downloaded;
-            var currentEnd = chunk.End;
-
-            if (currentStart > currentEnd)
+            for (int attempt = 0; attempt < _maxRetryAttempts; attempt++)
             {
-                chunk.IsCompleted = true;
-                return;
+                userToken.ThrowIfCancellationRequested();
+                await _pauseSignal.WaitAsync(userToken).ConfigureAwait(false);
+
+                using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+                    userToken,
+                    _pauseCancellationSource.Token);
+                var token = linkedTokenSource.Token;
+
+                try
+                {
+                    var outcome = await ExecuteChunkRequestAsync(chunk, token).ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+
+                    await ProcessChunkOutcomeAsync(chunk, outcome).ConfigureAwait(false);
+                    await SaveMetadataAsync().ConfigureAwait(false);
+                    return;
+                }
+                catch (RangeDowngradeException)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    if (_isPaused && !_manualCancellationSource.IsCancellationRequested && !userToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+
+                    token.ThrowIfCancellationRequested();
+                    throw;
+                }
+                catch (Exception ex) when (attempt < _maxRetryAttempts - 1)
+                {
+                    chunk.ErrorMessage = ex.Message;
+                    chunk.RetryCount = attempt + 1;
+                    var delay = GetBackoffDelay(attempt);
+
+                    await Task.Delay(delay, userToken).ConfigureAwait(false);
+                }
             }
 
-            using var request = UnityWebRequest.Get(_metadata.Url);
-            request.timeout = _timeoutSeconds;
-            request.SetRequestHeader("User-Agent", UserAgent);
-            request.SetRequestHeader("Range", $"bytes={currentStart}-{currentEnd}");
+            throw new InvalidOperationException($"Chunk {chunk.Index} failed after {_maxRetryAttempts} attempts.");
+        }
 
-            // Use custom download handler
-            var downloadHandler = new ChunkDownloadHandler(_fileStream, chunk, OnChunkProgress, _fileLock);
-            request.downloadHandler = downloadHandler;
+        private async Task<ChunkRequestResult> ExecuteChunkRequestAsync(ChunkInfo chunk, CancellationToken token)
+        {
+            var chunkPath = GetChunkFilePath(chunk);
+            Directory.CreateDirectory(Path.GetDirectoryName(chunkPath));
 
-            _activeRequests.TryAdd(chunk.Index, request);
+            var expectedLength = chunk.ExpectedLength;
 
-            try
+            return await UnityMainThreadScheduler.Run(async () =>
             {
+                using var stream = new FileStream(chunkPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+
+                if (stream.Length > expectedLength)
+                {
+                    stream.SetLength(expectedLength);
+                }
+
+                var currentDownloaded = Math.Min(stream.Length, expectedLength);
+                chunk.Downloaded = currentDownloaded;
+                chunk.IsCompleted = currentDownloaded >= expectedLength;
+                stream.Seek(currentDownloaded, SeekOrigin.Begin);
+
+                if (chunk.IsCompleted)
+                {
+                    return new ChunkRequestResult(UnityWebRequest.Result.Success, 206, null, "bytes", $"bytes {chunk.Start}-{chunk.End}/{_metadata.TotalSize}", 0);
+                }
+
+                using var request = UnityWebRequest.Get(_metadata.Url);
+                request.timeout = _timeoutSeconds;
+                request.SetRequestHeader("User-Agent", _userAgent);
+
+                var useRange = _metadata.SupportsRangeRequests;
+                var rangeStart = chunk.Start + currentDownloaded;
+                var rangeEnd = chunk.End;
+                if (useRange)
+                {
+                    request.SetRequestHeader("Range", $"bytes={rangeStart}-{rangeEnd}");
+                }
+
+                var handler = new ChunkDownloadHandler(stream, chunk, expectedLength, OnChunkProgress);
+                request.downloadHandler = handler;
+
+                using var cancellationRegistration = token.Register(() =>
+                {
+                    UnityMainThreadScheduler.Post(() =>
+                    {
+                        if (!request.isDone)
+                        {
+                            request.Abort();
+                        }
+                    });
+                });
+
                 var operation = request.SendWebRequest();
+                await UnityMainThreadScheduler.AwaitAsyncOperation(operation, token);
 
-                while (!operation.isDone)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await Task.Delay(50, cancellationToken);
-                }
+                var outcome = new ChunkRequestResult(
+                    request.result,
+                    request.responseCode,
+                    request.error,
+                    request.GetResponseHeader("Accept-Ranges"),
+                    request.GetResponseHeader("Content-Range"),
+                    handler.BytesWritten);
 
-                if (request.result == UnityWebRequest.Result.Success)
+                return outcome;
+            }).ConfigureAwait(false);
+        }
+
+        private Task ProcessChunkOutcomeAsync(ChunkInfo chunk, ChunkRequestResult outcome)
+        {
+            var expectedLength = chunk.ExpectedLength;
+            chunk.Downloaded = Math.Min(chunk.Downloaded, expectedLength);
+
+            Debug.Log($"[SherpaFileDownloader] Chunk {chunk.Index} result={outcome.Result} code={outcome.ResponseCode} acceptRanges='{outcome.AcceptRanges}' contentRange='{outcome.ContentRange}'");
+
+            if (outcome.Result == UnityWebRequest.Result.Success)
+            {
+                if (_metadata.SupportsRangeRequests)
                 {
-                    if (request.responseCode == 206 || request.responseCode == 200)
+                    if (outcome.ResponseCode == 206)
                     {
-                        chunk.IsCompleted = true;
+                        ValidateContentRange(chunk, outcome.ContentRange);
+                        chunk.IsCompleted = chunk.Downloaded >= expectedLength;
+                        return Task.CompletedTask;
                     }
-                    else
+
+                    if (outcome.ResponseCode == 200)
                     {
-                        throw new InvalidOperationException($"Unexpected response code: {request.responseCode}");
+                        throw RangeDowngradeException.Instance;
                     }
-                }
-                else if (request.responseCode == 416)
-                {
-                    // Range not satisfiable - chunk might already be completed
-                    chunk.IsCompleted = true;
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Download failed: {request.error}");
+                    if (outcome.ResponseCode == 200 || outcome.ResponseCode == 201)
+                    {
+                        chunk.IsCompleted = chunk.Downloaded >= expectedLength;
+                        return Task.CompletedTask;
+                    }
                 }
             }
-            finally
+
+            if (outcome.ResponseCode == 416)
             {
-                _activeRequests.TryRemove(chunk.Index, out _);
-                downloadHandler?.Dispose();
-            }
-
-            if (chunk.IsCompleted)
-            {
-                await SaveMetadataAsync();
-            }
-        }
-
-        /// <summary>
-        /// Handle chunk progress updates
-        /// </summary>
-        private void OnChunkProgress(long bytesReceived)
-        {
-            Interlocked.Add(ref _totalDownloadedBytes, bytesReceived);
-
-            if (DateTime.Now - _lastProgressUpdate > TimeSpan.FromMilliseconds(500))
-            {
-                UpdateProgress();
-            }
-        }
-
-        /// <summary>
-        /// Update download progress
-        /// </summary>
-        private void UpdateProgress()
-        {
-            lock (_progressLock)
-            {
-                var now = DateTime.Now;
-                var elapsed = now - _lastProgressUpdate;
-
-                if (elapsed.TotalMilliseconds > 0)
+                if (VerifyChunkOnDisk(chunk))
                 {
-                    var bytesDiff = _totalDownloadedBytes - _lastDownloadedBytes;
-                    _currentSpeed = bytesDiff / elapsed.TotalSeconds;
-
-                    _lastProgressUpdate = now;
-                    _lastDownloadedBytes = _totalDownloadedBytes;
+                    chunk.Downloaded = expectedLength;
+                    chunk.IsCompleted = true;
+                    return Task.CompletedTask;
                 }
 
-                ReportProgress();
+                ResetChunkFile(chunk);
+                return Task.CompletedTask;
             }
+
+            throw new InvalidOperationException($"Chunk {chunk.Index} download failed. Result: {outcome.Result}, Code: {outcome.ResponseCode}, Error: {outcome.Error}");
         }
 
-        /// <summary>
-        /// 向回调函数报告进度 (已修改)
-        /// Report progress to the callback (Refactored)
-        /// </summary>
-        /// <param name="errorMessage">如果发生错误，则提供错误信息</param>
-        private void ReportProgress(string errorMessage = null)
+        private async Task InitializeDownloadAsync(string url, string filePath, CancellationToken token)
         {
-            // 1. 首先处理失败状态
-            // 如果存在错误信息，意味着任务失败，应发送 FailedFeedback 并立即返回。
-            if (!string.IsNullOrEmpty(errorMessage))
+            _finalFilePath = filePath;
+            _tempFilePath = filePath + DownloadTempFileExtension;
+            _metadataFilePath = filePath + MetadataFileExtension;
+            _chunkDirectory = filePath + ChunkDirectorySuffix;
+
+            if (File.Exists(_metadataFilePath))
             {
-                Feedback?.Invoke(new FailedFeedback(_modelMetadata, message: errorMessage));
-                return;
+                try
+                {
+                    await LoadMetadataAsync().ConfigureAwait(false);
+                    if (string.Equals(_metadata.Url, url, StringComparison.OrdinalIgnoreCase))
+                    {
+                        CalculateDownloadedBytes();
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"Failed to load metadata; starting new download. {ex}");
+                }
             }
 
-            // 确保元数据已加载，避免除零错误
-            if (_metadata == null || _metadata.TotalSize <= 0)
+            var (fileSize, supportsRange) = await GetFileInfoAsync(url, token).ConfigureAwait(false);
+            var chunkSize = supportsRange
+                ? Math.Min(_defaultChunkSize, Math.Max(1024 * 1024, fileSize / _maxConcurrentChunks))
+                : fileSize;
+
+            var chunks = new List<ChunkInfo>();
+            long position = 0;
+            int index = 0;
+            while (position < fileSize)
             {
-                // 在下载真正开始前可以不发送任何消息，或发送一个“准备中”的消息
-                return;
+                var end = Math.Min(position + chunkSize - 1, fileSize - 1);
+                chunks.Add(new ChunkInfo
+                {
+                    Index = index,
+                    Start = position,
+                    End = end,
+                    Downloaded = 0,
+                    IsCompleted = false,
+                    TempFileName = $"chunk_{index:D4}.part"
+                });
+
+                index++;
+                position = end + 1;
             }
 
-            // 2. 创建新的、具体的 DownloadFeedback 对象
-            var downloadFeedback = new DownloadFeedback(_modelMetadata, filePath: _metadata.FileName, downloadedBytes: _totalDownloadedBytes, totalBytes: _metadata.TotalSize, speedBytesPerSecond: _currentSpeed);
+            _metadata = new DownloadMetadata
+            {
+                Url = url,
+                FileName = Path.GetFileName(filePath),
+                TotalSize = fileSize,
+                ChunkSize = chunkSize,
+                CreatedTime = DateTime.UtcNow,
+                LastModifiedTime = DateTime.UtcNow,
+                SupportsRangeRequests = supportsRange,
+                WorkingDirectory = _chunkDirectory,
+                Chunks = chunks
+            };
 
-            // 3. 通过通用的回调函数发送反馈对象
-            Feedback?.Invoke(downloadFeedback);
+            if (!supportsRange)
+            {
+                ResetConcurrencyLimiter(1);
+            }
 
+            Directory.CreateDirectory(_chunkDirectory);
+            CalculateDownloadedBytes();
+            await SaveMetadataAsync().ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Check if download is completed
-        /// </summary>
+        private async Task<UnityWebRequestResponse> SendSimpleRequestAsync(UnityWebRequest request, CancellationToken token)
+        {
+            return await UnityMainThreadScheduler.Run(async () =>
+            {
+                using (request)
+                {
+                    request.timeout = _timeoutSeconds;
+                    request.SetRequestHeader("User-Agent", _userAgent);
+
+                    using var registration = token.Register(() =>
+                    {
+                        UnityMainThreadScheduler.Post(() =>
+                        {
+                            if (!request.isDone)
+                            {
+                                request.Abort();
+                            }
+                        });
+                    });
+
+                    var operation = request.SendWebRequest();
+                    await UnityMainThreadScheduler.AwaitAsyncOperation(operation, token);
+
+                    var headers = request.GetResponseHeaders() ?? new Dictionary<string, string>();
+                    return new UnityWebRequestResponse(request.result, request.responseCode, request.error, headers);
+                }
+            }).ConfigureAwait(false);
+        }
+
+        private async Task<(long fileSize, bool supportsRangeRequests)> GetFileInfoAsync(string url, CancellationToken token)
+        {
+            WarnIfInsecureUrl(url);
+
+            var headResponse = await SendSimpleRequestAsync(UnityWebRequest.Head(url), token).ConfigureAwait(false);
+            if (headResponse.Result == UnityWebRequest.Result.Success &&
+                headResponse.Headers.TryGetValue("Content-Length", out var contentLengthHeader) &&
+                long.TryParse(contentLengthHeader, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sizeFromHead))
+            {
+                var supportsRange = headResponse.Headers.TryGetValue("Accept-Ranges", out var acceptRanges) &&
+                                    !string.IsNullOrEmpty(acceptRanges) &&
+                                    acceptRanges.IndexOf("bytes", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (sizeFromHead > 0)
+                {
+                    return (sizeFromHead, supportsRange);
+                }
+            }
+
+            var probeRequest = UnityWebRequest.Get(url);
+            probeRequest.SetRequestHeader("Range", "bytes=0-0");
+            var probeResponse = await SendSimpleRequestAsync(probeRequest, token).ConfigureAwait(false);
+
+            if (probeResponse.Result == UnityWebRequest.Result.Success && probeResponse.ResponseCode == 206)
+            {
+                if (probeResponse.Headers.TryGetValue("Content-Range", out var contentRange) &&
+                    TryParseContentRange(contentRange, out _, out _, out var total))
+                {
+                    return (total, true);
+                }
+            }
+
+            if (probeResponse.Headers.TryGetValue("Content-Length", out var probeLength) &&
+                long.TryParse(probeLength, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sizeFromProbe))
+            {
+                return (sizeFromProbe, false);
+            }
+
+            throw new InvalidOperationException("Unable to determine remote file size.");
+        }
+
+        private void CalculateDownloadedBytes()
+        {
+            if (_metadata == null) { return; }
+
+            long total = 0;
+            foreach (var chunk in _metadata.Chunks)
+            {
+                var clamped = Math.Min(chunk.Downloaded, chunk.ExpectedLength);
+                chunk.Downloaded = clamped;
+                if (clamped >= chunk.ExpectedLength)
+                {
+                    chunk.IsCompleted = true;
+                }
+
+                total += clamped;
+            }
+
+            _lastReportedBytes = total;
+        }
+
         private bool IsDownloadCompleted()
         {
             if (_metadata == null) { return false; }
-            return _metadata.Chunks.All(c => c.IsCompleted) && _totalDownloadedBytes >= _metadata.TotalSize;
+
+            if (_metadata.Chunks.Any(chunk => !chunk.IsCompleted))
+            {
+                return false;
+            }
+
+            var sum = _metadata.Chunks.Sum(chunk => chunk.ExpectedLength);
+            return sum == _metadata.TotalSize;
         }
 
-        /// <summary>
-        /// Calculate total downloaded bytes from chunks
-        /// </summary>
-        private void CalculateDownloadedBytes()
-        {
-            _totalDownloadedBytes = _metadata.Chunks.Sum(c => c.Downloaded);
-        }
-
-        /// <summary>
-        /// Finalize download by renaming temp file
-        /// </summary>
         private async Task FinalizeDownloadAsync()
         {
-            _fileStream?.Dispose();
-            _fileStream = null;
+            Directory.CreateDirectory(Path.GetDirectoryName(_finalFilePath));
 
-            var finalPath = _tempFilePath.Replace(DownloadTempFileExtension, "");
+            using (var output = new FileStream(_tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                foreach (var chunk in _metadata.Chunks.OrderBy(c => c.Index))
+                {
+                    var chunkPath = GetChunkFilePath(chunk);
+                    using var input = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    await input.CopyToAsync(output).ConfigureAwait(false);
+                }
+            }
 
-            // Verify file size
             var fileInfo = new FileInfo(_tempFilePath);
             if (fileInfo.Length != _metadata.TotalSize)
             {
-                throw new InvalidOperationException($"File size mismatch. Expected: {_metadata.TotalSize}, Actual: {fileInfo.Length}");
+                throw new InvalidOperationException($"File size mismatch. Expected {_metadata.TotalSize}, actual {fileInfo.Length}.");
             }
 
-            // Move temp file to final location
-            if (File.Exists(finalPath))
+            if (File.Exists(_finalFilePath))
             {
-                File.Delete(finalPath);
+                File.Delete(_finalFilePath);
             }
 
-            File.Move(_tempFilePath, finalPath);
+            File.Move(_tempFilePath, _finalFilePath);
 
-            // Clean up metadata file
+            foreach (var chunk in _metadata.Chunks)
+            {
+                var path = GetChunkFilePath(chunk);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            if (Directory.Exists(_chunkDirectory) && !Directory.EnumerateFileSystemEntries(_chunkDirectory).Any())
+            {
+                Directory.Delete(_chunkDirectory, recursive: true);
+            }
+
             if (File.Exists(_metadataFilePath))
             {
                 File.Delete(_metadataFilePath);
             }
-
-            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Save metadata to file
-        /// </summary>
+        private void ReportProgress(string errorMessage = null)
+        {
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                Feedback?.Invoke(new FailedFeedback(_modelMetadata, errorMessage));
+                return;
+            }
+
+            if (_metadata == null || _metadata.TotalSize <= 0)
+            {
+                return;
+            }
+
+            var downloaded = _metadata.Chunks.Sum(c => Math.Min(c.Downloaded, c.ExpectedLength));
+
+            lock (_progressLock)
+            {
+                var now = DateTime.UtcNow;
+                var elapsed = now - _lastProgressTimestamp;
+                if (elapsed.TotalSeconds > 0.1)
+                {
+                    var deltaBytes = downloaded - _lastReportedBytes;
+                    if (deltaBytes >= 0)
+                    {
+                        _currentSpeed = deltaBytes / Math.Max(elapsed.TotalSeconds, 0.1);
+                        _lastReportedBytes = downloaded;
+                        _lastProgressTimestamp = now;
+                    }
+                }
+            }
+
+            var feedback = new DownloadFeedback(
+                _modelMetadata,
+                _metadata.FileName,
+                downloaded,
+                _metadata.TotalSize,
+                _currentSpeed);
+
+            Feedback?.Invoke(feedback);
+        }
+
+        private void OnChunkProgress(long bytesReceived)
+        {
+            if (bytesReceived <= 0) { return; }
+            ReportProgress();
+        }
+
+        private void ValidateContentRange(ChunkInfo chunk, string contentRange)
+        {
+            if (!TryParseContentRange(contentRange, out var start, out var end, out var total))
+            {
+                throw new InvalidOperationException($"Invalid Content-Range header: {contentRange}");
+            }
+
+            if (start != chunk.Start || end != chunk.End || total != _metadata.TotalSize)
+            {
+                throw new InvalidOperationException($"Content-Range mismatch for chunk {chunk.Index}. Expected {chunk.Start}-{chunk.End}/{_metadata.TotalSize}, got {contentRange}");
+            }
+        }
+
+        private bool VerifyChunkOnDisk(ChunkInfo chunk)
+        {
+            var path = GetChunkFilePath(chunk);
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            var fileInfo = new FileInfo(path);
+            return fileInfo.Length == chunk.ExpectedLength;
+        }
+
+        private void ResetChunkFile(ChunkInfo chunk)
+        {
+            var path = GetChunkFilePath(chunk);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            chunk.Downloaded = 0;
+            chunk.IsCompleted = false;
+        }
+
         private async Task SaveMetadataAsync()
         {
             if (_metadata == null) { return; }
 
-            _metadata.LastModifiedTime = DateTime.Now;
+            _metadata.LastModifiedTime = DateTime.UtcNow;
+            Directory.CreateDirectory(Path.GetDirectoryName(_metadataFilePath));
             var json = JsonUtility.ToJson(_metadata, true);
-            await File.WriteAllTextAsync(_metadataFilePath, json);
+            await File.WriteAllTextAsync(_metadataFilePath, json).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Load metadata from file
-        /// </summary>
         private async Task LoadMetadataAsync()
         {
-            var json = await File.ReadAllTextAsync(_metadataFilePath);
+            var json = await File.ReadAllTextAsync(_metadataFilePath).ConfigureAwait(false);
             _metadata = JsonUtility.FromJson<DownloadMetadata>(json);
-        }
 
-        /// <summary>
-        /// Clean up active requests
-        /// </summary>
-        private void CleanupActiveRequests()
-        {
-            foreach (var kvp in _activeRequests)
+            if (!string.IsNullOrEmpty(_metadata.WorkingDirectory))
             {
-                try
+                _chunkDirectory = _metadata.WorkingDirectory;
+            }
+            else
+            {
+                _metadata.WorkingDirectory = _chunkDirectory;
+            }
+
+            Directory.CreateDirectory(_metadata.WorkingDirectory);
+
+            foreach (var chunk in _metadata.Chunks)
+            {
+                if (string.IsNullOrEmpty(chunk.TempFileName))
                 {
-                    kvp.Value?.Dispose();
-                }
-                catch
-                {
-                    // Ignore cleanup errors
+                    chunk.TempFileName = $"chunk_{chunk.Index:D4}.part";
                 }
             }
-            _activeRequests.Clear();
+
+            if (!_metadata.SupportsRangeRequests)
+            {
+                ResetConcurrencyLimiter(1);
+            }
         }
 
-        /// <summary>
-        /// Cancel current download
-        /// </summary>
+        private async Task HandleRangeDowngradeAsync()
+        {
+            if (_metadata == null) { return; }
+            if (!_metadata.SupportsRangeRequests) { return; }
+
+            foreach (var chunk in _metadata.Chunks)
+            {
+                var path = GetChunkFilePath(chunk);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            _metadata.SupportsRangeRequests = false;
+            _metadata.Chunks = new List<ChunkInfo>
+            {
+                new ChunkInfo
+                {
+                    Index = 0,
+                    Start = 0,
+                    End = _metadata.TotalSize - 1,
+                    Downloaded = 0,
+                    IsCompleted = false,
+                    TempFileName = "chunk_0000.part"
+                }
+            };
+
+            ResetConcurrencyLimiter(1);
+            CalculateDownloadedBytes();
+            await SaveMetadataAsync().ConfigureAwait(false);
+        }
+
+        private async Task WaitForResumeAsync(CancellationToken token)
+        {
+            while (_isPaused && !token.IsCancellationRequested)
+            {
+                await _pauseSignal.WaitAsync(token).ConfigureAwait(false);
+            }
+        }
+
+        private static void HandleGlobalPauseChanged(bool paused)
+        {
+            lock (InstancesLock)
+            {
+                var dead = new List<WeakReference<SherpaFileDownloader>>();
+                foreach (var weak in Instances)
+                {
+                    if (weak.TryGetTarget(out var downloader))
+                    {
+                        downloader.OnApplicationPause(paused);
+                    }
+                    else
+                    {
+                        dead.Add(weak);
+                    }
+                }
+
+                foreach (var weak in dead)
+                {
+                    Instances.Remove(weak);
+                }
+            }
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused)
+            {
+                RequestPause();
+            }
+            else
+            {
+                ResumeFromPause();
+            }
+        }
+
+        private void RequestPause()
+        {
+            lock (_stateLock)
+            {
+                if (_isPaused) { return; }
+
+                _isPaused = true;
+                _pauseSignal.Reset();
+                _pauseCancellationSource.Cancel();
+            }
+
+            _ = SaveMetadataAsync();
+        }
+
+        private void ResumeFromPause()
+        {
+            lock (_stateLock)
+            {
+                if (!_isPaused) { return; }
+
+                _pauseCancellationSource.Dispose();
+                _pauseCancellationSource = new CancellationTokenSource();
+                _isPaused = false;
+                _pauseSignal.Set();
+            }
+        }
+
+        private void ResetConcurrencyLimiter(int maxConcurrency)
+        {
+            _concurrencyLimiter?.Dispose();
+            _concurrencyLimiter = new SemaphoreSlim(Math.Max(1, maxConcurrency), Math.Max(1, maxConcurrency));
+        }
+
+        private int GetAllowedConcurrency()
+        {
+            return _metadata != null && _metadata.SupportsRangeRequests ? _maxConcurrentChunks : 1;
+        }
+
+        private string GetChunkFilePath(ChunkInfo chunk)
+        {
+            var fileName = string.IsNullOrEmpty(chunk.TempFileName) ? $"chunk_{chunk.Index:D4}.part" : chunk.TempFileName;
+            var directory = _metadata?.WorkingDirectory ?? _chunkDirectory;
+            return Path.Combine(directory, fileName);
+        }
+
+        private static bool TryParseContentRange(string header, out long start, out long end, out long total)
+        {
+            start = 0;
+            end = 0;
+            total = 0;
+
+            if (string.IsNullOrEmpty(header))
+            {
+                return false;
+            }
+
+            // Format: bytes start-end/total
+            var spaceIndex = header.IndexOf(' ');
+            var slashIndex = header.IndexOf('/');
+
+            if (spaceIndex < 0 || slashIndex < 0 || slashIndex <= spaceIndex)
+            {
+                return false;
+            }
+
+            var rangePart = header.Substring(spaceIndex + 1, slashIndex - spaceIndex - 1);
+            var totalPart = header.Substring(slashIndex + 1);
+
+            var dashIndex = rangePart.IndexOf('-');
+            if (dashIndex < 0)
+            {
+                return false;
+            }
+
+            if (!long.TryParse(rangePart.Substring(0, dashIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out start))
+            {
+                return false;
+            }
+
+            if (!long.TryParse(rangePart.Substring(dashIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out end))
+            {
+                return false;
+            }
+
+            if (totalPart == "*")
+            {
+                total = -1;
+                return true;
+            }
+
+            return long.TryParse(totalPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out total);
+        }
+
+        private TimeSpan GetBackoffDelay(int attempt)
+        {
+            var multiplier = Math.Pow(2, Math.Min(attempt, 5));
+            var seconds = Math.Min(30, _baseRetryDelay.TotalSeconds * multiplier);
+            return TimeSpan.FromSeconds(seconds);
+        }
+
+        private static string BuildUserAgent()
+        {
+            var deviceModel = SystemInfo.deviceModel;
+            if (string.IsNullOrEmpty(deviceModel))
+            {
+                deviceModel = "UnityPlayer";
+            }
+
+            switch (Application.platform)
+            {
+                case RuntimePlatform.IPhonePlayer:
+                    var iosVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "iOS", "16_0", replaceDotsWithUnderscore: true);
+                    return $"Mozilla/5.0 (iPhone; CPU iPhone OS {iosVersion} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+                case RuntimePlatform.Android:
+                    var androidVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "Android", "13", replaceDotsWithUnderscore: false);
+                    return $"Mozilla/5.0 (Linux; Android {androidVersion}; {deviceModel}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36";
+                case RuntimePlatform.OSXPlayer:
+                case RuntimePlatform.OSXEditor:
+                    return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15";
+                case RuntimePlatform.WindowsPlayer:
+                case RuntimePlatform.WindowsEditor:
+                    return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+                case RuntimePlatform.LinuxPlayer:
+                case RuntimePlatform.LinuxEditor:
+                    return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+                default:
+                    return $"Mozilla/5.0 ({deviceModel}) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+            }
+        }
+
+        private static string ExtractVersionSegment(string source, string token, string fallback, bool replaceDotsWithUnderscore)
+        {
+            fallback = string.IsNullOrEmpty(fallback) ? "1.0" : fallback;
+            source ??= string.Empty;
+
+            var index = source.IndexOf(token, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                index += token.Length;
+                while (index < source.Length && (source[index] == ' ' || source[index] == ':' || source[index] == '_'))
+                {
+                    index++;
+                }
+
+                var end = index;
+                while (end < source.Length)
+                {
+                    var c = source[end];
+                    if (!(char.IsDigit(c) || c == '.' || c == '_'))
+                    {
+                        break;
+                    }
+                    end++;
+                }
+
+                if (end > index)
+                {
+                    var segment = source.Substring(index, end - index);
+                    if (!string.IsNullOrEmpty(segment))
+                    {
+                        return replaceDotsWithUnderscore
+                            ? segment.Replace('.', '_')
+                            : segment.Replace('_', '.');
+                    }
+                }
+            }
+
+            return replaceDotsWithUnderscore ? fallback.Replace('.', '_') : fallback.Replace('_', '.');
+        }
+
+        private void WarnIfInsecureUrl(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                Debug.LogWarning($"Downloader received invalid URL: {url}");
+                return;
+            }
+
+            if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.LogWarning($"URL '{url}' is not HTTPS. Ensure ATS exceptions are configured if targeting iOS.");
+            }
+        }
+
+        private void EnsureWritablePath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                throw new ArgumentNullException(nameof(filePath));
+            }
+
+            if (Application.isEditor)
+            {
+                return;
+            }
+
+            var platform = Application.platform;
+            var requiresPersistent = platform == RuntimePlatform.IPhonePlayer ||
+                                     platform == RuntimePlatform.Android ||
+                                     platform == RuntimePlatform.tvOS;
+            if (!requiresPersistent)
+            {
+                return;
+            }
+
+            var persistentPath = Application.persistentDataPath;
+            if (string.IsNullOrEmpty(persistentPath))
+            {
+                throw new InvalidOperationException("Application.persistentDataPath is not available on this platform.");
+            }
+
+            var fullPath = Path.GetFullPath(filePath);
+            var persistentFull = Path.GetFullPath(persistentPath);
+
+            if (!fullPath.StartsWith(persistentFull, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"File path '{filePath}' must be located under Application.persistentDataPath on mobile platforms.");
+            }
+        }
+
+        public static string FormatFileSize(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len /= 1024;
+            }
+
+            return $"{len:0.##} {sizes[order]}";
+        }
+
+        public static string FormatSpeed(double bytesPerSecond)
+        {
+            return $"{FormatFileSize((long)Math.Max(0, bytesPerSecond))}/s";
+        }
+
         public void Cancel()
         {
-            _cancellationTokenSource?.Cancel();
+            _manualCancellationSource.Cancel();
+            _pauseSignal.Set();
         }
 
         public void Dispose()
         {
             if (_isDisposed) { return; }
-
             _isDisposed = true;
-            _cancellationTokenSource?.Cancel();
-            _fileStream?.Dispose();
-            _concurrencyLimiter?.Dispose();
-            _cancellationTokenSource?.Dispose();
-            CleanupActiveRequests();
-        }
-    }
-}
 
-// Example usage:
-/*
-public class ExampleDownloader
-{
-    private SherpaFileDownloader downloader;
-    
-    public async Task StartDownload()
-    {
-        downloader = new SherpaFileDownloader(
-            maxConcurrentChunks: 4,
-            chunkSizeMB: 10,
-            maxRetryAttempts: 3,
-            timeoutSeconds: 30
-        );
-        
-        downloader.DownloadFeedback += OnDownloadProgress;
-        
-        string url = "https://example.com/largefile.zip";
-        string path = Path.Combine(Application.persistentDataPath, "largefile.zip");
-        
-        bool success = await downloader.DownloadAsync(url, path);
-        
-        if (success)
-        {
-            Debug.Log("Download completed successfully!");
+            _manualCancellationSource.Cancel();
+            _pauseSignal.Set();
+
+            _concurrencyLimiter?.Dispose();
+            _manualCancellationSource.Dispose();
+            _pauseCancellationSource.Dispose();
+
+            lock (InstancesLock)
+            {
+                Instances.RemoveWhere(weak => !weak.TryGetTarget(out var target) || target == this);
+            }
         }
-        else
-        {
-            Debug.Log("Download failed!");
-        }
-    }
-    
-    private void OnDownloadProgress(SherpaDownloadFeedback progress)
-    {
-        Debug.Log($"Progress: {progress.ProgressPercentage:F1}% " +
-                  $"({SherpaFileDownloader.FormatFileSize(progress.DownloadedBytes)}/" +
-                  $"{SherpaFileDownloader.FormatFileSize(progress.TotalBytes)}) " +
-                  $"Speed: {SherpaFileDownloader.FormatSpeed(progress.SpeedBytesPerSecond)} " +
-                  $"Chunks: {progress.CompletedChunks}/{progress.TotalChunks}");
-    }
-    
-    public void Cleanup()
-    {
-        downloader?.Dispose();
     }
 }
-*/
