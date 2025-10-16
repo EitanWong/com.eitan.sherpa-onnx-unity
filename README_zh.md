@@ -25,9 +25,9 @@
 
 | 语言       | 演示视频                                                                                                  | 语言   | 演示视频                                                                                               |
 |------------|-----------------------------------------------------------------------------------------------------------|--------|--------------------------------------------------------------------------------------------------------|
-| 英语和中文 | <video src="SherpaOnnxUnity/Assets/Docs/Videos/EnglishAndChinese.mp4" width="300" controls>您的浏览器不支持视频标签。</video> | 法语   | <video src="SherpaOnnxUnity/Assets/Docs/Videos/French.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            |
-| 日语       | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Japanese.mp4" width="300" controls>您的浏览器不支持视频标签。</video>          | 韩语   | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Korean.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            |
-| 俄语       | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Russian.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            | 四川话 | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Sichuan%20dialect.mp4" width="300" controls>您的浏览器不支持视频标签。</video>  |
+| 英语和中文 | <video src="https://github.com/user-attachments/assets/d1df8412-042f-4c66-947a-98fb4784ba2e" width="400" controls>您的浏览器不支持视频标签。</video> | 法语   | <video src="https://github.com/user-attachments/assets/0760f2b9-0c0e-4df0-9ed1-86a78c94fd33" width="400" controls>您的浏览器不支持视频标签。</video>            |
+| 日语       | <video src="https://github.com/user-attachments/assets/ec52b860-e945-4574-b5b3-11cbed741113" width="400" controls>您的浏览器不支持视频标签。</video>          | 韩语   | <video src="https://github.com/user-attachments/assets/6707a16a-c12d-464a-a57e-24b044d87e76" width="400" controls>您的浏览器不支持视频标签。</video>            |
+| 俄语       | <video src="https://github.com/user-attachments/assets/9ce70da8-44a9-4d6b-8864-d9e24d535dfa" width="400" controls>您的浏览器不支持视频标签。</video>            | 四川话 | <video src="https://github.com/user-attachments/assets/bdfed3a3-efe7-4899-bd8a-8d63bd8a30c8" width="400" controls>您的浏览器不支持视频标签。</video>  |
 
 </div>
 
