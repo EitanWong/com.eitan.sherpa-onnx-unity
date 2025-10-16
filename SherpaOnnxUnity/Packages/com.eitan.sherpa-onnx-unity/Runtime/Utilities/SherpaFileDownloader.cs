@@ -1073,7 +1073,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             var expectedLength = chunk.ExpectedLength;
             chunk.Downloaded = Math.Min(chunk.Downloaded, expectedLength);
 
-            Debug.Log($"[SherpaFileDownloader] Chunk {chunk.Index} result={outcome.Result} code={outcome.ResponseCode} acceptRanges='{outcome.AcceptRanges}' contentRange='{outcome.ContentRange}'");
+            // Debug.Log($"[SherpaFileDownloader] Chunk {chunk.Index} result={outcome.Result} code={outcome.ResponseCode} acceptRanges='{outcome.AcceptRanges}' contentRange='{outcome.ContentRange}'");
 
             if (outcome.Result == UnityWebRequest.Result.Success)
             {

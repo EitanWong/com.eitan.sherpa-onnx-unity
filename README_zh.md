@@ -11,34 +11,41 @@
 [![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/) 
 [![Downloads](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.sherpa-onnx-unity&style=flat-square)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.2** (2025-09-21)
+📋 **[查看更新日志](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.3** (2025-10-17)
 
 </div>
 
-## 🎬 演示视频
+## 🎬 演示
+
+这里是一些功能的视频演示。
 
 <div align="center">
 
-[![Unity本地离线语音识别演示](https://img.shields.io/badge/🎥_观看演示-Unity语音识别-blue?style=for-the-badge)](https://www.bilibili.com/video/BV1E38hz3ETw/?share_source=copy_web&vd_source=06d081c8a7b3c877a41f801ce5915855)
-
-*点击上方观看SherpaOnnxUnity实时语音识别演示效果*
+| 语言       | 演示视频                                                                                                  | 语言   | 演示视频                                                                                               |
+|------------|-----------------------------------------------------------------------------------------------------------|--------|--------------------------------------------------------------------------------------------------------|
+| 英语和中文 | <video src="SherpaOnnxUnity/Assets/Docs/Videos/EnglishAndChinese.mp4" width="300" controls>您的浏览器不支持视频标签。</video> | 法语   | <video src="SherpaOnnxUnity/Assets/Docs/Videos/French.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            |
+| 日语       | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Japanese.mp4" width="300" controls>您的浏览器不支持视频标签。</video>          | 韩语   | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Korean.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            |
+| 俄语       | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Russian.mp4" width="300" controls>您的浏览器不支持视频标签。</video>            | 四川话 | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Sichuan%20dialect.mp4" width="300" controls>您的浏览器不支持视频标签。</video>  |
 
 </div>
 
---- 
+如果想观看更详细的介绍，您也可以在 [Bilibili](https://www.bilibili.com/video/BV1E38hz3ETw/?share_source=copy_web&vd_source=06d081c8a7b3c877a41f801ce5915855) 上观看视频。
 
-## 🆕 v0.1.1-exp.2 新功能 (2025-09-21)
+---
 
-### 🎯 新增模块与功能
-- **🌍 语种识别** - 从音频流中检测正在说的语言。
-- **✨ 自定义关键词支持** - 关键词检测模块现在支持自定义关键词（目前仅支持中文）。
+## 🆕 v0.1.1-exp.3 新功能 (2025-10-17)
 
-### ⚡ 核心更新
-- **升级sherpa-onnx** - 核心引擎更新至 [v1.12.14](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.14)，以获得最新的功能和修复。
+### 🚀 亮点
+- **许可证变更**: 项目许可证已从 MIT 更新为 **Apache 2.0**。
+- **异步模型加载**: 模型注册表现在完全异步，从 GitHub releases 获取最新模型。
+- **强大的下载器**: 文件下载器已重写，支持分块下载、重试和自适应并发。
+- **自动英文大写**: ASR 结果现在可自动转换为正确的句子大小写。
+- **安卓闪退修复**: 修复了离线语音识别在安卓上的严重闪退问题。
+- **iOS 兼容性**: 增强了 P/Invoke 安全性和 iOS 平台兼容性。
 
-[📋 **查看完整更新日志**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
+[📋 **查看完整更新日志**](./SherpaOnnxUnity/SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -201,13 +208,13 @@ SherpaOnnxUnity/
 
 ## 📄 许可证和法律
 
-### MIT许可证
+### Apache 2.0 许可证
 
-本项目基于**MIT许可证**授权 - 详情请参阅[LICENSE.md](LICENSE.md)文件。
+本项目基于**Apache 2.0 许可证**授权 - 详情请参阅[LICENSE.md](LICENSE.md)文件。
 
 ### 致谢
 
-本包基于[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)构建，这是一个同样基于MIT许可证的优秀语音处理库。我们向k2-fsa团队的出色工作表示感谢。
+本包基于[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)构建，这是一个同样基于Apache 2.0 许可证的优秀语音处理库。我们向k2-fsa团队的出色工作表示感谢。
 
 ### 重要许可信息
 

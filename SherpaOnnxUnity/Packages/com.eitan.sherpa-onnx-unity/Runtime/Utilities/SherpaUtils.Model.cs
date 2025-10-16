@@ -225,6 +225,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
+                modelID = modelID.ToLowerInvariant();
 
                 SpeechRecognitionModelType type = GetSpeechRecognitionModelType(modelID);
                 switch (type)
@@ -233,9 +234,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Online_Paraformer:
                     case SpeechRecognitionModelType.Online_Ctc:
                         return true;
+                    case SpeechRecognitionModelType.None:
+                        return ContainsAnyKeyword(modelID, online_streaming_keywords); ;
                     default:
                         return false;
                 }
+
             }
 
             public static bool IsPunctuationModel(string modelID)

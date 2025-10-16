@@ -11,32 +11,39 @@
 [![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/) 
 [![Downloads](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.sherpa-onnx-unity&style=flat-square)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE.md)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.2** (2025-09-21)
+📋 **[View Changelog](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.3** (2025-10-17)
 
 </div>
 
-## 🎬 Demo Video
+## 🎬 Demos
+
+Here are some video demonstrations of the features in action.
 
 <div align="center">
 
-[![Unity Local Offline Speech Recognition Demo](https://img.shields.io/badge/🎥_Watch_Demo-Unity_Speech_Recognition-blue?style=for-the-badge)](https://www.bilibili.com/video/BV1E38hz3ETw/?share_source=copy_web&vd_source=06d081c8a7b3c877a41f801ce5915855)
-
-*Click above to see SherpaOnnxUnity in action with real-time speech recognition*
+| Language          | Demo Video                                                                                                | Language        | Demo Video                                                                                             |
+|-------------------|-----------------------------------------------------------------------------------------------------------|-----------------|--------------------------------------------------------------------------------------------------------|
+| English & Chinese | <video src="SherpaOnnxUnity/Assets/Docs/Videos/EnglishAndChinese.mp4" width="300" controls>Your browser does not support the video tag.</video> | French          | <video src="SherpaOnnxUnity/Assets/Docs/Videos/French.mp4" width="300" controls>Your browser does not support the video tag.</video>            |
+| Japanese          | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Japanese.mp4" width="300" controls>Your browser does not support the video tag.</video>          | Korean          | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Korean.mp4" width="300" controls>Your browser does not support the video tag.</video>            |
+| Russian           | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Russian.mp4" width="300" controls>Your browser does not support the video tag.</video>            | Sichuan Dialect | <video src="SherpaOnnxUnity/Assets/Docs/Videos/Sichuan%20dialect.mp4" width="300" controls>Your browser does not support the video tag.</video>  |
 
 </div>
 
---- 
+For a more detailed introduction, you can also watch the video on [Bilibili](https://www.bilibili.com/video/BV1E38hz3ETw/?share_source=copy_web&vd_source=06d081c8a7b3c877a41f801ce5915855).
 
-## 🆕 What's New in v0.1.1-exp.2 (2025-09-21)
+---
 
-### 🎯 New Modules & Features
-- **🌍 Spoken Language Identification** - Detect the language being spoken from an audio stream.
-- **✨ Custom Keyword Support** - The Keyword Spotting module now supports custom keywords (currently for Chinese).
+## 🆕 What's New in v0.1.1-exp.3 (2025-10-17)
 
-### ⚡ Core Updates
-- **Upgraded sherpa-onnx** - Core engine updated to [v1.12.14](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.14) for the latest features and fixes.
+### 🚀 Highlights
+- **License Change**: Project license has been updated from MIT to **Apache 2.0**.
+- **Async Model Loading**: The model registry is now fully asynchronous, fetching the latest models from GitHub releases.
+- **Robust Downloader**: The file downloader has been rewritten with chunking, retries, and adaptive concurrency.
+- **Automatic English Casing**: ASR results are now automatically converted to proper sentence case.
+- **Android Crash Fix**: Fixed a critical bug causing crashes in offline speech recognition on Android.
+- **iOS Compatibility**: Enhanced P/Invoke security and compatibility for the iOS platform.
 
 [📋 **View Full Changelog**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -201,13 +208,13 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 ## 📄 License & Legal
 
-### MIT License
+### Apache 2.0 License
 
-This project is licensed under the **MIT License** - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the **Apache 2.0 License** - see the [LICENSE.md](LICENSE.md) file for details.
 
 ### Attribution
 
-This package is built upon [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), an outstanding speech processing library also under the MIT License. We extend our gratitude to the k2-fsa team for their excellent work.
+This package is built upon [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), an outstanding speech processing library also under the Apache 2.0 License. We extend our gratitude to the k2-fsa team for their excellent work.
 
 ### Important License Information
 
