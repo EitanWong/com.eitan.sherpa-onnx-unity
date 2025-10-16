@@ -611,7 +611,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _initMessageText.text = string.Empty;
             _langText.text = "<b><i>Please click the record button and start speaking.</i></b>";
             _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test speech-to-text by speaking directly.";
-            _recordingBtn.gameObject.SetActive(true);
+            if (_recordingBtn != null)
+            {
+                _recordingBtn.gameObject.SetActive(true);
+            }
         }
 
         public void OnFeedback(FailedFeedback feedback)

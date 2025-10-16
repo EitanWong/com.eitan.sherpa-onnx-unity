@@ -113,6 +113,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             var reporter = new SherpaOnnxFeedbackReporter(null, this);
             _speechEnhancement = new SpeechEnhancement(modelID, SampleRate, reporter);
+
+            IsModelLoaded = true;// let ui refersh to show the unload button
             UpdateUI();
         }
 
@@ -126,6 +128,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogWarning("No model is loaded, no need to unload.");
                 return;
             }
+
 
             // Prevent unloading during recording
             if (_isRecording)
@@ -241,6 +244,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             // Destroy Speech Enhancement and dispose
             _speechEnhancement?.Dispose();
             _speechEnhancement = null;
+            IsModelLoaded = false;
 
             // Reset playback state
             if (_audioSource != null && _audioSource.isPlaying)
@@ -499,6 +503,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 Load(_modelIDDropdown.captionText.text);
             }
+            UpdateUI();
         }
 
         private void HandleRecordStopButtonClick()
@@ -615,6 +620,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         public void OnFeedback(FailedFeedback feedback)
         {
+            IsModelLoaded = false;
             SetProgressActive(false);
             Debug.LogError($"[Failed]: {feedback.Message}");
             _initMessageText.text = feedback.Message;

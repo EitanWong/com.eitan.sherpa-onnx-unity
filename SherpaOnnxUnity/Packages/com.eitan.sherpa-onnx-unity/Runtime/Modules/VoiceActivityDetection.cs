@@ -293,7 +293,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
         {
-            var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = UnityEngine.Device.SystemInfo.processorCount };
+            var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)

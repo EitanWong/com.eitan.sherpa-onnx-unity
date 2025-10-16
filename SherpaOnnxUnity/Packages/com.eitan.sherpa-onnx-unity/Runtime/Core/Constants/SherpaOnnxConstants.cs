@@ -42,6 +42,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             new InitFileNameBlacklistRule(InitFileNameMatchKind.Suffix, ".wav"),
             new InitFileNameBlacklistRule(InitFileNameMatchKind.Suffix, ".mp3"),
 
+            new InitFileNameBlacklistRule(InitFileNameMatchKind.Contains, "espeak-ng-data"),
+            new InitFileNameBlacklistRule(InitFileNameMatchKind.Contains, "librknnrt-android"),
+
             // Examples (disabled by default):
             // new InitFileNameBlacklistRule(InitFileNameMatchKind.Contains, "readme"),
             // new InitFileNameBlacklistRule(InitFileNameMatchKind.Prefix, "LICENSE"),

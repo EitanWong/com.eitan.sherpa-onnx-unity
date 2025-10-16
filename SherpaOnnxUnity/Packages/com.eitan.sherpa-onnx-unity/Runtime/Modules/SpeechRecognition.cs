@@ -105,12 +105,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
         {
+            var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var config = new OnlineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
-                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
+                    NumThreads = threadCount,
                     Debug = 0
                 },
                 DecodingMethod = "greedy_search",
@@ -148,13 +149,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
         {
+            var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var config = new OfflineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
-                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
-                    Provider="coreml",
+                    NumThreads = threadCount,
                     ModelType = string.Empty
 
                 },

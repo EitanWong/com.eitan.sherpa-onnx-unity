@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using SherpaOnnx;
 
 namespace Eitan.SherpaOnnxUnity
@@ -65,7 +66,7 @@ namespace Eitan.SherpaOnnxUnity
         private OfflinePunctuationConfig CreatePunctuationConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform)
         {
             var config = new OfflinePunctuationConfig();
-            config.Model.NumThreads = UnityEngine.Device.SystemInfo.processorCount;
+            config.Model.NumThreads = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             // Configure GTCRN model

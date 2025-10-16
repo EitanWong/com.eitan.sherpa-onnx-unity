@@ -239,7 +239,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             // Debug.Log($"Playing back {clip.length:F2} seconds of audio.");
 
             // Wait for playback to complete.
-            while (audioSource.isPlaying)
+            while (audioSource && audioSource.isPlaying)
             {
                 await Task.Yield();
             }
@@ -341,6 +341,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             SetProgressActive(false);
             UpdateOverallProgress(1f, "Success");
+            _contentInputField.text = string.Empty;
             _initMessageText.text = string.Empty;
             _speechSynthesisStatusText.text = "TTS Status: <color=green>Ready</color>";
             _tipsText.text = $"Model {feedback.Metadata.modelId} loaded. Enter text and click Generate.";

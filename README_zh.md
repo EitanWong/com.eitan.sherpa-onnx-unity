@@ -5,8 +5,6 @@
 ### Unity离线语音识别与语音活动检测包
 
 > **For English users**: This project provides English documentation. Please see [README.md](./README.md) for detailed English instructions.
-> 
-> **English用户请注意**: 本项目提供英文文档，请查看 [README.md](./README.md) 获取详细的英文说明。
 
 **语言**: [English](./README.md) | [中文](./README_zh.md)
 

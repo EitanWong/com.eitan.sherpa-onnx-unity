@@ -80,7 +80,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
             ttsModelConfig.RuleFsts = string.Join(",", metadata.GetModelFilesByExtensionName(".fst"));
             ttsModelConfig.RuleFars = string.Join(",", metadata.GetModelFilesByExtensionName(".far"));
-            ttsModelConfig.Model.NumThreads = UnityEngine.Device.SystemInfo.processorCount;
+            ttsModelConfig.Model.NumThreads = ThreadingUtils.GetAdaptiveThreadCount();
 
             switch (modelType)
             {
@@ -126,6 +126,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 default:
                     throw new NotSupportedException($"Unsupported VAD model type: {modelType}");
             }
+
+            // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.Model);
+            // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.Lexicon);
+            // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.Tokens);
+            // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.DictDir);
+            // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.DataDir);
 
             return ttsModelConfig;
         }

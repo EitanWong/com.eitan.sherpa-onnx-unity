@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
 using SherpaOnnx;
 using UnityEngine;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 namespace Eitan.SherpaOnnxUnity
 {
     public class SpokenLanguageIdentification : SherpaOnnxModule
@@ -69,7 +70,7 @@ namespace Eitan.SherpaOnnxUnity
 
         private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
-            var sliModelConfig = new SpokenLanguageIdentificationConfig() { NumThreads = UnityEngine.Device.SystemInfo.processorCount };
+            var sliModelConfig = new SpokenLanguageIdentificationConfig { NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)
@@ -79,7 +80,7 @@ namespace Eitan.SherpaOnnxUnity
                     sliModelConfig.Whisper.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeyword)?.First();
                     break;
                 default:
-                    throw new NotSupportedException($"Unsupported VAD model type: {modelType}");
+                    throw new NotSupportedException($"Unsupported SpokenLanguageIdentification model type: {modelType}");
             }
             return sliModelConfig;
         }

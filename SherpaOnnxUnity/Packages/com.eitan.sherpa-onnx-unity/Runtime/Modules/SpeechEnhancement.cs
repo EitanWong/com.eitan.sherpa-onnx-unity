@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SherpaOnnx;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 
 namespace Eitan.SherpaOnnxUnity.Runtime
 {
@@ -72,7 +73,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             {
                 Model = new OfflineSpeechDenoiserModelConfig
                 {
-                    NumThreads = UnityEngine.Device.SystemInfo.processorCount
+                    NumThreads = ThreadingUtils.GetAdaptiveThreadCount()
                 }
             };
 

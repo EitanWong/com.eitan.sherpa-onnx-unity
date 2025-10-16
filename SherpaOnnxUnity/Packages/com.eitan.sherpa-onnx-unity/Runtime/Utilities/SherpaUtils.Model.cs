@@ -62,7 +62,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             #region SpokenLanguageIdentification
             // Use specific LID markers to avoid colliding with ASR Whisper models
-            private static readonly string[] spoken_language_id_keywords = { "langid", "language-id", "spoken-language-identification", "lid" };
+            // the sli use whisper model
+            private static readonly string[] spoken_language_id_keywords = { "whisper", "langid", "language-id", "spoken-language-identification", "lid" };
             #endregion
 
             #region Punctuation

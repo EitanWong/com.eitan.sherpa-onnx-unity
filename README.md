@@ -5,8 +5,6 @@
 ### Unity Package for Offline Speech Recognition & Voice Activity Detection
 
 > **中文用户请注意**: 本项目提供中文文档，请查看 [README_zh.md](./README_zh.md) 获取详细的中文说明。
-> 
-> **For Chinese users**: This project provides Chinese documentation. Please see [README_zh.md](./README_zh.md) for detailed Chinese instructions.
 
 **Language**: [English](./README.md) | [中文](./README_zh.md)
 

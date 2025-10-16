@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin;
 using SherpaOnnx;
 
@@ -129,7 +130,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
                     Provider = "cpu",
-                    NumThreads = UnityEngine.Device.SystemInfo.processorCount,
+                    NumThreads = ThreadingUtils.GetAdaptiveThreadCount(),
                 },
                 KeywordsScore = _keywordsScore,
                 KeywordsThreshold = _keywordsThreshold
