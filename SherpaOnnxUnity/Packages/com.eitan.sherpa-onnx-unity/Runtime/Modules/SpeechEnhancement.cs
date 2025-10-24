@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SherpaOnnx;
+using Eitan.SherpaOnnxUnity.Runtime.Native;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 
 namespace Eitan.SherpaOnnxUnity.Runtime

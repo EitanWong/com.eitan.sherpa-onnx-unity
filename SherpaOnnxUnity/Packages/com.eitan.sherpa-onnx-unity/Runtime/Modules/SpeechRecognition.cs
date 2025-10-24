@@ -9,7 +9,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System.Runtime.CompilerServices;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon;
-    using SherpaOnnx;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
 
     public class SpeechRecognition : SherpaOnnxModule
     {

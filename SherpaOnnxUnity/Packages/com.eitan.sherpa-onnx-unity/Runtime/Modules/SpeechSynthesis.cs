@@ -7,35 +7,29 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System.Threading;
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime.Utilities;
-    using SherpaOnnx;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
     using UnityEngine;
 
     public class SpeechSynthesis : SherpaOnnxModule
     {
 
         private OfflineTts _tts;
-        // private readonly System.Threading.SynchronizationContext _unityContext;
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
-        public int SampleRate { get; private set; }
 
         public SpeechSynthesis(string modelID, int sampleRate = -1, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
-            // Capture Unity main thread context at construction time
-            // _unityContext = System.Threading.SynchronizationContext.Current;
+
         }
 
         protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
-                // ignore the prarmeter sampleRate it's not correct.
-
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
                 var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
-                this.SampleRate = metadata.sampleRate;
-                var ttsConfig = await CreateTtsConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
+                var ttsConfig = await CreateTtsConfig(modelType, metadata, isMobilePlatform, reporter, ct);
 
                 return await runner.RunAsync<bool>(cancellationToken =>
                 {
@@ -74,7 +68,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
 
 
-        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
             var ttsModelConfig = new OfflineTtsConfig();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
@@ -124,7 +118,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     ttsModelConfig.Model.Kitten.DataDir = metadata.GetModelFilePathByKeywords("espeak-ng-data")?.First();
                     break;
                 default:
-                    throw new NotSupportedException($"Unsupported VAD model type: {modelType}");
+                    throw new NotSupportedException($"Unsupported TTS model type: {modelType}");
             }
 
             // UnityEngine.Debug.Log(ttsModelConfig.Model.Vits.Model);
@@ -273,6 +267,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 combinedToken.ThrowIfCancellationRequested();
 
                 OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
+
                 if (generatedAudio == null)
                 {
                     Debug.LogWarning("TTS generation returned no audio.");

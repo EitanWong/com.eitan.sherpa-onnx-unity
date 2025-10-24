@@ -25,6 +25,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
         {
             _rootThreadContext = SynchronizationContext.Current;
+            // Pre-warm Unity download infrastructure on the main thread so background tasks can safely use UnityWebRequest.
+            SherpaUtils.Prepare.EnsureUnityThreadInfrastructure();
             runner = new TaskRunner();
 
             // --- 订阅应用退出事件，作为安全保障 ---

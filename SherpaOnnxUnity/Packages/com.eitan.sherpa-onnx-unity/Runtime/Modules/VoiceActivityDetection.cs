@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For MathUtils
-using SherpaOnnx;
+using Eitan.SherpaOnnxUnity.Runtime.Native;
 
 namespace Eitan.SherpaOnnxUnity.Runtime
 {

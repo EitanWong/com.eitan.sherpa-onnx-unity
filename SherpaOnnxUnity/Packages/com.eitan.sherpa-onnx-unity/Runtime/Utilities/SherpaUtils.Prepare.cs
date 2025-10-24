@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 {
@@ -84,6 +85,22 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
 
             #region Public Methods
+
+            /// <summary>
+            /// Makes sure Unity-specific download infrastructure captures the main thread context before any background work.
+            /// Call this from the Unity main thread prior to invoking asynchronous preparation APIs.
+            /// </summary>
+            public static void EnsureUnityThreadInfrastructure()
+            {
+#if UNITY
+                if (SynchronizationContext.Current == null)
+                {
+                    throw new InvalidOperationException("EnsureUnityThreadInfrastructure must be invoked from the Unity main thread.");
+                }
+
+                RuntimeHelpers.RunClassConstructor(typeof(SherpaFileDownloader).TypeHandle);
+#endif
+            }
 
             /// <summary>
             /// Verifies existing model files or downloads and extracts the model if needed.

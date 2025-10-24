@@ -1,0 +1,14 @@
+{
+    "name": "Eitan.SherpaOnnxUnity.Runtime.Native",
+    "rootNamespace": "Eitan.SherpaOnnxUnity.Runtime.Native",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

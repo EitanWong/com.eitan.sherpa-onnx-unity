@@ -2,16 +2,17 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime;
-using SherpaOnnx;
 using UnityEngine;
 using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+using Eitan.SherpaOnnxUnity.Runtime;
+using Eitan.SherpaOnnxUnity.Runtime.Native;
+using NativeSpokenLanguageIdentification = Eitan.SherpaOnnxUnity.Runtime.Native.SpokenLanguageIdentification;
 namespace Eitan.SherpaOnnxUnity
 {
     public class SpokenLanguageIdentification : SherpaOnnxModule
     {
 
-        private SherpaOnnx.SpokenLanguageIdentification _slid;
+        private NativeSpokenLanguageIdentification _slid;
         public int SampleRate { get; private set; }
 
         public SpokenLanguageIdentification(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null) : base(modelID, sampleRate, reporter)
@@ -44,7 +45,7 @@ namespace Eitan.SherpaOnnxUnity
 
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading SpokenLanguageIdentification model: {metadata.modelId}"));
 
-                        _slid = new SherpaOnnx.SpokenLanguageIdentification(sliConfig);
+                        _slid = new NativeSpokenLanguageIdentification(sliConfig);
                         var initialized = IsSuccessInitializad(_slid);
                         if (initialized)
                         {
