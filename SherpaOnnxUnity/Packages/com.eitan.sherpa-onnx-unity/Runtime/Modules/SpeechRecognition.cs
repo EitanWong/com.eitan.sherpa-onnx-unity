@@ -61,7 +61,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private async Task<bool> LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
-            var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
+            var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform, reporter);
 
             return await runner.RunAsync<bool>(cancellationToken =>
             {
@@ -83,7 +83,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private async Task<bool> LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
-            var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform);
+            var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform, reporter);
 
             return await runner.RunAsync<bool>(cancellationToken =>
              {
@@ -103,14 +103,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
              });
         }
 
-        private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
+        private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
+            var int8QuantKeyword = isMobilePlatform ? "int8" : null;
+
+            var tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "token file", fallbackReporter, "tokens", "tokens.txt");
+
             var config = new OnlineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
-                    Tokens = metadata.GetModelFilePathByKeywords("tokens").First(),
+                    Tokens = tokensPath,
                     NumThreads = threadCount,
                     Debug = 0
                 },
@@ -122,23 +127,51 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 Rule3MinUtteranceLength = Rule3MinUtteranceLength
             };
 
-            var int8QuantKeywords = isMobilePlatform ? "int8" : null;
-
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
-                    config.ModelConfig.Paraformer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Paraformer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.Paraformer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Paraformer encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Paraformer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Paraformer decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 case SpeechRecognitionModelType.Online_Transducer:
                     config.DecodingMethod = "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
+                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer joiner",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("joiner", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("joiner"));
                     break;
                 case SpeechRecognitionModelType.Online_Ctc:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.Zipformer2Ctc.Model = metadata.GetModelFilePathByKeywords("model", "ctc", int8QuantKeywords)?.First();
+                    config.ModelConfig.Zipformer2Ctc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "CTC model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "ctc", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc"));
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported online model type: {_modelType}");
@@ -147,14 +180,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return config;
         }
 
-        private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
+        private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
+            var int8QuantKeyword = isMobilePlatform ? "int8" : null;
+
+            var tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "token file", fallbackReporter, "tokens", "tokens.txt");
+
             var config = new OfflineRecognizerConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
                 ModelConfig = {
-                    Tokens = metadata.GetModelFilePathByKeywords("tokens")?.First(),
+                    Tokens = tokensPath,
                     NumThreads = threadCount,
                     ModelType = string.Empty
 
@@ -164,74 +202,162 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 RuleFsts = string.Empty
             };
 
-            var int8QuantKeywords = isMobilePlatform ? "int8" : null;
-
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Offline_Transducer:
 
                     config.DecodingMethod = "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", int8QuantKeywords)?.First();
+                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Transducer joiner",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("joiner", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("joiner"));
                     if (config.DecodingMethod == "modified_beam_search")
                     {
-                        var hotwordsFile = metadata.GetModelFilePathByKeywords("hotwords")?.First();
-                        if (!string.IsNullOrEmpty(hotwordsFile))
+                        var hotwordsPath = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "hotwords");
+                        if (!string.IsNullOrEmpty(hotwordsPath))
                         {
-                            config.HotwordsFile = hotwordsFile;
+                            config.HotwordsFile = hotwordsPath;
                         }
                     }
                     break;
 
                 case SpeechRecognitionModelType.Offline_Paraformer:
-                    config.ModelConfig.Paraformer.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.Paraformer.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Paraformer model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Offline_ZipformerCtc:
-                    config.ModelConfig.ZipformerCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.ZipformerCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Zipformer CTC model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Offline_Nemo_Ctc:
-                    config.ModelConfig.NeMoCtc.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.NeMoCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "NeMo CTC model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Dolphin:
-                    config.ModelConfig.Dolphin.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Dolphin model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.TeleSpeech:
-                    config.ModelConfig.TeleSpeechCtc = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.TeleSpeechCtc = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "TeleSpeech model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Whisper:
-                    config.ModelConfig.Whisper.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.Whisper.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Whisper encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Whisper decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
                     config.ModelConfig.Whisper.Language = string.Empty;
                     config.ModelConfig.Whisper.Task = "transcribe";
                     break;
 
                 case SpeechRecognitionModelType.Tdnn:
-                    config.ModelConfig.Tdnn.Model = metadata.GetModelFilePathByKeywords("tdnn", int8QuantKeywords)?.First();
+                    config.ModelConfig.Tdnn.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "TDNN model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("tdnn", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("tdnn"));
                     break;
 
                 case SpeechRecognitionModelType.SenseVoice:
 
-                    config.ModelConfig.SenseVoice.Model = metadata.GetModelFilePathByKeywords("model", int8QuantKeywords)?.First();
+                    config.ModelConfig.SenseVoice.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "SenseVoice model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
                     config.ModelConfig.SenseVoice.Language = "auto";
                     break;
 
                 case SpeechRecognitionModelType.Moonshine:
-                    config.ModelConfig.Moonshine.Preprocessor = metadata.GetModelFilePathByKeywords("preprocess", int8QuantKeywords)?.First();
-                    config.ModelConfig.Moonshine.Encoder = metadata.GetModelFilePathByKeywords("encode", int8QuantKeywords)?.First();
-                    config.ModelConfig.Moonshine.UncachedDecoder = metadata.GetModelFilePathByKeywords("uncached_decode", int8QuantKeywords)?.First();
-                    config.ModelConfig.Moonshine.CachedDecoder = metadata.GetModelFilePathByKeywords("cached_decode", int8QuantKeywords)?.First();
+                    config.ModelConfig.Moonshine.Preprocessor = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Moonshine preprocessor",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("preprocess", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("preprocess"));
+                    config.ModelConfig.Moonshine.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Moonshine encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encode", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encode"));
+                    config.ModelConfig.Moonshine.UncachedDecoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Moonshine uncached decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("uncached_decode", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("uncached_decode"));
+                    config.ModelConfig.Moonshine.CachedDecoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Moonshine cached decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("cached_decode", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("cached_decode"));
                     break;
 
                 case SpeechRecognitionModelType.FireRedAsr:
-                    config.ModelConfig.FireRedAsr.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeywords)?.First();
-                    config.ModelConfig.FireRedAsr.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeywords)?.First();
+                    config.ModelConfig.FireRedAsr.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FireRed ASR encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.FireRedAsr.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FireRed ASR decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
                     break;
 
                 default:

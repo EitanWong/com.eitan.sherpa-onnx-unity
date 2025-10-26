@@ -9,7 +9,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-
+    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
     public class KeywordSpottingExample : MonoBehaviour, ISherpaFeedbackHandler
     {
@@ -65,6 +65,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             "Godlike!",
             "Beyond Godlike!"
         };
+        private ModelLoadProgressTracker _progressTracker;
 
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         private void Start()
@@ -81,6 +82,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             {
                 _originalFontSize = _keywordText.fontSize;
             }
+            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
             _ = InitDropdownAsync();
             InitKeywordsPanelUI();
             UpdateUI();
@@ -130,6 +132,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 StopCoroutine(_resetCoroutine);
                 _resetCoroutine = null;
             }
+
+            _progressTracker?.Reset();
+            _progressTracker?.SetVisible(false);
 
             UpdateUI();
 
@@ -576,88 +581,71 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         #region FeedbackHandler
 
-        private void SetProgressActive(bool isActive)
-        {
-            _totalInitProgressBar.gameObject.SetActive(isActive);
-        }
-
-        private void UpdateOverallProgress(float progress, string message)
-        {
-            _initMessageText.text = message;
-            _totalInitProgressBar.FillAmount = progress;
-            _totalInitBarText.text = $"{progress * 100:F0}%";
-        }
-
         public void OnFeedback(PrepareFeedback feedback)
         {
-            SetProgressActive(true);
-            UpdateOverallProgress(0f, feedback.Message);
+            _progressTracker.Reset();
+            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
             _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}The keyword spotting model is loading, please wait patiently.";
-            _keywordText.text = "Please wait for the keyword spotting model to load";
+            _keywordText.text = "Preparing keyword spotting model...";
         }
 
         public void OnFeedback(DownloadFeedback feedback)
         {
-            UpdateOverallProgress(Mathf.Clamp(0.5f * feedback.Progress, 0, 0.5f), feedback.Message);
-            _keywordText.text = "Please wait for the keyword spotting model to download.";
+            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
+            _keywordText.text = "Downloading keyword spotting model...";
         }
 
-        public void OnFeedback(UncompressFeedback feedback)
+        public void OnFeedback(CleanFeedback feedback)
         {
-            UpdateOverallProgress(0.5f + (0.49f * feedback.Progress), feedback.Message);
-            _keywordText.text = "Wait keyword spotting model zip file uncompress";
+            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
+            _keywordText.text = "Cleaning old keyword spotting files...";
         }
 
         public void OnFeedback(VerifyFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
-            _keywordText.text = "Verifying keyword spotting model...";
+            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
+            _keywordText.text = "Verifying keyword spotting assets...";
+        }
+
+        public void OnFeedback(DecompressFeedback feedback)
+        {
+            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
+            _keywordText.text = "Decompressing keyword spotting package...";
         }
 
         public void OnFeedback(LoadFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
             _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> The keyword spotting model {feedback.Metadata.modelId} is loading.";
-            _keywordText.text = "Loading keyword spotting model...";
+            _keywordText.text = "Loading keyword spotting runtime...";
         }
 
         public void OnFeedback(CancelFeedback feedback)
         {
-            SetProgressActive(false);
+            Unload();
             _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}{feedback.Message}";
             _keywordText.text = "Keyword spotting model loading cancelled.";
-            Unload();
         }
 
         public void OnFeedback(SuccessFeedback feedback)
         {
-            SetProgressActive(false);
-            UpdateOverallProgress(1f, "Success");
+            _progressTracker.Complete("Success");
+            _progressTracker.SetVisible(false);
             _initMessageText.text = string.Empty;
             _keywordText.text = "<b><i>Listening for wake-up words...</i></b>";
             _loadedMessage = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}Keyword spotting is active. Say a wake-up word to test.";
             _tipsText.text = _loadedMessage;
 
             StartRecording();
-
         }
 
         public void OnFeedback(FailedFeedback feedback)
         {
-            SetProgressActive(false);
             Debug.LogError($"[Failed] :{feedback.Message}");
+            Unload();
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> The keyword spotting model load failed.";
             _keywordText.text = "<color=red><b>Keyword spotting model load failed</b></color>";
-            Unload();
-
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            SetProgressActive(false);
-            _initMessageText.text = feedback.Message;
-            _keywordText.text = "<color=yellow><b>Init canceled</b></color>";
         }
         #endregion
 

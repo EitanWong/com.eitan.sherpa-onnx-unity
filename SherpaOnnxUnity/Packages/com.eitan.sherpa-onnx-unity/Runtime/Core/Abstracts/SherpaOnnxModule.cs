@@ -168,6 +168,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
+        protected Action<string> CreateFallbackReporter(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter)
+        {
+            return message =>
+            {
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    return;
+                }
+
+                var formattedMessage = $"[{ModuleType}] {message}";
+                UnityEngine.Debug.LogWarning(formattedMessage);
+                reporter?.Report(new LoadFeedback(metadata, message: formattedMessage));
+            };
+        }
+
         private void Dispose(bool disposing)
         {
             // 防止重复调用，确保幂等性

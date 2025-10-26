@@ -8,6 +8,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
+    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
     [RequireComponent(typeof(AudioSource))]
     public class SpeechEnhancementExample : MonoBehaviour, ISherpaFeedbackHandler
@@ -43,6 +44,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         private Color _originLoadBtnColor;
         private Color _originRecordBtnColor;
         private readonly string _defaultModelID = "gtcrn-simple";
+        private ModelLoadProgressTracker _progressTracker;
 
         /// <summary>
         /// True if the Speech Enhancement model is loaded.
@@ -76,6 +78,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _originRecordBtnColor = _recordStopButton.GetComponent<Image>().color;
+
+            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
 
             _ = InitDropdownAsync();
             UpdateUI();
@@ -256,6 +260,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _processedAudio.Clear();
             _isRecording = false;
             _isPlayingBack = false;
+
+            _progressTracker?.Reset();
+            _progressTracker?.SetVisible(false);
         }
         #endregion
 
@@ -559,58 +566,50 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region ISherpaFeedbackHandler Implementation
-        private void SetProgressActive(bool isActive)
-        {
-            _totalInitProgressBar.gameObject.SetActive(isActive);
-        }
-
-        private void UpdateOverallProgress(float progress, string message)
-        {
-            _initMessageText.text = message;
-            _totalInitProgressBar.FillAmount = progress;
-            _totalInitBarText.text = $"{progress * 100:F0}%";
-        }
-
         public void OnFeedback(PrepareFeedback feedback)
         {
-            SetProgressActive(true);
-            UpdateOverallProgress(0f, feedback.Message);
+            _progressTracker.Reset();
+            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
             _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe Speech Enhancement model is loading, please wait patiently.";
         }
 
         public void OnFeedback(DownloadFeedback feedback)
         {
-            UpdateOverallProgress(Mathf.Clamp(0.5f * feedback.Progress, 0, 0.5f), feedback.Message);
+            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
         }
 
-        public void OnFeedback(UncompressFeedback feedback)
+        public void OnFeedback(CleanFeedback feedback)
         {
-            UpdateOverallProgress(0.5f + (0.49f * feedback.Progress), feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
         }
 
         public void OnFeedback(VerifyFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
+        }
+
+        public void OnFeedback(DecompressFeedback feedback)
+        {
+            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
         }
 
         public void OnFeedback(LoadFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
             _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe Speech Enhancement model {feedback.Metadata.modelId} is loading.";
         }
 
         public void OnFeedback(CancelFeedback feedback)
         {
-            SetProgressActive(false);
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
             Unload();
+            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
         }
 
         public void OnFeedback(SuccessFeedback feedback)
         {
             IsModelLoaded = true;
-            SetProgressActive(false);
-            UpdateOverallProgress(1f, "Success");
+            _progressTracker.Complete("Success");
+            _progressTracker.SetVisible(false);
             _initMessageText.text = string.Empty;
             _recordingStatusText.text = "Recording Status: Ready";
             _enhancementStatusText.text = "Enhancement Status: <color=green>Model loaded successfully</color>";
@@ -621,17 +620,11 @@ namespace Eitan.SherpaOnnxUnity.Samples
         public void OnFeedback(FailedFeedback feedback)
         {
             IsModelLoaded = false;
-            SetProgressActive(false);
             Debug.LogError($"[Failed]: {feedback.Message}");
+            Cleanup();
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe Speech Enhancement model failed to load.\nError: {feedback.Message}";
-            Unload();
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            SetProgressActive(false);
-            _initMessageText.text = feedback.Message;
+            UpdateUI();
         }
         #endregion
 

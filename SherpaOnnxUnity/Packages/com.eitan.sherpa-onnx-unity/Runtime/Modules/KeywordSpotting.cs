@@ -125,6 +125,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             _sampleRate = sampleRate;
 
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
+
             var config = new KeywordSpotterConfig
             {
                 FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
@@ -138,12 +140,28 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
-            config.ModelConfig.Transducer.Encoder = metadata.GetModelFilePathByKeywords("encoder", "99", int8QuantKeyword)?.First();
-            config.ModelConfig.Transducer.Decoder = metadata.GetModelFilePathByKeywords("decoder", "99", int8QuantKeyword)?.First();
-            config.ModelConfig.Transducer.Joiner = metadata.GetModelFilePathByKeywords("joiner", "99", int8QuantKeyword)?.First();
-            config.ModelConfig.Tokens = metadata.GetModelFilePathByKeywords("tokens.txt")?.First();
+            config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "transducer encoder",
+                fallbackReporter,
+                ModelFileCriteria.FromKeywords("encoder", "99", int8QuantKeyword),
+                ModelFileCriteria.FromKeywords("encoder", "99"));
+            config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "transducer decoder",
+                fallbackReporter,
+                ModelFileCriteria.FromKeywords("decoder", "99", int8QuantKeyword),
+                ModelFileCriteria.FromKeywords("decoder", "99"));
+            config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "transducer joiner",
+                fallbackReporter,
+                ModelFileCriteria.FromKeywords("joiner", "99", int8QuantKeyword),
+                ModelFileCriteria.FromKeywords("joiner", "99"));
+            var tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "tokens.txt", fallbackReporter, "tokens.txt");
+            config.ModelConfig.Tokens = tokensPath;
 
-            EnsureCustomKeywords(config.ModelConfig.Tokens);
+            EnsureCustomKeywords(tokensPath);
 
             if (!string.IsNullOrEmpty(_keywordsPayload))
             {
@@ -152,7 +170,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
             else
             {
-                config.KeywordsFile = metadata.GetModelFilePathByKeywords("keywords.txt")?.First();
+                var keywordsFile = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "keywords.txt");
+                if (!string.IsNullOrEmpty(keywordsFile))
+                {
+                    config.KeywordsFile = keywordsFile;
+                }
             }
 
             return Task.FromResult(config);

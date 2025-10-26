@@ -1596,7 +1596,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         float mapped = 0.7f + 0.2f * Mathf.Clamp01(args.Progress);
                         reporter.Report(mapped, $"Extracting... {(args.Progress * 100f):0}%  (Elapsed {args.ElapsedTime})");
                     });
-                    var result = await SherpaUncompressHelper.DecompressAsync(
+                    var result = await SherpaDecompressHelper.DecompressAsync(
                         archivePath,
                         moduleDirectory,
                         progressAdapter,

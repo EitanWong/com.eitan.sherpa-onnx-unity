@@ -6,7 +6,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     {
         void OnFeedback(PrepareFeedback feedback);
         void OnFeedback(DownloadFeedback feedback);
-        void OnFeedback(UncompressFeedback feedback);
+        void OnFeedback(DecompressFeedback feedback);
         void OnFeedback(VerifyFeedback feedback);
         void OnFeedback(LoadFeedback feedback);
         void OnFeedback(CancelFeedback feedback);

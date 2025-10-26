@@ -31,7 +31,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
 
                 _sampleRate = sampleRate;
-                var config = CreateSpeechDenoiserConfig(metadata, isMobilePlatform);
+                var config = CreateSpeechDenoiserConfig(metadata, isMobilePlatform, reporter);
 
                 return await runner.RunAsync<bool>(cancellationToken =>
                 {
@@ -67,8 +67,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        private OfflineSpeechDenoiserConfig CreateSpeechDenoiserConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform)
+        private OfflineSpeechDenoiserConfig CreateSpeechDenoiserConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var config = new OfflineSpeechDenoiserConfig
             {
                 Model = new OfflineSpeechDenoiserModelConfig
@@ -79,25 +80,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
-            // Configure GTCRN model
-            var gtcrnModelPath = metadata.GetModelFilePathByKeywords("gtcrn", "model", int8QuantKeyword)?.FirstOrDefault();
-            if (!string.IsNullOrEmpty(gtcrnModelPath))
-            {
-                config.Model.Gtcrn.Model = gtcrnModelPath;
-            }
-            else
-            {
-                // Fallback to any .onnx model file
-                var modelPath = metadata.GetModelFilesByExtensionName(".onnx")?.FirstOrDefault();
-                if (!string.IsNullOrEmpty(modelPath))
-                {
-                    config.Model.Gtcrn.Model = modelPath;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"No suitable GTCRN model found for {metadata.modelId}");
-                }
-            }
+            config.Model.Gtcrn.Model = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "GTCRN model",
+                fallbackReporter,
+                ModelFileCriteria.FromKeywords("gtcrn", "model", int8QuantKeyword),
+                ModelFileCriteria.FromKeywords("gtcrn", "model"),
+                ModelFileCriteria.FromExtensions(".onnx"));
 
             return config;
         }

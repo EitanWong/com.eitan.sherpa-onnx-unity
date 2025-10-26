@@ -28,7 +28,7 @@ namespace Eitan.SherpaOnnxUnity
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
 
                 _sampleRate = sampleRate;
-                var config = CreatePunctuationConfig(metadata, isMobilePlatform);
+                var config = CreatePunctuationConfig(metadata, isMobilePlatform, reporter);
 
                 return await runner.RunAsync<bool>(cancellationToken =>
                   {
@@ -63,32 +63,20 @@ namespace Eitan.SherpaOnnxUnity
             }
         }
 
-        private OfflinePunctuationConfig CreatePunctuationConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform)
+        private OfflinePunctuationConfig CreatePunctuationConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var config = new OfflinePunctuationConfig();
             config.Model.NumThreads = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
-            // Configure GTCRN model
-            var ctTransformerModelPath = metadata.GetModelFilePathByKeywords("model", int8QuantKeyword)?.FirstOrDefault();
-
-            if (!string.IsNullOrEmpty(ctTransformerModelPath))
-            {
-                config.Model.CtTransformer = ctTransformerModelPath;
-            }
-            else
-            {
-                // Fallback to any .onnx model file
-                var modelPath = metadata.GetModelFilesByExtensionName(".onnx")?.FirstOrDefault();
-                if (!string.IsNullOrEmpty(modelPath))
-                {
-                    config.Model.CtTransformer = modelPath;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"No suitable Ct Transformer model found for {metadata.modelId}");
-                }
-            }
+            config.Model.CtTransformer = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "CT-Transformer model",
+                fallbackReporter,
+                ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                ModelFileCriteria.FromKeywords("model"),
+                ModelFileCriteria.FromExtensions(".onnx"));
 
             return config;
         }

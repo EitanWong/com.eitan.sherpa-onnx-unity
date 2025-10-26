@@ -21,11 +21,14 @@ EditorBuildSettings:
     path: Assets/Demo/Collection/SpeechSynthesis/SpeechSynthesis.unity
     guid: 1c218397a650b454db831add5bcb1a23
   - enabled: 1
-    path: Assets/Demo/Collection/KeywordSpotting/KeywordSpotting.unity
+    path: Assets/Demo/Collection/Punctuation/Punctuation.unity
     guid: e8da4b0592519416cb4b12faa258205f
   - enabled: 1
     path: Assets/Demo/Collection/SpeechEnhancement/SpeechEnhancement.unity
     guid: fdb776cf6b15f4c0581dc881b4a4631d
+  - enabled: 1
+    path: Assets/Demo/Collection/KeywordSpotting/KeywordSpotting.unity
+    guid: 1980926f815424894b127e3c2bc2f884
   - enabled: 1
     path: Assets/Demo/Collection/SpokenLanguageIdentification/SpokenLanguageIdentification.unity
     guid: ff8f88d9bd2a043fba8274fb88f7fc25

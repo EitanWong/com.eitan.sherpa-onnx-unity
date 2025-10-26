@@ -71,14 +71,25 @@ namespace Eitan.SherpaOnnxUnity
 
         private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var sliModelConfig = new SpokenLanguageIdentificationConfig { NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)
             {
                 case SpokenLanguageIdentificationModelType.Whisper:
-                    sliModelConfig.Whisper.Encoder = metadata.GetModelFilePathByKeywords("encoder", int8QuantKeyword)?.First();
-                    sliModelConfig.Whisper.Decoder = metadata.GetModelFilePathByKeywords("decoder", int8QuantKeyword)?.First();
+                    sliModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Whisper encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    sliModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Whisper decoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported SpokenLanguageIdentification model type: {modelType}");

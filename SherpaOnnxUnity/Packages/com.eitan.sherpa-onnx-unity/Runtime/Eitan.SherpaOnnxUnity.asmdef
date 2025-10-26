@@ -11,7 +11,8 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "sherpa-onnx.dll",
-        "ICSharpCode.SharpZipLib.dll"
+        "ICSharpCode.SharpZipLib.dll",
+        "SharpCompress.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],

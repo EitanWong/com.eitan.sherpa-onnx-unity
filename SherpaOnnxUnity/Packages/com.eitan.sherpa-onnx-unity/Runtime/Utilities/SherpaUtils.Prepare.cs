@@ -448,7 +448,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         metadata,
                         message: "Model files detected. Verification succeeded.",
                         filePath: paths.ModelDirectory,
-                        progress: 100));
+                        progress: 1f));
 
                     // Optional cleanup: if the download was a compressed archive and it still exists, delete it.
                     if (paths.IsCompressed && SherpaFileUtils.PathExists(paths.DownloadFilePath))
@@ -560,14 +560,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     // UnityEngine.Debug.Log($"zip VerifyResult {zipVerifyResult.Status} : {zipVerifyResult.Message}");
                     var progressAdapter = new Progress<DecompressionEventArgs>(args =>
                     {
-                        ReportSafe(reporter, new UncompressFeedback(metadata, filePath: zipFilePath, progress: args.Progress, message: $"Extracting {zipFileName} ({args.Progress * 100:F1}%) Duration: [{args.ElapsedTime}]"));
+                        ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: args.Progress, message: $"Extracting {zipFileName} ({args.Progress * 100:F1}%) Duration: [{args.ElapsedTime}]"));
                     });
 
-                    var result = await SherpaUncompressHelper.DecompressAsync(zipFilePath, moduleDirectoryPath, progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    var result = await SherpaDecompressHelper.DecompressAsync(zipFilePath, moduleDirectoryPath, progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     if (result.Success)
                     {
-                        ReportSafe(reporter, new UncompressFeedback(metadata, filePath: zipFilePath, progress: result.Progress, message: $"Extract Success: {zipFileName} Duration: [{result.ElapsedTime}]"));
+                        ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: result.Progress, message: $"Extract Success: {zipFileName} Duration: [{result.ElapsedTime}]"));
                         return true;
                     }
                     else

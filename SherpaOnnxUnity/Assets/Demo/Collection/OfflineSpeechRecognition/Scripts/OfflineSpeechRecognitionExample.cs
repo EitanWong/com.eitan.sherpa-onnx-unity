@@ -7,6 +7,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
+    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
     /// <summary>
     /// 离线语音识别示例 / Offline Speech Recognition Example
@@ -50,6 +51,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
         // UI状态缓存 / UI State Cache
         private Color _originLoadBtnColor;
         private Color _originRecordingBtnColor;
+
+        // 进度跟踪 / Progress Tracking
+        private ModelLoadProgressTracker _progressTracker;
         #endregion
 
         #region Properties
@@ -117,6 +121,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
             // 更新UI状态 / Update UI state
             UpdateLoadButtonUI();
             UpdateRecordingButtonUI();
+
+            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
         }
 
         /// <summary>
@@ -228,6 +234,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 speechRecognition = null;
                 _modelLoadFlag = false;
                 UpdateLoadButtonUI();
+                _progressTracker?.Reset();
+                _progressTracker?.SetVisible(false);
 
                 Debug.Log("Model unloaded successfully");
             }
@@ -546,6 +554,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 {
                     _recordingBtn.onClick.RemoveListener(HandleRecordingButtonClick);
                 }
+
+                _progressTracker?.Reset();
+                _progressTracker?.SetVisible(false);
             }
             catch (Exception ex)
             {
@@ -555,69 +566,50 @@ namespace Eitan.SherpaOnnxUnity.Samples
         #endregion
 
         #region Feedback Handler Implementation
-        /// <summary>
-        /// 设置进度条可见性 / Set progress bar visibility
-        /// </summary>
-        private void SetProgressActive(bool isActive)
-        {
-            _totalInitProgressBar.gameObject.SetActive(isActive);
-        }
-
-        /// <summary>
-        /// 更新总体进度 / Update overall progress
-        /// </summary>
-        private void UpdateOverallProgress(float progress, string message)
-        {
-            _initMessageText.text = message;
-            _totalInitProgressBar.FillAmount = progress;
-            _totalInitBarText.text = $"{progress * 100:F0}%";
-        }
 
         public void OnFeedback(PrepareFeedback feedback)
         {
-            SetProgressActive(true);
-            UpdateOverallProgress(0f, feedback.Message);
+            _progressTracker.Reset();
+            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
             _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
-            _transcriptionText.text = "Please wait for the model to load";
+            _transcriptionText.text = "Preparing offline speech recognition model...";
         }
 
         public void OnFeedback(DownloadFeedback feedback)
         {
-            UpdateOverallProgress(Mathf.Clamp(0.5f * feedback.Progress, 0, 0.5f), feedback.Message);
-            _transcriptionText.text = "Please wait for the model to download.";
+            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
+            _transcriptionText.text = "Downloading offline speech recognition model...";
         }
 
-        public void OnFeedback(UncompressFeedback feedback)
+        public void OnFeedback(CleanFeedback feedback)
         {
-            UpdateOverallProgress(0.5f + (0.49f * feedback.Progress), feedback.Message);
-            _transcriptionText.text = "Wait model zip file uncompress";
+            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
+            _transcriptionText.text = "Cleaning previous model files...";
         }
 
         public void OnFeedback(VerifyFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
-            _transcriptionText.text = "Verifying model...";
+            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
+            _transcriptionText.text = "Verifying offline speech recognition assets...";
+        }
+
+        public void OnFeedback(DecompressFeedback feedback)
+        {
+            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
+            _transcriptionText.text = "Decompressing offline speech recognition package...";
         }
 
         public void OnFeedback(LoadFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
             _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-            _transcriptionText.text = "Loading model...";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            SetProgressActive(false);
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-            _transcriptionText.text = "Model loading cancelled.";
-            UnloadModel();
+            _transcriptionText.text = "Finishing model load...";
         }
 
         public void OnFeedback(SuccessFeedback feedback)
         {
-            SetProgressActive(false);
-            UpdateOverallProgress(1f, "Success");
+            _progressTracker.Complete("Success");
+            _progressTracker.SetVisible(false);
             _initMessageText.text = string.Empty;
             _transcriptionText.text = "<b><i>Please click the record button and start speaking.</i></b>";
             _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test speech-to-text by speaking directly.";
@@ -626,19 +618,18 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         public void OnFeedback(FailedFeedback feedback)
         {
-            SetProgressActive(false);
             Debug.LogError($"[Failed] :{feedback.Message}");
+            UnloadModel();
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model loading failed.";
             _transcriptionText.text = "<color=red><b>Model load failed</b></color>";
-            UnloadModel();
         }
 
-        public void OnFeedback(CleanFeedback feedback)
+        public void OnFeedback(CancelFeedback feedback)
         {
-            SetProgressActive(false);
-            _initMessageText.text = feedback.Message;
-            _transcriptionText.text = "<color=yellow><b>Init canceled</b></color>";
+            UnloadModel();
+            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
+            _transcriptionText.text = "Model loading cancelled.";
         }
         #endregion
 

@@ -11,6 +11,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
+    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
     [RequireComponent(typeof(AudioSource))]
     public class VoiceActivityDetectionExample : MonoBehaviour, ISherpaFeedbackHandler
@@ -34,6 +35,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private Color _originLoadBtnColor;
         private readonly string defaultModelID = "silero-vad-latest";
+        private ModelLoadProgressTracker _progressTracker;
 
         private AudioSource audioSource;
         private readonly List<float> accumulatedSpeech = new List<float>();
@@ -56,6 +58,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _tipsText.text = "Load a model to begin.";
             _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
+            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
             _ = InitDropdownAsync();
             UpdateLoadButtonUI();
         }
@@ -172,6 +175,9 @@ namespace Eitan.SherpaOnnxUnity.Samples
             }
             accumulatedSpeech.Clear();
             isPlayingBack = false;
+
+            _progressTracker?.Reset();
+            _progressTracker?.SetVisible(false);
         }
         #endregion
 
@@ -333,57 +339,49 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         #region ISherpaFeedbackHandler Implementation
 
-        private void SetProgressActive(bool isActive)
-        {
-            _totalInitProgressBar.gameObject.SetActive(isActive);
-        }
-
-        private void UpdateOverallProgress(float progress, string message)
-        {
-            _initMessageText.text = message;
-            _totalInitProgressBar.FillAmount = progress;
-            _totalInitBarText.text = $"{progress * 100:F0}%";
-        }
-
         public void OnFeedback(PrepareFeedback feedback)
         {
-            SetProgressActive(true);
-            UpdateOverallProgress(0f, feedback.Message);
+            _progressTracker.Reset();
+            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
             _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
         }
 
         public void OnFeedback(DownloadFeedback feedback)
         {
-            UpdateOverallProgress(Mathf.Clamp(0.5f * feedback.Progress, 0, 0.5f), feedback.Message);
+            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
         }
 
-        public void OnFeedback(UncompressFeedback feedback)
+        public void OnFeedback(CleanFeedback feedback)
         {
-            UpdateOverallProgress(0.5f + (0.49f * feedback.Progress), feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
         }
 
         public void OnFeedback(VerifyFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
+        }
+
+        public void OnFeedback(DecompressFeedback feedback)
+        {
+            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
         }
 
         public void OnFeedback(LoadFeedback feedback)
         {
-            UpdateOverallProgress(0.99f, feedback.Message);
+            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
             _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
         }
 
         public void OnFeedback(CancelFeedback feedback)
         {
-            SetProgressActive(false);
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
             Unload();
+            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
         }
 
         public void OnFeedback(SuccessFeedback feedback)
         {
-            SetProgressActive(false);
-            UpdateOverallProgress(1f, "Success");
+            _progressTracker.Complete("Success");
+            _progressTracker.SetVisible(false);
             _initMessageText.text = string.Empty;
             _vadStatusText.text = $"VAD Model Loaded\nNow you can speak to test.";
             _tipsText.text = $"Model {feedback.Metadata.modelId} loaded.";
@@ -394,18 +392,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         public void OnFeedback(FailedFeedback feedback)
         {
-            SetProgressActive(false);
             UnityEngine.Debug.LogError($"[Failed] :{feedback.Message}");
+            Unload();
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model failed to load.";
-            Unload();
+            _vadStatusText.text = "VAD Status: <color=red>Load failed</color>";
 
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            SetProgressActive(false);
-            _initMessageText.text = feedback.Message;
         }
         #endregion
 

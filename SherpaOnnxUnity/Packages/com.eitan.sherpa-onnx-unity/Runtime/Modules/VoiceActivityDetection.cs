@@ -58,7 +58,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             try
             {
                 var modelType = SherpaUtils.Model.GetVoiceActivityDetectionModelType(metadata.modelId);
-                var vadConfig = CreateVadConfig(modelType, metadata, sampleRate, isMobilePlatform);
+                var vadConfig = CreateVadConfig(modelType, metadata, sampleRate, isMobilePlatform, reporter);
 
                 _windowSize = GetWindowSize(modelType, vadConfig);
                 _silenceThresholdFrames = (int)(MinSilenceDuration * sampleRate / _windowSize);
@@ -291,15 +291,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         #region Configuration & Helpers
 
-        private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform)
+        private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
         {
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)
             {
                 case VoiceActivityDetectionModelType.SileroVad:
-                    vadModelConfig.SileroVad.Model = metadata.GetModelFilePathByKeywords("silero", int8QuantKeyword)?.First();
+                    vadModelConfig.SileroVad.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Silero VAD model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("silero", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("silero"));
                     vadModelConfig.SileroVad.Threshold = Threshold;
                     vadModelConfig.SileroVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.SileroVad.MinSpeechDuration = MinSpeechDuration;
@@ -307,7 +313,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     vadModelConfig.SileroVad.WindowSize = 512;
                     break;
                 case VoiceActivityDetectionModelType.TenVad:
-                    vadModelConfig.TenVad.Model = metadata.GetModelFilePathByKeywords("ten", int8QuantKeyword)?.First();
+                    vadModelConfig.TenVad.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Ten VAD model",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("ten", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("ten"));
                     vadModelConfig.TenVad.Threshold = Threshold;
                     vadModelConfig.TenVad.MinSilenceDuration = MinSilenceDuration;
                     vadModelConfig.TenVad.MinSpeechDuration = MinSpeechDuration;
