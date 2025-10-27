@@ -6,7 +6,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime;
-
+    using Eitan.SherpaOnnxUnity.Runtime.Utilities;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
@@ -163,7 +163,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => (m.moduleType == SherpaOnnxModuleType.SpeechSynthesis)).Select(m => new OptionData(m.modelId)).ToList();
+                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => (m.moduleType == SherpaOnnxModuleType.SpeechSynthesis) && !m.modelId.StartsWith("sherpa-onnx-zipvoice")).Select(m => new OptionData(m.modelId)).ToList();
                 _modelIDDropdown.AddOptions(modelOptions);
 
                 var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);

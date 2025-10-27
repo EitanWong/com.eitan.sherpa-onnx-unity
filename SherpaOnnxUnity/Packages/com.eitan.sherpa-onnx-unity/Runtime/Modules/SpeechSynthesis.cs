@@ -59,6 +59,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 });
 
 
+
             }
             catch (Exception ex)
             {
@@ -84,166 +85,166 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             switch (modelType)
             {
                 case SpeechSynthesisModelType.Vits:
-                {
-                    var vitsModel = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "VITS acoustic model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("model", "en_US", "vits", "theresa", "eula", ".onnx", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("model", "en_US", "vits", "theresa", "eula", ".onnx"));
-
-                    ttsModelConfig.Model.Vits.Model = vitsModel;
-                    ttsModelConfig.Model.Vits.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "VITS tokens", fallbackReporter, "tokens.txt");
-
-                    var lexiconPath = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "lexicon");
-                    if (!string.IsNullOrEmpty(lexiconPath))
                     {
-                        ttsModelConfig.Model.Vits.Lexicon = lexiconPath;
-                    }
+                        var vitsModel = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "VITS acoustic model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("model", "en_US", "vits", "theresa", "eula", ".onnx", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("model", "en_US", "vits", "theresa", "eula", ".onnx"));
 
-                    var dictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
-                    if (!string.IsNullOrEmpty(dictDir))
-                    {
-                        ttsModelConfig.Model.Vits.DictDir = dictDir;
-                    }
+                        ttsModelConfig.Model.Vits.Model = vitsModel;
+                        ttsModelConfig.Model.Vits.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "VITS tokens", fallbackReporter, "tokens.txt");
 
-                    var dataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
-                    if (!string.IsNullOrEmpty(dataDir))
-                    {
-                        ttsModelConfig.Model.Vits.DataDir = dataDir;
+                        var lexiconPath = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "lexicon");
+                        if (!string.IsNullOrEmpty(lexiconPath))
+                        {
+                            ttsModelConfig.Model.Vits.Lexicon = lexiconPath;
+                        }
+
+                        var dictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
+                        if (!string.IsNullOrEmpty(dictDir))
+                        {
+                            ttsModelConfig.Model.Vits.DictDir = dictDir;
+                        }
+
+                        var dataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
+                        if (!string.IsNullOrEmpty(dataDir))
+                        {
+                            ttsModelConfig.Model.Vits.DataDir = dataDir;
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 case SpeechSynthesisModelType.Matcha:
-                {
-                    var vocoderMetadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
-
-                    await SherpaUtils.Prepare.PrepareAndLoadModelAsync(vocoderMetadata, reporter, ct);
-                    var vocoderFallback = CreateFallbackReporter(vocoderMetadata, reporter);
-
-                    ttsModelConfig.Model.Matcha.AcousticModel = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "Matcha acoustic model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("matcha", "model", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("matcha", "model"));
-                    ttsModelConfig.Model.Matcha.Vocoder = ModelFileResolver.ResolveRequiredFile(
-                        vocoderMetadata,
-                        "Matcha vocoder",
-                        vocoderFallback,
-                        ModelFileCriteria.FromKeywords("vocos"));
-                    ttsModelConfig.Model.Matcha.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Matcha tokens", fallbackReporter, "tokens.txt");
-
-                    var matchaLexicon = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "lexicon");
-                    if (!string.IsNullOrEmpty(matchaLexicon))
                     {
-                        ttsModelConfig.Model.Matcha.Lexicon = matchaLexicon;
-                    }
+                        var vocoderMetadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
 
-                    var matchaDictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
-                    if (!string.IsNullOrEmpty(matchaDictDir))
-                    {
-                        ttsModelConfig.Model.Matcha.DictDir = matchaDictDir;
-                    }
+                        await SherpaUtils.Prepare.PrepareAndLoadModelAsync(vocoderMetadata, reporter, ct);
+                        var vocoderFallback = CreateFallbackReporter(vocoderMetadata, reporter);
 
-                    var matchaDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
-                    if (!string.IsNullOrEmpty(matchaDataDir))
-                    {
-                        ttsModelConfig.Model.Matcha.DataDir = matchaDataDir;
+                        ttsModelConfig.Model.Matcha.AcousticModel = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "Matcha acoustic model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("matcha", "model", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("matcha", "model"));
+                        ttsModelConfig.Model.Matcha.Vocoder = ModelFileResolver.ResolveRequiredFile(
+                            vocoderMetadata,
+                            "Matcha vocoder",
+                            vocoderFallback,
+                            ModelFileCriteria.FromKeywords("vocos"));
+                        ttsModelConfig.Model.Matcha.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Matcha tokens", fallbackReporter, "tokens.txt");
+
+                        var matchaLexicon = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "lexicon");
+                        if (!string.IsNullOrEmpty(matchaLexicon))
+                        {
+                            ttsModelConfig.Model.Matcha.Lexicon = matchaLexicon;
+                        }
+
+                        var matchaDictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
+                        if (!string.IsNullOrEmpty(matchaDictDir))
+                        {
+                            ttsModelConfig.Model.Matcha.DictDir = matchaDictDir;
+                        }
+
+                        var matchaDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
+                        if (!string.IsNullOrEmpty(matchaDataDir))
+                        {
+                            ttsModelConfig.Model.Matcha.DataDir = matchaDataDir;
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 case SpeechSynthesisModelType.Kokoro:
-                {
-                    ttsModelConfig.Model.Kokoro.Model = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "Kokoro model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("model", "kokoro", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("model", "kokoro"));
-                    var kokoroVoices = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "voices");
-                    if (!string.IsNullOrEmpty(kokoroVoices))
                     {
-                        ttsModelConfig.Model.Kokoro.Voices = kokoroVoices;
-                    }
+                        ttsModelConfig.Model.Kokoro.Model = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "Kokoro model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("model", "kokoro", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("model", "kokoro"));
+                        var kokoroVoices = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "voices");
+                        if (!string.IsNullOrEmpty(kokoroVoices))
+                        {
+                            ttsModelConfig.Model.Kokoro.Voices = kokoroVoices;
+                        }
 
-                    var lexiconPaths = ModelFileResolver.FilterValidFiles(metadata.GetModelFilePathByKeywords("lexicon") ?? Array.Empty<string>(), fallbackReporter);
-                    if (lexiconPaths.Length > 0)
-                    {
-                        ttsModelConfig.Model.Kokoro.Lexicon = string.Join(",", lexiconPaths);
-                    }
-                    ttsModelConfig.Model.Kokoro.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Kokoro tokens", fallbackReporter, "tokens.txt");
+                        var lexiconPaths = ModelFileResolver.FilterValidFiles(metadata.GetModelFilePathByKeywords("lexicon") ?? Array.Empty<string>(), fallbackReporter);
+                        if (lexiconPaths.Length > 0)
+                        {
+                            ttsModelConfig.Model.Kokoro.Lexicon = string.Join(",", lexiconPaths);
+                        }
+                        ttsModelConfig.Model.Kokoro.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Kokoro tokens", fallbackReporter, "tokens.txt");
 
-                    var kokoroDictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
-                    if (!string.IsNullOrEmpty(kokoroDictDir))
-                    {
-                        ttsModelConfig.Model.Kokoro.DictDir = kokoroDictDir;
-                    }
+                        var kokoroDictDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "dict");
+                        if (!string.IsNullOrEmpty(kokoroDictDir))
+                        {
+                            ttsModelConfig.Model.Kokoro.DictDir = kokoroDictDir;
+                        }
 
-                    var kokoroDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
-                    if (!string.IsNullOrEmpty(kokoroDataDir))
-                    {
-                        ttsModelConfig.Model.Kokoro.DataDir = kokoroDataDir;
+                        var kokoroDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
+                        if (!string.IsNullOrEmpty(kokoroDataDir))
+                        {
+                            ttsModelConfig.Model.Kokoro.DataDir = kokoroDataDir;
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 case SpeechSynthesisModelType.KittenTTS:
-                {
-                    ttsModelConfig.Model.Kitten.Model = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "Kitten acoustic model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("model"));
-                    ttsModelConfig.Model.Kitten.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Kitten tokens", fallbackReporter, "tokens.txt");
-
-                    var kittenVoices = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "voices");
-                    if (!string.IsNullOrEmpty(kittenVoices))
                     {
-                        ttsModelConfig.Model.Kitten.Voices = kittenVoices;
-                    }
+                        ttsModelConfig.Model.Kitten.Model = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "Kitten acoustic model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("model"));
+                        ttsModelConfig.Model.Kitten.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "Kitten tokens", fallbackReporter, "tokens.txt");
 
-                    var kittenDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
-                    if (!string.IsNullOrEmpty(kittenDataDir))
-                    {
-                        ttsModelConfig.Model.Kitten.DataDir = kittenDataDir;
+                        var kittenVoices = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "voices");
+                        if (!string.IsNullOrEmpty(kittenVoices))
+                        {
+                            ttsModelConfig.Model.Kitten.Voices = kittenVoices;
+                        }
+
+                        var kittenDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
+                        if (!string.IsNullOrEmpty(kittenDataDir))
+                        {
+                            ttsModelConfig.Model.Kitten.DataDir = kittenDataDir;
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 case SpeechSynthesisModelType.ZipVoice:
-                {
-                    ttsModelConfig.Model.ZipVoice.FlowMatchingModel = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "ZipVoice flow matching model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("fm_decoder", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("fm_decoder"));
-                    ttsModelConfig.Model.ZipVoice.TextModel = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "ZipVoice text model",
-                        fallbackReporter,
-                        ModelFileCriteria.FromKeywords("text_encoder", int8QuantKeyword),
-                        ModelFileCriteria.FromKeywords("text_encoder"));
-                    ttsModelConfig.Model.ZipVoice.Vocoder = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice vocoder", fallbackReporter, "vocos_24khz.onnx");
-                    ttsModelConfig.Model.ZipVoice.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice tokens", fallbackReporter, "tokens.txt");
-
-                    var pinyinDict = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "pinyin.raw");
-                    if (!string.IsNullOrEmpty(pinyinDict))
                     {
-                        ttsModelConfig.Model.ZipVoice.PinyinDict = pinyinDict;
-                    }
+                        ttsModelConfig.Model.ZipVoice.FlowMatchingModel = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "ZipVoice flow matching model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("fm_decoder", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("fm_decoder"));
+                        ttsModelConfig.Model.ZipVoice.TextModel = ModelFileResolver.ResolveRequiredFile(
+                            metadata,
+                            "ZipVoice text model",
+                            fallbackReporter,
+                            ModelFileCriteria.FromKeywords("text_encoder", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("text_encoder"));
+                        ttsModelConfig.Model.ZipVoice.Vocoder = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice vocoder", fallbackReporter, "vocos_24khz.onnx");
+                        ttsModelConfig.Model.ZipVoice.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice tokens", fallbackReporter, "tokens.txt");
 
-                    var zipVoiceDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
-                    if (!string.IsNullOrEmpty(zipVoiceDataDir))
-                    {
-                        ttsModelConfig.Model.ZipVoice.DataDir = zipVoiceDataDir;
+                        var pinyinDict = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "pinyin.raw");
+                        if (!string.IsNullOrEmpty(pinyinDict))
+                        {
+                            ttsModelConfig.Model.ZipVoice.PinyinDict = pinyinDict;
+                        }
+
+                        var zipVoiceDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
+                        if (!string.IsNullOrEmpty(zipVoiceDataDir))
+                        {
+                            ttsModelConfig.Model.ZipVoice.DataDir = zipVoiceDataDir;
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 default:
                     throw new NotSupportedException($"Unsupported TTS model type: {modelType}");
@@ -424,8 +425,62 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
         }
 
+        public async Task<AudioClip> GenerateZeroShotAsync(string text, string promptText, float[] promptSamples, int promptSampleRate, float speed = 1, int numSteps = 4, CancellationToken? ct = null)
+        {
 
+            if (_tts == null)
+            {
+                throw new InvalidOperationException("SpeechSynthesis is not initialized or has been disposed. Please ensure it is loaded successfully before generating speech.");
+            }
 
+            return await runner.RunAsync(async (cancellationToken) =>
+            {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                var combinedToken = linkedCts.Token;
+                combinedToken.ThrowIfCancellationRequested();
+
+                OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateZeroShot(text, promptText, promptSamples, promptSampleRate, speed, numSteps);
+
+                if (generatedAudio == null)
+                {
+                    Debug.LogWarning("TTS generation returned no audio.");
+                    return null;
+                }
+
+                var tcs = new TaskCompletionSource<AudioClip>();
+                using var registration = combinedToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
+
+                void CreateAudioClipOnMainThread()
+                {
+                    try
+                    {
+                        if (generatedAudio != null)
+                        {
+                            var audioClip = AudioClip.Create($"tts_zeroshot_{text.GetHashCode()}", generatedAudio.NumSamples, 1, generatedAudio.SampleRate, false);
+                            audioClip.SetData(generatedAudio.Samples, 0);
+                            tcs.TrySetResult(audioClip);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }
+
+                ExecuteOnMainThread(_ => CreateAudioClipOnMainThread());
+
+                var clip = await tcs.Task.ConfigureAwait(false);
+                combinedToken.ThrowIfCancellationRequested();
+                return clip;
+            }, cancellationToken: ct ?? CancellationToken.None, policy: Utilities.ExecutionPolicy.Auto);
+        }
+        public async Task<AudioClip> GenerateZeroShotAsync(string text, string promptText, AudioClip promptClip, float speed = 1, int numSteps = 4, CancellationToken? ct = null)
+        {
+            var promptSamples = new float[promptClip.samples];
+            promptClip.GetData(promptSamples, 0);
+            int promptSampleRates = promptClip.frequency;
+            return await GenerateZeroShotAsync(text, promptText, promptSamples, promptSampleRates, speed, numSteps, ct);
+        }
         protected override void OnDestroy()
         {
             SafeExecute(() =>
