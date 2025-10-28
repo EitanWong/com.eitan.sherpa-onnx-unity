@@ -33,9 +33,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         // --- Core Data Flow & State ---
         private readonly ConcurrentQueue<float> _audioQueue = new ConcurrentQueue<float>();
 
-        // Backing memory for the stack-allocated CircularBuffer
-        private float[] _leadingPaddingBackingBuffer;
-
+        // Leading padding ring buffer (SPSC)
+        private CircularBuffer<float> _paddingBuffer;
         // Reusable workspace buffers to avoid GC. Initialized once.
         private float[] _acceptWaveformWorkspace;
         private float[] _segmentWorkspace;
@@ -64,8 +63,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 _silenceThresholdFrames = (int)(MinSilenceDuration * sampleRate / _windowSize);
 
                 // --- Initialize all buffers here, now that we have all parameters ---
-                int paddingCapacity = (int)(LeadingPaddingDuration * sampleRate);
-                _leadingPaddingBackingBuffer = new float[MathUtils.NextPowerOfTwo(Math.Max(16, paddingCapacity))];
+                int paddingCapacity = MathUtils.NextPowerOfTwo(Math.Max(16, (int)(LeadingPaddingDuration * sampleRate)));
+                _paddingBuffer = new CircularBuffer<float>(paddingCapacity, alignment: 1);
 
                 _acceptWaveformWorkspace = new float[_windowSize];
 
@@ -173,15 +172,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 ArrayPool<float>.Shared.Return(chunkBuffer);
             }
         }
-
         private void ProcessChunk(ReadOnlySpan<float> chunk)
         {
-            // Create the high-performance circular buffer on the stack for this scope.
-            var paddingBuffer = new CircularBuffer<float>(_leadingPaddingBackingBuffer);
 
             if (!_detector.IsSpeechDetected())
             {
-                paddingBuffer.AddRange(chunk); // Assuming CircularBuffer has an Add(ReadOnlySpan<T>) overload
+                _paddingBuffer.Write(chunk);
             }
 
             // --- CORRECTED API CALL: Use the pre-allocated workspace to avoid GC ---
@@ -205,16 +201,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private void ProcessDetectedSegments()
         {
-            // Create a stack-local buffer instance to read the state.
-            var paddingBuffer = new CircularBuffer<float>(_leadingPaddingBackingBuffer);
 
             while (!_detector.IsEmpty())
             {
                 var segment = _detector.Front();
                 var segmentSamples = segment.Samples;
 
-                paddingBuffer.GetSpans(out var padding1, out var padding2);
-
+                _paddingBuffer.GetSpans(out var padding1, out var padding2);
                 int totalSamples = padding1.Length + padding2.Length + segmentSamples.Length;
 
                 if (_segmentWorkspace.Length < totalSamples)
@@ -233,7 +226,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 OnSpeechSegmentDetected?.Invoke(finalSegment);
 
                 _detector.Pop();
-                paddingBuffer.Clear();
+                _paddingBuffer.Clear(); ;
             }
         }
 
@@ -278,9 +271,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
             _silentFrames = 0;
 
-            // Clear the buffer by creating a local instance and calling Clear.
-            var paddingBuffer = new CircularBuffer<float>(_leadingPaddingBackingBuffer);
-            paddingBuffer.Clear();
+            _paddingBuffer?.Clear(); ;
         }
 
         protected override void OnDestroy()

@@ -158,12 +158,12 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechSynthesis);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => (m.moduleType == SherpaOnnxModuleType.SpeechSynthesis) && !m.modelId.StartsWith("sherpa-onnx-zipvoice")).Select(m => new OptionData(m.modelId)).ToList();
+                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => !m.modelId.StartsWith("sherpa-onnx-zipvoice")).Select(m => new OptionData(m.modelId)).ToList();
                 _modelIDDropdown.AddOptions(modelOptions);
 
                 var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);

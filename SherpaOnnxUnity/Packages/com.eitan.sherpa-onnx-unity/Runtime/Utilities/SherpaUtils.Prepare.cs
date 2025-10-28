@@ -562,7 +562,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     {
                         ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: args.Progress, message: $"Extracting {zipFileName} ({args.Progress * 100:F1}%) Duration: [{args.ElapsedTime}]"));
                     });
-
                     var result = await SherpaDecompressHelper.DecompressAsync(zipFilePath, moduleDirectoryPath, progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     if (result.Success)

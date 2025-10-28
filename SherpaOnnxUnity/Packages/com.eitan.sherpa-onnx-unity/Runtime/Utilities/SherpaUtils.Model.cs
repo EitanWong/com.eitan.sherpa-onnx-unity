@@ -69,6 +69,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             #region Punctuation
             private static readonly string[] punctuation_keywords = { "punct" };
             #endregion
+
+            #region AudioTagging
+            private static readonly string[] audio_tagging_ced_keywords = { "tagging", "ced" };
+            private static readonly string[] audio_tagging_zipformer_keywords = { "tagging", "zipformer" };
+            #endregion
             #endregion
 
 
@@ -82,6 +87,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 // Order matters: avoid collisions (e.g., Whisper ASR vs LID)
                 if (IsKeywordSpottingModel(modelID))
                 { return SherpaOnnxModuleType.KeywordSpotting; }
+
+                // Order matters: avoid collisions (e.g., Zipformer ASR vs ATG)
+                var atgType = GetAudioTaggingModelType(modelID);
+                if (atgType != AudioTaggingModelType.None)
+                { return SherpaOnnxModuleType.AudioTagging; }
 
                 var asrType = GetSpeechRecognitionModelType(modelID);
                 if (asrType != SpeechRecognitionModelType.None)
@@ -101,6 +111,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 var lidType = GetSpokenLanguageIdentificationModelType(modelID);
                 if (lidType != SpokenLanguageIdentificationModelType.None)
                 { return SherpaOnnxModuleType.SpokenLanguageIdentification; }
+
 
                 if (IsPunctuationModel(modelID))
                 { return SherpaOnnxModuleType.AddPunctuation; }
@@ -203,8 +214,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return SpeechSynthesisModelType.None;
 
             }
-
-
             internal static SpokenLanguageIdentificationModelType GetSpokenLanguageIdentificationModelType(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
@@ -218,10 +227,26 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return SpokenLanguageIdentificationModelType.None;
             }
 
+            internal static AudioTaggingModelType GetAudioTaggingModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return AudioTaggingModelType.None;
+                }
+                string lowerModelID = modelID.ToLowerInvariant();
+                if (ContainsAnyKeyword(lowerModelID, audio_tagging_ced_keywords, true))
+                {
+                    return AudioTaggingModelType.Ced;
+                }
+                else if (ContainsAnyKeyword(lowerModelID, audio_tagging_zipformer_keywords, true))
+                {
+                    return AudioTaggingModelType.Zipformer;
+                }
+                return AudioTaggingModelType.None;
 
+            }
 
-
-            public static bool IsOnlineModel(string modelID)
+            internal static bool IsOnlineModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
@@ -242,7 +267,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             }
 
-            public static bool IsPunctuationModel(string modelID)
+            internal static bool IsPunctuationModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
@@ -251,7 +276,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return ContainsAnyKeyword(lowerModelID, punctuation_keywords);
             }
 
-            public static bool IsKeywordSpottingModel(string modelID)
+            internal static bool IsKeywordSpottingModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
@@ -260,7 +285,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 return ContainsAnyKeyword(lowerModelID, kws_keywords);
             }
 
-            public static bool IsSpeechEnhancementModel(string modelID)
+            internal static bool IsSpeechEnhancementModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
@@ -273,9 +298,16 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             /// Helper method to check if a model ID contains any of the specified keywords as distinct segments
             /// A segment boundary is any non-alphanumeric character (e.g., '-', '_', '.') or string boundaries.
             /// </summary>
-            private static bool ContainsAnyKeyword(string modelID, string[] keywords)
+            private static bool ContainsAnyKeyword(string modelID, string[] keywords, bool needMatchAll = false)
             {
-                return keywords.Any(keyword => ContainsSegment(modelID, keyword));
+                if (needMatchAll)
+                {
+                    return keywords.All(keyword => ContainsSegment(modelID, keyword));
+                }
+                else
+                {
+                    return keywords.Any(keyword => ContainsSegment(modelID, keyword));
+                }
             }
 
             /// <summary>
@@ -304,28 +336,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                     index = text.IndexOf(keyword, index + 1, StringComparison.Ordinal);
                 }
                 return false;
-            }
-
-            /// <summary>
-            /// Get all supported model architecture types that can be detected
-            /// </summary>
-            public static string[] GetSupportedModelTypes()
-            {
-                return new string[]
-                {
-            "Online Transducer (streaming + zipformer/conformer/transducer)",
-            "Online CTC (streaming + ctc)",
-            "Online Paraformer (streaming + paraformer)",
-            "Offline Transducer (zipformer/conformer/transducer)",
-            "Offline CTC (ctc)",
-            "Offline Paraformer (paraformer)",
-            "Whisper (whisper)",
-            "Moonshine (moonshine)",
-            "SenseVoice (sense-voice)",
-            "FireRedAsr (fire-red-asr)",
-            "Dolphin (dolphin)",
-            "TeleSpeech (telespeech)"
-                };
             }
 
             /// <summary>

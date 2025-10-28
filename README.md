@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.1-exp.3** (2025-10-17)
+📋 **[View Changelog](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.1** (2025-10-28)
 
 </div>
 
@@ -35,15 +35,12 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.1-exp.3 (2025-10-17)
+## 🆕 What's New in v0.1.2-exp.1 (2025-10-28)
 
 ### 🚀 Highlights
-- **License Change**: Project license has been updated from MIT to **Apache 2.0**.
-- **Async Model Loading**: The model registry is now fully asynchronous, fetching the latest models from GitHub releases.
-- **Robust Downloader**: The file downloader has been rewritten with chunking, retries, and adaptive concurrency.
-- **Automatic English Casing**: ASR results are now automatically converted to proper sentence case.
-- **Android Crash Fix**: Fixed a critical bug causing crashes in offline speech recognition on Android.
-- **iOS Compatibility**: Enhanced P/Invoke security and compatibility for the iOS platform.
+- **Audio Tagging Integration**: Added support for audio tagging via sherpa-onnx.
+- **Module Initialization**: Enhanced initialization with comprehensive file checks to validate required files and directories.
+- **Sherpa-onnx Upgrade**: Updated to v1.12.15.
 
 [📋 **View Full Changelog**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -60,11 +57,12 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 ### 🎯 Core Capabilities
 - **🔌 Offline Operation** - No internet required after setup
 - **⚡ Real-time Processing** - Low-latency speech recognition
-- **🎯 Voice Activity Detection** - Smart speech boundary detection
+- **🗣️ Voice Activity Detection** - Smart speech boundary detection
 - **🔊 Speech Enhancement** - GTCRN noise reduction and audio quality improvement
 - **👂 Keyword Spotting** - Voice-activated keyword detection, now with custom keyword support.
 - **🎤 Text-to-Speech** - High-quality voice synthesis
 - **🌍 Spoken Language Identification** - Identify the language of a given audio clip.
+- **🎼 Audio Tagging** – Automatic detection and classification of various audio events, such as music, traffic, and environmental sounds
 - **🖥️ Cross-platform Support** - Windows, macOS, Linux, Android
 
 ### 🤖 Intelligent Model Management
@@ -153,9 +151,17 @@ The samples include:
 - **Keyword Spotting** - Voice-activated keyword detection and wake words
 - **Spoken Language Identification** - Identify the language from an audio clip.
 - **Text-to-Speech Synthesis** - High-quality voice generation
-- **Advanced Configuration** - Custom model selection and mobile optimization
+- **Audio Tagging** – Automatic Detection and Classification of Various Audio Eventson
 
-Each sample contains complete, production-ready code that you can use as a starting point for your own implementation.
+Each example includes complete sample code that you can use as a starting point for your own implementation.
+
+### Model Manager
+
+Open the Model Manager window by navigating to **Window → Sherpa Onnx → Model Manager**.
+
+![Model Manager](https://github.com/user-attachments/assets/ce622a7d-0885-406d-9a97-78ea89474731)
+
+With the Model Manager, you can search for all the models supported by sherpa-onnx and download them to your local system with a single click.
 
 ## 🛠️ Development
 
@@ -190,7 +196,6 @@ SherpaOnnxUnity/
 ├── Packages/com.eitan.sherpa-onnx-unity/
 │   ├── Runtime/           # Core package code
 │   ├── Editor/            # Unity editor extensions
-│   ├── Plugins/           # Native libraries
 │   ├── Tests/             # Unit and integration tests
 │   └── Samples~/          # Example scenes and scripts
 ├── Assets/Demo/           # Demo project

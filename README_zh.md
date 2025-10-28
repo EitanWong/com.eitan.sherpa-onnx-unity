@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.1-exp.3** (2025-10-17)
+📋 **[查看更新日志](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.1** (2025-10-28)
 
 </div>
 
@@ -35,15 +35,12 @@
 
 ---
 
-## 🆕 v0.1.1-exp.3 新功能 (2025-10-17)
+## 🆕 v0.1.2-exp.1 更新内容 (2025-10-28)
 
 ### 🚀 亮点
-- **许可证变更**: 项目许可证已从 MIT 更新为 **Apache 2.0**。
-- **异步模型加载**: 模型注册表现在完全异步，从 GitHub releases 获取最新模型。
-- **强大的下载器**: 文件下载器已重写，支持分块下载、重试和自适应并发。
-- **自动英文大写**: ASR 结果现在可自动转换为正确的句子大小写。
-- **安卓闪退修复**: 修复了离线语音识别在安卓上的严重闪退问题。
-- **iOS 兼容性**: 增强了 P/Invoke 安全性和 iOS 平台兼容性。
+- **音频标签集成**：新增通过 sherpa-onnx 进行音频标签识别的支持。
+- **模块初始化**：增强了初始化过程，增加了对必需文件和目录的全面检查。
+- **Sherpa-onnx 升级**：更新至 v1.12.15。
 
 [📋 **查看完整更新日志**](./SherpaOnnxUnity/SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -60,11 +57,12 @@
 ### 🎯 核心能力
 - **🔌 离线运行** - 设置后无需网络连接
 - **⚡ 实时处理** - 低延迟语音识别
-- **🎯 语音活动检测** - 智能语音边界检测
+- **🗣️ 语音活动检测** - 智能语音边界检测
 - **🔊 语音增强** - GTCRN噪声消除与音质改善
 - **👂 关键词检测** - 语音激活的关键词识别，现已支持自定义关键词。
 - **🎤 文本转语音** - 高质量语音合成
 - **🌍 语种识别** - 识别给定音频片段的语言。
+- **🎼 音频标签** - 自动检测和分类各种音频事件，如音乐、交通和环境声音
 - **🖥️ 跨平台支持** - Windows、macOS、Linux、Android
 
 ### 🤖 智能模型管理
@@ -153,9 +151,17 @@ openupm add com.eitan.sherpa-onnx-unity
 - **关键词检测** - 语音激活的关键词检测和唤醒词
 - **语种识别** - 从音频片段中识别语言
 - **文本转语音合成** - 高质量语音生成
-- **高级配置** - 自定义模型选择和移动端优化
+- **音频标签** - 自动检测和分类各种音频事件
 
-每个示例都包含完整的、生产就绪的代码，您可以将其作为自己实现的起点。
+每个示例都包含完整的、示例代码，您可以将其作为自己实现的起点。
+
+### 模型管理器
+
+通过 **Window → Sherpa Onnx → Model Manager** 打开模型管理器窗口
+
+![模型管理器](https://github.com/user-attachments/assets/ce622a7d-0885-406d-9a97-78ea89474731)
+
+通过模型管理器，你可以搜索所有sherpa-onnx支持的模型，并提供一键下载到本地的功能。
 
 ## 🛠️ 开发
 
@@ -190,7 +196,6 @@ SherpaOnnxUnity/
 ├── Packages/com.eitan.sherpa-onnx-unity/
 │   ├── Runtime/           # 核心包代码
 │   ├── Editor/            # Unity编辑器扩展
-│   ├── Plugins/           # 原生库
 │   ├── Tests/             # 单元和集成测试
 │   └── Samples~/          # 示例场景和脚本
 ├── Assets/Demo/           # 演示项目
@@ -199,7 +204,7 @@ SherpaOnnxUnity/
 
 ## 🤝 贡献
 
-我们欢迎社区贡献！详情请参阅我们的[贡献指南](CONTRIBUTING.md)：
+我们欢迎社区贡献！详情请参阅我们的[贡献指南](CONTRIBUTING_zh.md)：
 
 - 🐛 报告错误
 - 💡 建议功能

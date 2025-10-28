@@ -58,13 +58,13 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.AddPunctuation);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
-                List<OptionData> modelOptions = manifest.Filter(m => m.moduleType == SherpaOnnxModuleType.AddPunctuation).Select(m => new OptionData(m.modelId)).ToList();
+                List<OptionData> modelOptions = manifest.models.Select(m => new OptionData(m.modelId)).ToList();
                 _modelIDDropdown.AddOptions(modelOptions);
 
                 var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.2-exp.1] - 2025-10-28
+
+### Added
+- Integrated **Audio Tagging** module from Sherpa-ONNX for sound event recognition.
+- Released Unity demo scene showcasing **zero-shot TTS** via ZipVoice (experimental feature).
+
+### Changed
+- Supplemented model metadata for various modules to enhance compatibility.
+- Optimized decompression process; default extraction remains via SharpZipLib for cross-platform support.
+
+### Fixed
+- Resolved IL2CPP build issues by upgrading Sherpa-ONNX to v1.12.15 and restructuring native plugin directories. (https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/issues/2)
+
+### Known Issues
+- **ZipVoice TTS Demo**:
+  - Chinese prompts may produce intermittent white noise or distorted audio.
+  - English prompts may fail during synthesis setup, leading to crashes.
+  - Suspected cause: Inconsistent handling of eSpeak-NG data or voice selection in the native layer.
+  - Note: This feature is **not production-ready** and is provided for evaluation purposes only.
+
 ## [0.1.1-exp.3] - 2025-10-17
 
 ### Changed

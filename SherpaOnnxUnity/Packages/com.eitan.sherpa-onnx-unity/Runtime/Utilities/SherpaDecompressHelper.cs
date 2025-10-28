@@ -67,6 +67,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// This adds overhead but provides linear progress updates.
         /// </summary>
         public bool EnableAccurateProgress { get; set; } = false;
+        public bool UseSystemTarDecompress = false;
     }
 
     /// <summary>
@@ -173,7 +174,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 string archivePath = baseStream.Name;
 
                 // Try native tar first
-                return ExtractTarBz2WithSystemTarFallbackAsync(archivePath, destination, baseStream, options, progress, ct);
+                return ExtractTarBz2Async(archivePath, destination, baseStream, options, progress, ct);
             }
 
             if (lowerCasePath.EndsWith(".tar"))
@@ -230,22 +231,25 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// we compute exact extracted bytes and report progress in realtime. If system tar
         /// is unavailable or fails, we fall back to SharpZipLib.
         /// </summary>
-        private static async Task<long> ExtractTarBz2WithSystemTarFallbackAsync(
+        private static async Task<long> ExtractTarBz2Async(
             string archivePath, string destination, FileStream baseStream,
             DecompressionOptions options, IProgress<float> progress, CancellationToken ct)
         {
             // First try native tar with progress reporting
-            var result = await ExtractWithSystemTarAsync(
-                archivePath: archivePath,
-                destination: destination,
-                compressionFlag: "j",                    // bzip2
-                options: options,
-                progress: progress,
-                ct: ct);
-
-            if (result.success)
+            if (options.UseSystemTarDecompress)
             {
-                return result.bytesProcessed;
+                var result = await ExtractWithSystemTarAsync(
+                    archivePath: archivePath,
+                    destination: destination,
+                    compressionFlag: "j",                    // bzip2
+                    options: options,
+                    progress: progress,
+                    ct: ct);
+
+                if (result.success)
+                {
+                    return result.bytesProcessed;
+                }
             }
 
             // Fall back to managed extraction via SharpZipLib (original behavior)

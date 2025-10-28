@@ -3,7 +3,6 @@ namespace Eitan.SherpaOnnxUnity.Samples
 {
     using System;
     using System.Linq;
-
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime;
 
@@ -11,9 +10,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
     using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
-
-
-    public class RealtimeSpeechRecognitionExample : MonoBehaviour, ISherpaFeedbackHandler
+    public class AudioTaggingExample : MonoBehaviour, ISherpaFeedbackHandler
     {
 
         // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
@@ -24,19 +21,18 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _transcriptionText;
+        [SerializeField] private Text _tagResultText;
 
-        private SpeechRecognition speechRecognition;
+        private AudioTagging audioTagging;
 
         private readonly int SampleRate = 16000;
 
         private Mic.Device device;
-        private string lastCachedText;
 
         private bool _modelLoadFlag;
 
         private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
+        private readonly string defaultModelID = "sherpa-onnx-ced-base-audio-tagging-2024-04-19";
         private ModelLoadProgressTracker _progressTracker;
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         private void Start()
@@ -46,7 +42,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
             _totalInitProgressBar.gameObject.SetActive(false);
             _initMessageText.gameObject.SetActive(false);
-            _transcriptionText.text = "Please click the button to load the model";
+            _tagResultText.text = "Please click the button to load the model";
             _tipsText.text = string.Empty;
             _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
             _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
@@ -56,10 +52,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
         private void Load(string modelID)
         {
-            if (speechRecognition == null)
+            if (audioTagging == null)
             {
                 var reporter = new SherpaOnnxFeedbackReporter(null, this);
-                speechRecognition = new SpeechRecognition(modelID, SampleRate, reporter);
+                audioTagging = new AudioTagging(modelID, SampleRate, reporter);
 
                 _modelLoadFlag = true;
             }
@@ -72,14 +68,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
         }
         private void Unload()
         {
-            if (speechRecognition == null)
+            if (audioTagging == null)
             {
                 UnityEngine.Debug.LogWarning("No model loaded, no need to unload");
             }
             else
             {
-                speechRecognition.Dispose();
-                speechRecognition = null;
+                audioTagging.Dispose();
+                audioTagging = null;
                 _modelLoadFlag = false;
 
             }
@@ -133,7 +129,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechRecognition);
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.AudioTagging);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
@@ -173,7 +169,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
                 _totalInitProgressBar.gameObject.SetActive(false);
                 _initMessageText.gameObject.SetActive(false);
-                _transcriptionText.text = string.Empty;
+                _tagResultText.text = string.Empty;
                 _tipsText.text = string.Empty;
             }
         }
@@ -195,20 +191,16 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             try
             {
-                // Don't process if the recognizer isn't ready or is disposed
-                if (speechRecognition == null)
+                // Don't process if the audio tagger isn't ready or is disposed
+                if (audioTagging == null)
                 {
                     return;
                 }
 
-                var result = await speechRecognition.SpeechTranscriptionAsync(pcm, sampleRate);
-                if (result != lastCachedText)
+                var result = await audioTagging.TagStreamAsync(pcm);
+                if (result != null && result.Length > 0)
                 {
-                    lastCachedText = result;
-                    if (!string.IsNullOrWhiteSpace(lastCachedText))
-                    {
-                        _transcriptionText.text = lastCachedText;
-                    }
+                    _tagResultText.text = AudioTagExtensions.ToString(result, "\n");
                 }
             }
             catch (Exception ex)
@@ -225,38 +217,38 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _progressTracker.Reset();
             _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
             _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
-            _transcriptionText.text = "Preparing streaming speech recognition model...";
+            _tagResultText.text = "Preparing audio-tagging model...";
         }
 
         public void OnFeedback(DownloadFeedback feedback)
         {
             _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Downloading streaming speech recognition model...";
+            _tagResultText.text = "Downloading audio-tagging model...";
         }
 
         public void OnFeedback(CleanFeedback feedback)
         {
             _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
-            _transcriptionText.text = "Cleaning previous model files...";
+            _tagResultText.text = "Cleaning previous model files...";
         }
 
         public void OnFeedback(VerifyFeedback feedback)
         {
             _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Verifying streaming speech recognition assets...";
+            _tagResultText.text = "Verifying audio-tagging assets...";
         }
 
         public void OnFeedback(DecompressFeedback feedback)
         {
             _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Decompressing streaming speech recognition package...";
+            _tagResultText.text = "Decompressing audio-tagging package...";
         }
 
         public void OnFeedback(LoadFeedback feedback)
         {
             _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
             _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-            _transcriptionText.text = "Finishing model load...";
+            _tagResultText.text = "Finishing model load...";
         }
 
         public void OnFeedback(SuccessFeedback feedback)
@@ -264,8 +256,8 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _progressTracker.Complete("Success");
             _progressTracker.SetVisible(false);
             _initMessageText.text = string.Empty;
-            _transcriptionText.text = "<b><i>Now you can speak</i></b>";
-            _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test speech-to-text by speaking directly.";
+            _tagResultText.text = "<b><i>Now try making some noise</i></b>";
+            _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test audio-tagging by making some noise.";
 
             StartRecording();
         }
@@ -276,14 +268,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Unload();
             _initMessageText.text = feedback.Message;
             _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model load failed.";
-            _transcriptionText.text = "<color=red><b>Model load failed</b></color>";
+            _tagResultText.text = "<color=red><b>Model load failed</b></color>";
         }
 
         public void OnFeedback(CancelFeedback feedback)
         {
             Unload();
             _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-            _transcriptionText.text = "Model loading cancelled.";
+            _tagResultText.text = "Model loading cancelled.";
         }
         #endregion
 

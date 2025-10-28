@@ -2,7 +2,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 {
     public enum SherpaOnnxModuleType
     {
-        
+
         Undefined,
         // 语音识别 | Automatic Speech Recognition (ASR)
         // 效果：将语音转换为文字（音频 → 文本）
@@ -23,10 +23,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         // 说话人日志 | Speaker Diarization
         // 效果：标记音频中"谁在什么时候说话"（分段标注说话人）
         SpeakerDiarization,
-
-        // 说话人验证 | Speaker Verification
-        // 效果：验证语音是否属于特定说话人（1:1身份认证）
-        SpeakerVerification,
 
         // 口语语言识别 | Spoken Language Identification
         // 效果：识别语音使用的语言种类（如中/英/法语识别）

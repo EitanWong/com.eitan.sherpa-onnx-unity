@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,25 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 {
     public partial class SherpaOnnxConstants
     {
+        private static readonly SherpaOnnxModuleType[] ALL_MANIFEST_MODULE_TYPES = new[]
+        {
+            SherpaOnnxModuleType.SpeechRecognition,
+            SherpaOnnxModuleType.VoiceActivityDetection,
+            SherpaOnnxModuleType.SpeechSynthesis,
+            SherpaOnnxModuleType.KeywordSpotting,
+            SherpaOnnxModuleType.SpeechEnhancement,
+            SherpaOnnxModuleType.SpokenLanguageIdentification,
+            SherpaOnnxModuleType.AddPunctuation,
+            SherpaOnnxModuleType.AudioTagging,
+            SherpaOnnxModuleType.SpeakerIdentification,
+            SherpaOnnxModuleType.SourceSeparation,
+            SherpaOnnxModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained 
+        };
+
+        internal static IEnumerable<SherpaOnnxModuleType> EnumerateManifestModuleTypes()
+        {
+            return ALL_MANIFEST_MODULE_TYPES;
+        }
 
         // Read-only initialization blacklist (unified): supports Exact, Prefix, Suffix, Contains, and Regex.
         private enum InitFileNameMatchKind { Exact, Prefix, Suffix, Contains, Regex }
@@ -111,25 +131,45 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
         private static string GetReleaseTagByModuleType(SherpaOnnxModuleType moduleType)
         {
+
+            var tagName = string.Empty;
             switch (moduleType)
             {
                 case SherpaOnnxModuleType.SpeechRecognition:
-                    return "asr-models";
+                    tagName = "asr-models";
+                    break;
                 case SherpaOnnxModuleType.VoiceActivityDetection:
-                    return "asr-models"; // VAD lives under ASR releases, but assets are .onnx (no archive)
+                    tagName = "asr-models"; // i know it's weird but it's work.
+                    break;
                 case SherpaOnnxModuleType.SpeechSynthesis:
-                    return "tts-models";
+                    tagName = "tts-models";
+                    break;
                 case SherpaOnnxModuleType.KeywordSpotting:
-                    return "kws-models";
+                    tagName = "kws-models";
+                    break;
                 case SherpaOnnxModuleType.SpeechEnhancement:
-                    return "speech-enhancement-models";
+                    tagName = "speech-enhancement-models";
+                    break;
                 case SherpaOnnxModuleType.SpokenLanguageIdentification:
-                    return "asr-models"; // uses whisper models, also under ASR
+                    tagName = "asr-models"; // use whisper model so it's should be asr-models
+                    break;
                 case SherpaOnnxModuleType.AddPunctuation:
-                    return "punctuation-models";
-                default:
-                    return "asr-models";
+                    tagName = "punctuation-models";
+                    break;
+                case SherpaOnnxModuleType.AudioTagging:
+                    tagName = "audio-tagging-models";
+                    break;
+                case SherpaOnnxModuleType.SpeakerDiarization:
+                    tagName = "speaker-segmentation-models";
+                    break;
+                case SherpaOnnxModuleType.SpeakerIdentification:
+                    tagName = "speaker-recongition-models";
+                    break;
+                case SherpaOnnxModuleType.SourceSeparation:
+                    tagName = "source-separation-models";
+                    break;
             }
+            return tagName;
         }
 
         // Applies GitHub proxy idempotently and only for direct github.com URLs.
@@ -301,72 +341,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
         }
 
-        private static async Task<(bool ok, string text)> TryHttpGetTextWithProxyFallbackAsync(string rawUrl, int timeoutMs = 20000)
-        {
-            var proxied = ApplyGithubProxyIfAny(rawUrl);
-            var (ok, text) = await TryHttpGetTextAsync(proxied, timeoutMs).ConfigureAwait(true);
-            if (ok)
-            {
-                return (true, text);
-            }
-
-
-            if (!string.Equals(proxied, rawUrl, StringComparison.OrdinalIgnoreCase))
-            {
-                return await TryHttpGetTextAsync(rawUrl, timeoutMs).ConfigureAwait(true);
-            }
-            return (false, string.Empty);
-        }
-
-        public static async Task<SherpaOnnxModelManifest> GetDefaultManifestAsync()
+        public static async Task<SherpaOnnxModelManifest> GetDefaultManifestAsync(
+            IEnumerable<SherpaOnnxModuleType> moduleTypes = null,
+            CancellationToken cancellationToken = default)
         {
             var manifest = new SherpaOnnxModelManifest();
-
-            // 1) Connectivity check (respect Github proxy if provided)
-            var canaryRaw = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/checksum.txt";
-            var (networkOk, _) = await TryHttpGetTextWithProxyFallbackAsync(canaryRaw, 10000).ConfigureAwait(true);
-
-            if (networkOk)
-            {
-                try
-                {
-                    // 2) Fetch remote manifests concurrently (VAD/SE are .onnx-only; SLID filters whisper)
-                    var tAsr = FetchModelsAsync(SherpaOnnxModuleType.SpeechRecognition);
-                    var tVad = FetchModelsAsync(SherpaOnnxModuleType.VoiceActivityDetection);
-                    var tTts = FetchModelsAsync(SherpaOnnxModuleType.SpeechSynthesis);
-                    var tKws = FetchModelsAsync(SherpaOnnxModuleType.KeywordSpotting);
-                    var tSe = FetchModelsAsync(SherpaOnnxModuleType.SpeechEnhancement);
-                    var tSlid = FetchModelsAsync(SherpaOnnxModuleType.SpokenLanguageIdentification);
-                    var tPunc = FetchModelsAsync(SherpaOnnxModuleType.AddPunctuation);
-
-                    await Task.WhenAll(tAsr, tVad, tTts, tKws, tSe, tSlid, tPunc).ConfigureAwait(true);
-
-                    AddToManifest(manifest, await tAsr, SherpaOnnxModuleType.SpeechRecognition);
-                    AddToManifest(manifest, await tVad, SherpaOnnxModuleType.VoiceActivityDetection);
-                    AddToManifest(manifest, await tTts, SherpaOnnxModuleType.SpeechSynthesis);
-                    AddToManifest(manifest, await tKws, SherpaOnnxModuleType.KeywordSpotting);
-                    AddToManifest(manifest, await tSe, SherpaOnnxModuleType.SpeechEnhancement);
-                    AddToManifest(manifest, await tSlid, SherpaOnnxModuleType.SpokenLanguageIdentification);
-                    AddToManifest(manifest, await tPunc, SherpaOnnxModuleType.AddPunctuation);
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogWarning($"FetchModels during GetDefaultManifestAsync failed: {ex.GetType().Name}: {ex.Message}");
-                }
-            }
-
-            // 3) Offline/failed-network fallback to baked-in tables
-            if (manifest.models.Count == 0)
-            {
-                AddToManifest(manifest, SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechRecognition);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES, SherpaOnnxModuleType.VoiceActivityDetection);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechSynthesis);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.KWS_MODELS_METADATA_TABLES, SherpaOnnxModuleType.KeywordSpotting);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpeechEnhancement);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES, SherpaOnnxModuleType.SpokenLanguageIdentification);
-                AddToManifest(manifest, SherpaOnnxConstants.Models.PUNCTUATION_MODELS_METADATA_TABLES, SherpaOnnxModuleType.AddPunctuation);
-            }
-
+            await PopulateManifestAsync(manifest, moduleTypes, cancellationToken).ConfigureAwait(true);
             return manifest;
         }
 
@@ -380,34 +360,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         private static string GetModelDownloadUrl(string modelId)
         {
             var sherpaModelType = Utilities.SherpaUtils.Model.GetModuleTypeByModelId(modelId);
-            var typeName = string.Empty;
-            switch (sherpaModelType)
-            {
-                case SherpaOnnxModuleType.SpeechRecognition:
-                    typeName = "asr-models";
-                    break;
-                case SherpaOnnxModuleType.VoiceActivityDetection:
-                    typeName = "asr-models"; // i know it's weird but it's work.
-                    break;
-                case SherpaOnnxModuleType.SpeechSynthesis:
-                    typeName = "tts-models";
-                    break;
-                case SherpaOnnxModuleType.KeywordSpotting:
-                    typeName = "kws-models";
-                    break;
-                case SherpaOnnxModuleType.SpeechEnhancement:
-                    typeName = "speech-enhancement-models";
-                    break;
-                case SherpaOnnxModuleType.SpokenLanguageIdentification:
-                    typeName = "asr-models"; // use whisper model so it's should be asr-models
-                    break;
-                case SherpaOnnxModuleType.AddPunctuation:
-                    typeName = "punctuation-models";
-                    break;
-            }
-
+            var tag = GetReleaseTagByModuleType(sherpaModelType);
             var ext = sherpaModelType == SherpaOnnxModuleType.VoiceActivityDetection ? ".onnx" : ".tar.bz2";
-            var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{typeName}/{modelId}{ext}";
+            var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{modelId}{ext}";
             // Store canonical (raw) GitHub URL in metadata; proxy is applied at request time.
             return rawUrl;
         }
@@ -416,6 +371,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         {
             foreach (var modelConfig in modelMetadataList)
             {
+                if (modelConfig == null)
+                {
+                    continue;
+                }
+
                 if (string.IsNullOrEmpty(modelConfig.downloadUrl))
                 {
                     modelConfig.downloadUrl = GetModelDownloadUrl(modelConfig.modelId);
@@ -438,12 +398,156 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
         }
 
+        public static async Task PopulateManifestAsync(
+            SherpaOnnxModelManifest manifest,
+            IEnumerable<SherpaOnnxModuleType> moduleTypes,
+            CancellationToken cancellationToken = default)
+        {
+            if (manifest == null)
+            {
+                throw new ArgumentNullException(nameof(manifest));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var requestedTypes = NormalizeModuleTypes(moduleTypes);
+            if (requestedTypes.Length == 0)
+            {
+                return;
+            }
+
+            var missingTypes = requestedTypes
+                .Where(t => !ManifestContainsModule(manifest, t))
+                .ToArray();
+
+            if (missingTypes.Length == 0)
+            {
+                return;
+            }
+
+            var fetchTasks = new Dictionary<SherpaOnnxModuleType, Task<SherpaOnnxModelMetadata[]>>(missingTypes.Length);
+            foreach (var moduleType in missingTypes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                fetchTasks[moduleType] = FetchModelsAsync(moduleType);
+            }
+
+            await Task.WhenAll(fetchTasks.Values).ConfigureAwait(true);
+
+            foreach (var moduleType in missingTypes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var fetched = await fetchTasks[moduleType].ConfigureAwait(true);
+                if (fetched != null && fetched.Length > 0)
+                {
+                    AddToManifest(manifest, fetched, moduleType);
+                    continue;
+                }
+
+                var fallback = GetFallbackModels(moduleType);
+                if (fallback.Length > 0)
+                {
+                    AddToManifest(manifest, fallback, moduleType);
+                }
+            }
+        }
+
+        private static bool ManifestContainsModule(SherpaOnnxModelManifest manifest, SherpaOnnxModuleType moduleType)
+        {
+            if (manifest == null || manifest.models == null || manifest.models.Count == 0)
+            {
+                return false;
+            }
+
+            return manifest.models.Exists(m => m != null && m.moduleType == moduleType);
+        }
+
+        private static SherpaOnnxModuleType[] NormalizeModuleTypes(IEnumerable<SherpaOnnxModuleType> moduleTypes)
+        {
+            if (moduleTypes == null)
+            {
+                return ALL_MANIFEST_MODULE_TYPES;
+            }
+
+            return moduleTypes
+                .Where(t => t != SherpaOnnxModuleType.Undefined)
+                .Distinct()
+                .ToArray();
+        }
+
+        private static SherpaOnnxModelMetadata[] CloneMetadataArray(SherpaOnnxModelMetadata[] source)
+        {
+            if (source == null || source.Length == 0)
+            {
+                return Array.Empty<SherpaOnnxModelMetadata>();
+            }
+
+            var list = new List<SherpaOnnxModelMetadata>(source.Length);
+            for (int i = 0; i < source.Length; i++)
+            {
+                var item = source[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                list.Add(new SherpaOnnxModelMetadata
+                {
+                    modelId = item.modelId,
+                    moduleType = item.moduleType,
+                    downloadUrl = item.downloadUrl,
+                    downloadFileHash = item.downloadFileHash,
+                    numberOfSpeakers = item.numberOfSpeakers,
+                    sampleRate = item.sampleRate,
+                });
+            }
+
+            return list.ToArray();
+        }
+
+        private static SherpaOnnxModelMetadata[] GetFallbackModels(SherpaOnnxModuleType moduleType)
+        {
+            switch (moduleType)
+            {
+                case SherpaOnnxModuleType.SpeechRecognition:
+                    return CloneMetadataArray(Models.ASR_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.VoiceActivityDetection:
+                    return CloneMetadataArray(Models.VAD_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SpeechSynthesis:
+                    return CloneMetadataArray(Models.TTS_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.KeywordSpotting:
+                    return CloneMetadataArray(Models.KWS_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SpeechEnhancement:
+                    return CloneMetadataArray(Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SpokenLanguageIdentification:
+                    return CloneMetadataArray(Models.SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.AddPunctuation:
+                    return CloneMetadataArray(Models.PUNCTUATION_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.AudioTagging:
+                    return CloneMetadataArray(Models.AUDIO_TAGGING_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SpeakerIdentification:
+                    return CloneMetadataArray(Models.SPEAKER_IDENTIFICATION_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SpeakerDiarization:
+                    return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
+                case SherpaOnnxModuleType.SourceSeparation:
+                    return CloneMetadataArray(Models.SOURCE_SEPARATION_MODELS_METADATA_TABLES);
+                default:
+                    return Array.Empty<SherpaOnnxModelMetadata>();
+            }
+        }
+
         private static async Task<SherpaOnnxModelMetadata[]> FetchModelsAsync(SherpaOnnxModuleType moduleType)
         {
             var tag = GetReleaseTagByModuleType(moduleType);
             if (string.IsNullOrWhiteSpace(tag))
             {
                 return Array.Empty<SherpaOnnxModelMetadata>();
+            }
+            if (moduleType == SherpaOnnxModuleType.SpeakerDiarization)
+            {
+                // There is no checksum.txt file in https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-segmentation-models, so the model cannot be obtained 
+                return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
             }
 
             var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/checksum.txt";

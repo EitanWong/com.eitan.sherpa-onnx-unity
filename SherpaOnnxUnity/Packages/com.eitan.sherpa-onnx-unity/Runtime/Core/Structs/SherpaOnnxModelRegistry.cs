@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 using UnityEngine;
 
 namespace Eitan.SherpaOnnxUnity.Runtime
@@ -14,19 +14,62 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private readonly Dictionary<string, SherpaOnnxModelMetadata> _modelData = new Dictionary<string, SherpaOnnxModelMetadata>();
         private readonly HashSet<string> _resolvedModelIds = new HashSet<string>();
+        private readonly SemaphoreSlim _manifestUpdateSemaphore = new SemaphoreSlim(1, 1);
 
         private SherpaOnnxModelManifest _manifest;
 
         public bool IsInitialized { get; private set; }
         public bool IsInitializing { get; private set; }
         private readonly object _initLock = new object();
-        private Task _initTask;
-        private CancellationTokenSource _initCts;
-        private int _initGeneration = 0;
 
         public event Action Initialized;
 
         private SherpaOnnxModelRegistry() { }
+
+        /// <summary>
+        /// Synchronously ensure the registry is initialized. Since initialization
+        /// is now trivial (allocating an empty manifest), we avoid async/state machine overhead.
+        /// Thread-safe and idempotent.
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            if (IsInitialized)
+            {
+                return;
+            }
+
+
+            lock (_initLock)
+            {
+                if (IsInitialized)
+                {
+                    return;
+                }
+
+
+                IsInitializing = true;
+
+                // Minimal init: create an empty manifest and reset caches.
+                _manifest = new SherpaOnnxModelManifest();
+                _resolvedModelIds.Clear();
+
+                // Populate dictionary from (empty) manifest to keep behavior consistent.
+                PopulateDictionaryFromManifest(_manifest, clearExisting: true);
+
+                IsInitialized = true;
+                IsInitializing = false;
+            }
+
+            // Fire callback outside the lock
+            try
+            {
+                Initialized?.Invoke();
+            }
+            catch (Exception cbEx)
+            {
+                UnityEngine.Debug.LogWarning($"Initialized callback error: {cbEx.Message}");
+            }
+        }
 
 
         /// <summary>
@@ -37,17 +80,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             lock (_initLock)
             {
-                // Bump generation to invalidate any older init completions
-                _initCts?.Cancel();
-                _initCts?.Dispose();
-                _initCts = null;
-                _initGeneration++;
+
                 _manifest = null;
                 _modelData.Clear();
                 _resolvedModelIds.Clear();
                 IsInitialized = false;
                 IsInitializing = false;
-                _initTask = null;
             }
         }
 
@@ -57,154 +95,23 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// </summary>
         public Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            Task initTask;
-            CancellationTokenSource currentCts;
-
-            lock (_initLock)
+            if (cancellationToken.IsCancellationRequested)
             {
-                if (IsInitialized)
-                {
-                    return Task.CompletedTask;
-                }
-
-                if (_initTask == null || _initTask.IsFaulted || _initTask.IsCanceled)
-                {
-                    _initCts?.Dispose();
-                    _initCts = new CancellationTokenSource();
-                    currentCts = _initCts;
-                    IsInitializing = true;
-                    int gen = ++_initGeneration; // capture new generation for this init
-                    _initTask = InitializeInternalAsync(gen, _initCts.Token);
-                }
-                else
-                {
-                    currentCts = _initCts;
-                }
-
-                initTask = _initTask;
+                return Task.FromCanceled(cancellationToken);
             }
 
-            CancellationTokenRegistration registration = default;
-            try
-            {
-                if (cancellationToken.CanBeCanceled && currentCts != null)
-                {
-                    registration = cancellationToken.Register(() =>
-                    {
-                        if (!currentCts.IsCancellationRequested)
-                        {
-                            currentCts.Cancel();
-                        }
-                    }, useSynchronizationContext: false);
-                }
-
-                if (!cancellationToken.CanBeCanceled)
-                {
-                    return initTask;
-                }
-
-                return WaitForInitTaskAsync(initTask, cancellationToken);
-            }
-            finally
-            {
-                registration.Dispose();
-            }
+            EnsureInitialized();
+            return Task.CompletedTask;
         }
 
-        private static async Task WaitForInitTaskAsync(Task initTask, CancellationToken cancellationToken)
+
+        private void PopulateDictionaryFromManifest(SherpaOnnxModelManifest manifest, bool clearExisting)
         {
-            if (initTask == null)
+            if (clearExisting)
             {
-                return;
+                _modelData.Clear();
             }
 
-            if (initTask.IsCompleted)
-            {
-                await initTask.ConfigureAwait(true);
-                return;
-            }
-
-            var completionTcs = new TaskCompletionSource<bool>();
-
-            using (cancellationToken.Register(() => completionTcs.TrySetCanceled(), useSynchronizationContext: false))
-            {
-                var completed = await Task.WhenAny(initTask, completionTcs.Task).ConfigureAwait(true);
-                if (completed != initTask)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-            }
-
-            await initTask.ConfigureAwait(true);
-        }
-
-        private async Task InitializeInternalAsync(int generation, CancellationToken cancellationToken)
-        {
-            if (IsInitialized)
-            {
-                IsInitializing = false;
-                return;
-            }
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                // Build manifest without blocking the main thread.
-                _manifest = await Constants.SherpaOnnxConstants.GetDefaultManifestAsync().ConfigureAwait(true);
-                cancellationToken.ThrowIfCancellationRequested();
-                _resolvedModelIds.Clear();
-                PopulateDictionaryFromManifest(_manifest);
-
-                // If a reset occurred during initialization, ignore this result
-                lock (_initLock)
-                {
-                    if (generation != _initGeneration)
-                    {
-                        // Stale init; do not touch state
-                        return;
-                    }
-                }
-
-                // Only set IsInitialized after we have fully populated dictionaries.
-                IsInitialized = true;
-                try
-                {
-                    Initialized?.Invoke();
-                }
-                catch (Exception cbEx)
-                {
-                    UnityEngine.Debug.LogWarning($"Initialized callback error: {cbEx.Message}");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                IsInitialized = false;
-                throw;
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.LogError($"Failed to initialize model registry: {ex.GetType().Name}: {ex.Message}.");
-                IsInitialized = false;
-                throw;
-            }
-            finally
-            {
-                IsInitializing = false;
-                lock (_initLock)
-                {
-                    if (generation == _initGeneration)
-                    {
-                        _initTask = null;
-                        _initCts?.Dispose();
-                        _initCts = null;
-                    }
-                }
-            }
-        }
-
-        private void PopulateDictionaryFromManifest(SherpaOnnxModelManifest manifest)
-        {
-            _modelData.Clear();
             if (manifest?.models == null || manifest.models.Count == 0)
             {
                 return;
@@ -212,59 +119,112 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             foreach (var metadata in manifest.models)
             {
+                if (metadata == null)
+                {
+                    continue;
+                }
+
                 if (string.IsNullOrWhiteSpace(metadata.modelId))
                 {
                     Debug.LogWarning("Encountered a model entry with an empty modelId. Entry skipped.");
                     continue;
                 }
 
-                if (!_modelData.ContainsKey(metadata.modelId))
-                {
-                    _modelData.Add(metadata.modelId, metadata);
-                }
-                else
-                {
-                    Debug.LogWarning($"Duplicate modelId in manifest: '{metadata.modelId}'. Entry skipped.");
-                }
+                _modelData[metadata.modelId] = metadata;
             }
         }
 
-        //         private async Task<string> ReadManifestFileAsync()
-        //         {
+        private bool IsModuleLoaded(SherpaOnnxModuleType moduleType)
+        {
+            if (_manifest?.models == null)
+            {
 
-        //             string directoryPath = Path.Combine(Application.streamingAssetsPath, SherpaOnnxConstants.RootDirectoryName);
-        //             string manifestPath = Path.Combine(directoryPath, SherpaOnnxConstants.ManifestFileName);
+                return false;
+            }
 
-        // #if (!UNITY_ANDROID && !UNITY_IOS && !UNITY_WEBGL)
-        //             if (!File.Exists(manifestPath))
-        //             {
-        //                 string defaultJson = SherpaOnnxConstants.GetDefaultManifestContent();
-        //                 if (!Directory.Exists(directoryPath))
-        //                 {
-        //                     Directory.CreateDirectory(directoryPath);
-        //                 }
-        //                 await File.WriteAllTextAsync(manifestPath, defaultJson);
-        //             }
 
-        //             if (File.Exists(manifestPath))
-        //             {
-        //                 return await File.ReadAllTextAsync(manifestPath);
-        //             }
-        //             return null;
-        // #else
-        //             using (UnityWebRequest www = UnityWebRequest.Get(manifestPath))
-        //             {
-        //                 var operation = www.SendWebRequest();
-        //                 while (!operation.isDone)
-        //                 {
-        //                     await Task.Yield();
-        //                 }
+            return _manifest.models.Any(m => m != null && m.moduleType == moduleType);
+        }
 
-        //                 return www.result == UnityWebRequest.Result.Success ? www.downloadHandler.text : null;
-        //             }
+        private bool IsManifestFullyLoaded()
+        {
+            if (_manifest?.models == null)
+            {
 
-        // #endif
-        //         }
+                return false;
+            }
+
+
+            var present = new HashSet<SherpaOnnxModuleType>(
+                _manifest.models.Where(m => m != null).Select(m => m.moduleType)
+            );
+            var required = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
+                .Where(t => t != SherpaOnnxModuleType.Undefined);
+            return required.All(t => present.Contains(t));
+        }
+
+        private async Task EnsureModuleDataAsync(SherpaOnnxModuleType moduleType, CancellationToken cancellationToken)
+        {
+            if (moduleType == SherpaOnnxModuleType.Undefined)
+            {
+                await EnsureAllModulesLoadedAsync(cancellationToken).ConfigureAwait(true);
+                return;
+            }
+
+            if (IsModuleLoaded(moduleType))
+            {
+                return;
+            }
+
+            await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+            try
+            {
+                if (IsModuleLoaded(moduleType))
+                {
+                    return;
+                }
+
+                await Constants.SherpaOnnxConstants.PopulateManifestAsync(_manifest, new[] { moduleType }, cancellationToken).ConfigureAwait(true);
+                PopulateDictionaryFromManifest(_manifest, clearExisting: false);
+                // MarkModuleLoaded(moduleType);
+            }
+            finally
+            {
+                _manifestUpdateSemaphore.Release();
+            }
+        }
+
+        private async Task EnsureAllModulesLoadedAsync(CancellationToken cancellationToken)
+        {
+            var pending = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
+                .Where(t => t != SherpaOnnxModuleType.Undefined && !IsModuleLoaded(t))
+                .ToArray();
+
+            if (pending.Length == 0)
+            {
+                return;
+            }
+
+            await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+            try
+            {
+                pending = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
+                    .Where(t => t != SherpaOnnxModuleType.Undefined && !IsModuleLoaded(t))
+                    .ToArray();
+
+                if (pending.Length == 0)
+                {
+                    return;
+                }
+
+                await Constants.SherpaOnnxConstants.PopulateManifestAsync(_manifest, pending, cancellationToken).ConfigureAwait(true);
+                PopulateDictionaryFromManifest(_manifest, clearExisting: false);
+            }
+            finally
+            {
+                _manifestUpdateSemaphore.Release();
+            }
+        }
 
         /// <summary>
         /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
@@ -303,6 +263,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
+            var moduleType = Utilities.SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            await EnsureModuleDataAsync(moduleType, cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return GetMetadata(modelId);
         }
 
@@ -313,7 +276,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public bool TryGetManifest(out SherpaOnnxModelManifest manifest)
         {
             manifest = _manifest;
-            return IsInitialized && manifest != null;
+            return IsInitialized && manifest != null && IsManifestFullyLoaded();
         }
 
         /// <summary>
@@ -324,21 +287,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
+            await EnsureAllModulesLoadedAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return _manifest;
         }
-
-        /// <summary>
-        /// Get the loaded manifest. Triggers lazy initialization if necessary.
-        /// </summary>
-        // public SherpaOnnxModelManifest GetManifest()
-        // {
-        //     if (!IsInitialized)
-        //     {
-        //         UnityEngine.Debug.LogWarning("SherpaOnnxModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing the manifest.");
-        //         return null;
-        //     }
-        //     return _manifest;
-        // }
 
         /// <summary>
         /// Async version of GetManifest; awaits initialization if needed.
@@ -347,7 +299,39 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
+            await EnsureAllModulesLoadedAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
             return _manifest;
         }
+
+        public async Task<SherpaOnnxModelManifest> GetManifestAsync(
+            SherpaOnnxModuleType moduleType,
+            CancellationToken cancellationToken = default)
+        {
+            await InitializeAsync(cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // If the caller truly wants "all", they should call the parameterless overload.
+            // For Undefined, just return whatever we currently have without forcing a full load.
+            if (moduleType == SherpaOnnxModuleType.Undefined)
+            {
+                return _manifest ?? new SherpaOnnxModelManifest();
+            }
+
+            // Ensure only the requested module type is present in the cached manifest.
+            await EnsureModuleDataAsync(moduleType, cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Return a filtered snapshot so the caller sees just this module's entries,
+            // while the internal _manifest remains the shared cache.
+            var result = new SherpaOnnxModelManifest();
+            if (_manifest?.models != null)
+            {
+                result.models.AddRange(_manifest.models.Where(m => m != null && m.moduleType == moduleType));
+            }
+            return result;
+        }
+
+
     }
 }

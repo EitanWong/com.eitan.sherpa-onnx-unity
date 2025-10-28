@@ -142,7 +142,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _modelIDDropdown.options.Clear();
                 _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
                 _modelLoadOrUnloadButton.gameObject.SetActive(false);
-                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpokenLanguageIdentification);
                 _modelLoadOrUnloadButton.gameObject.SetActive(true);
                 PopulateModelDropdown(manifest);
             }
@@ -162,8 +162,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             if (manifest.models != null)
             {
-                var modelOptions = manifest
-                    .Filter(m => m.moduleType == SherpaOnnxModuleType.SpokenLanguageIdentification)
+                var modelOptions = manifest.models
                     .Select(m => new OptionData(m.modelId))
                     .ToList();
 

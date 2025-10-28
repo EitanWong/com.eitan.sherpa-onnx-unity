@@ -397,14 +397,13 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
 
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechEnhancement);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)
             {
-                var modelOptions = manifest.Filter(m => m.moduleType == SherpaOnnxModuleType.SpeechEnhancement)
-                    .Select(m => new OptionData(m.modelId)).ToList();
+                var modelOptions = manifest.models.Select(m => new OptionData(m.modelId)).ToList();
 
                 if (modelOptions.Count > 0)
                 {
