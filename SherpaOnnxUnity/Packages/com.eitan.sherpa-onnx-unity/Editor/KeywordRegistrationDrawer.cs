@@ -1,17 +1,16 @@
-using UnityEditor;
-using UnityEngine;
-using Eitan.SherpaOnnxUnity.Runtime;
-
+#if UNITY_EDITOR
 namespace Eitan.SherpaOnnxUnity.Editor
 {
+    using Eitan.SherpaOnnxUnity.Editor.Localization;
+    using UnityEditor;
+    using UnityEngine;
+    using Eitan.SherpaOnnxUnity.Runtime;
     [CustomPropertyDrawer(typeof(KeywordSpotting.KeywordRegistration))]
     internal sealed class KeywordRegistrationDrawer : PropertyDrawer
     {
         private const float HorizontalFieldSpacing = 4f;
         private const float DefaultBoostingScore = 1f;
         private const float DefaultTriggerThreshold = 0.1f;
-        private static readonly GUIContent BoostLabel = new("Boost", "Hotword boosting score (> 0). Increase to make the keyword easier to trigger.");
-        private static readonly GUIContent ThresholdLabel = new("Threshold", "Minimum acoustic score (0-1). Lower values make the keyword easier to trigger.");
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -23,7 +22,10 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             if (keywordProp == null || boostingProp == null || thresholdProp == null)
             {
-                EditorGUI.LabelField(position, label, new GUIContent("KeywordRegistration fields not found."));
+                EditorGUI.LabelField(position, label, new GUIContent(
+                    SherpaOnnxLocalization.Tr(
+                        SherpaOnnxI18n.KeywordDrawer.ErrorMissingFields,
+                        "KeywordRegistration fields not found.")));
                 EditorGUI.EndProperty();
                 return;
             }
@@ -51,7 +53,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             EditorGUI.showMixedValue = boostingProp.hasMultipleDifferentValues;
             EditorGUI.BeginChangeCheck();
-            var boostValue = EditorGUI.FloatField(boostingRect, BoostLabel, boostingProp.floatValue);
+            var boostValue = EditorGUI.FloatField(
+                boostingRect,
+                new GUIContent(
+                    SherpaOnnxLocalization.Tr(SherpaOnnxI18n.KeywordDrawer.BoostLabel, "Boost"),
+                    SherpaOnnxLocalization.Tr(SherpaOnnxI18n.KeywordDrawer.BoostTooltip,
+                        "Hotword boosting score (> 0). Increase to make the keyword easier to trigger.")),
+                boostingProp.floatValue);
             if (EditorGUI.EndChangeCheck())
             {
                 boostingProp.floatValue = boostValue <= 0f ? DefaultBoostingScore : boostValue;
@@ -59,7 +67,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             EditorGUI.showMixedValue = thresholdProp.hasMultipleDifferentValues;
             EditorGUI.BeginChangeCheck();
-            var thresholdValue = EditorGUI.Slider(thresholdRect, ThresholdLabel, thresholdProp.floatValue, 0f, 1f);
+            var thresholdValue = EditorGUI.Slider(
+                thresholdRect,
+                new GUIContent(
+                    SherpaOnnxLocalization.Tr(SherpaOnnxI18n.KeywordDrawer.ThresholdLabel, "Threshold"),
+                    SherpaOnnxLocalization.Tr(SherpaOnnxI18n.KeywordDrawer.ThresholdTooltip,
+                        "Minimum acoustic score (0-1). Lower values make the keyword easier to trigger.")),
+                thresholdProp.floatValue,
+                0f,
+                1f);
             if (EditorGUI.EndChangeCheck())
             {
                 thresholdProp.floatValue = Mathf.Clamp01(thresholdValue);
@@ -75,3 +91,4 @@ namespace Eitan.SherpaOnnxUnity.Editor
         }
     }
 }
+#endif

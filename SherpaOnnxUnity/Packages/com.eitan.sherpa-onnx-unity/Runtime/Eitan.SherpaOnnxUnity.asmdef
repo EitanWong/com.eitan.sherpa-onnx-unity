@@ -10,9 +10,7 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "sherpa-onnx.dll",
-        "ICSharpCode.SharpZipLib.dll",
-        "SharpCompress.dll"
+        "ICSharpCode.SharpZipLib.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],

@@ -30,6 +30,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
+            IsOnlineModel = SherpaUtils.Model.IsOnlineModel(modelID);
+            _modelType = SherpaUtils.Model.GetSpeechRecognitionModelType(modelID);
         }
 
         protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
@@ -37,9 +39,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-
-                IsOnlineModel = SherpaUtils.Model.IsOnlineModel(metadata.modelId);
-                _modelType = SherpaUtils.Model.GetSpeechRecognitionModelType(metadata.modelId);
 
                 if (IsOnlineModel)
                 {

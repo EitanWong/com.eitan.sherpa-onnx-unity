@@ -242,6 +242,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             // Add your reusable keys here to promote consistency across plugins.
             public const string GithubProxy = "SherpaOnnx.GithubProxy";        // e.g., "https://gh-proxy.com/"
+            public const string FetchLatestManifest = "SherpaOnnx.FetchLatestManifest"; // bool, default true
+            public const string AutoDownloadModels = "SherpaOnnx.AutoDownloadModels";   // bool, default true
+            public const string ChecksumCacheDirectory = "SherpaOnnx.ChecksumCacheDirectory"; // optional override path
+            public const string ChecksumCacheTtlSeconds = "SherpaOnnx.ChecksumCacheTtlSeconds"; // int, default 3600 (1h)
         }
     }
 }

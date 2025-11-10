@@ -15,6 +15,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     {
 
         private OfflineTts _tts;
+        private int _activeGenerationCount;
+        private TaskCompletionSource<bool> _shutdownCompletionSource;
 
         protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
 
@@ -253,6 +255,83 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return ttsModelConfig;
         }
 
+        private void EnsureReadyForGeneration()
+        {
+            if (IsDisposed || runner == null || runner.IsDisposed)
+            {
+                throw new ObjectDisposedException(nameof(SpeechSynthesis), "SpeechSynthesis has been disposed or is shutting down.");
+            }
+
+            if (_tts == null)
+            {
+                throw new InvalidOperationException("SpeechSynthesis is not initialized or has already been disposed. Please ensure it is loaded successfully before generating speech.");
+            }
+        }
+
+        private GenerationScope EnterGenerationScope()
+        {
+            return new GenerationScope(this);
+        }
+
+        private void SignalGenerationCompleted()
+        {
+            var remaining = Interlocked.Decrement(ref _activeGenerationCount);
+            if (remaining < 0)
+            {
+                Interlocked.Exchange(ref _activeGenerationCount, 0);
+                return;
+            }
+
+            if (remaining == 0)
+            {
+                var completion = Volatile.Read(ref _shutdownCompletionSource);
+                completion?.TrySetResult(true);
+            }
+        }
+
+        private sealed class GenerationScope : IDisposable
+        {
+            private readonly SpeechSynthesis _owner;
+            private bool _disposed;
+
+            public OfflineTts Tts { get; }
+
+            public GenerationScope(SpeechSynthesis owner)
+            {
+                _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+
+                OfflineTts ttsRef = null;
+                owner.SafeExecute(() =>
+                {
+                    if (owner.IsDisposed || owner.runner == null || owner.runner.IsDisposed)
+                    {
+                        throw new ObjectDisposedException(nameof(SpeechSynthesis), "SpeechSynthesis has been disposed or is shutting down.");
+                    }
+
+                    if (owner._tts == null)
+                    {
+                        throw new InvalidOperationException("SpeechSynthesis is not initialized or has already been disposed. Please ensure it is loaded successfully before generating speech.");
+                    }
+
+                    ttsRef = owner._tts;
+                    Interlocked.Increment(ref owner._activeGenerationCount);
+                });
+
+                Tts = ttsRef ?? throw new InvalidOperationException("Failed to acquire OfflineTts instance for generation.");
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _owner.SignalGenerationCompleted();
+            }
+        }
+
         /// <summary>
         /// Generates speech from text asynchronously and returns an AudioClip.
         /// This is the simplest generation method with no callbacks.
@@ -264,10 +343,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <returns>A Task that represents the asynchronous operation. The value of the TResult parameter contains the generated AudioClip.</returns>
         public async Task<AudioClip> GenerateAsync(string text, int voiceID, float speed = 1f, CancellationToken? ct = null)
         {
-            if (_tts == null)
-            {
-                throw new InvalidOperationException("SpeechSynthesis is not initialized or has been disposed. Please ensure it is loaded successfully before generating speech.");
-            }
+            EnsureReadyForGeneration();
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
@@ -275,7 +351,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var combinedToken = linkedCts.Token;
                 combinedToken.ThrowIfCancellationRequested();
 
-                OfflineTtsGeneratedAudio generatedAudio = _tts.Generate(text, speed, voiceID);
+                using var generationScope = EnterGenerationScope();
+                combinedToken.ThrowIfCancellationRequested();
+                var tts = generationScope.Tts;
+
+                OfflineTtsGeneratedAudio generatedAudio = tts.Generate(text, speed, voiceID);
 
                 if (generatedAudio == null)
                 {
@@ -321,10 +401,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <returns>A Task that represents the asynchronous operation. The value of the TResult parameter contains the generated AudioClip.</returns>
         public async Task<AudioClip> GenerateWithCallbackAsync(string text, int voiceID, float speed, OfflineTtsCallback callback, CancellationToken? ct = null)
         {
-            if (_tts == null)
-            {
-                throw new InvalidOperationException("SpeechSynthesis is not initialized or has been disposed. Please ensure it is loaded successfully before generating speech.");
-            }
+            EnsureReadyForGeneration();
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
@@ -332,7 +409,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var combinedToken = linkedCts.Token;
                 combinedToken.ThrowIfCancellationRequested();
 
-                OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallback(text, speed, voiceID, callback);
+                using var generationScope = EnterGenerationScope();
+                combinedToken.ThrowIfCancellationRequested();
+                var tts = generationScope.Tts;
+
+                OfflineTtsGeneratedAudio generatedAudio = tts.GenerateWithCallback(text, speed, voiceID, callback);
 
                 if (generatedAudio == null)
                 {
@@ -378,10 +459,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <returns>A Task that represents the asynchronous operation. The value of the TResult parameter contains the generated AudioClip.</returns>
         public async Task<AudioClip> GenerateWithProgressCallbackAsync(string text, int voiceID, float speed, OfflineTtsCallbackProgress callback, CancellationToken? ct = null)
         {
-            if (_tts == null)
-            {
-                throw new InvalidOperationException("SpeechSynthesis is not initialized or has been disposed. Please ensure it is loaded successfully before generating speech.");
-            }
+            EnsureReadyForGeneration();
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
@@ -389,7 +467,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var combinedToken = linkedCts.Token;
                 combinedToken.ThrowIfCancellationRequested();
 
-                OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
+                using var generationScope = EnterGenerationScope();
+                combinedToken.ThrowIfCancellationRequested();
+                var tts = generationScope.Tts;
+
+                OfflineTtsGeneratedAudio generatedAudio = tts.GenerateWithCallbackProgress(text, speed, voiceID, callback);
 
                 if (generatedAudio == null)
                 {
@@ -428,10 +510,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public async Task<AudioClip> GenerateZeroShotAsync(string text, string promptText, float[] promptSamples, int promptSampleRate, float speed = 1, int numSteps = 4, CancellationToken? ct = null)
         {
 
-            if (_tts == null)
-            {
-                throw new InvalidOperationException("SpeechSynthesis is not initialized or has been disposed. Please ensure it is loaded successfully before generating speech.");
-            }
+            EnsureReadyForGeneration();
 
             return await runner.RunAsync(async (cancellationToken) =>
             {
@@ -439,7 +518,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 var combinedToken = linkedCts.Token;
                 combinedToken.ThrowIfCancellationRequested();
 
-                OfflineTtsGeneratedAudio generatedAudio = _tts.GenerateZeroShot(text, promptText, promptSamples, promptSampleRate, speed, numSteps);
+                using var generationScope = EnterGenerationScope();
+                combinedToken.ThrowIfCancellationRequested();
+                var tts = generationScope.Tts;
+
+                OfflineTtsGeneratedAudio generatedAudio = tts.GenerateZeroShot(text, promptText, promptSamples, promptSampleRate, speed, numSteps);
 
                 if (generatedAudio == null)
                 {
@@ -483,11 +566,58 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
         protected override void OnDestroy()
         {
+            OfflineTts ttsInstance = null;
+            TaskCompletionSource<bool> shutdownCompletion = null;
+
             SafeExecute(() =>
             {
-                _tts?.Dispose();
+                if (_tts == null)
+                {
+                    return;
+                }
+
+                ttsInstance = _tts;
                 _tts = null;
+
+                shutdownCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _shutdownCompletionSource = shutdownCompletion;
+
+                if (Volatile.Read(ref _activeGenerationCount) == 0)
+                {
+                    shutdownCompletion.TrySetResult(true);
+                }
             });
+
+            if (ttsInstance == null)
+            {
+                return;
+            }
+
+            var completionTask = shutdownCompletion?.Task;
+            if (completionTask == null || completionTask.IsCompleted)
+            {
+                DisposeTtsSafely(ttsInstance);
+                return;
+            }
+
+            _ = completionTask.ContinueWith(_ => DisposeTtsSafely(ttsInstance), TaskScheduler.Default);
+        }
+
+        private static void DisposeTtsSafely(OfflineTts ttsInstance)
+        {
+            if (ttsInstance == null)
+            {
+                return;
+            }
+
+            try
+            {
+                ttsInstance.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
         }
     }
 }

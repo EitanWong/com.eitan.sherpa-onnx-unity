@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -28,6 +29,156 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         internal static IEnumerable<SherpaOnnxModuleType> EnumerateManifestModuleTypes()
         {
             return ALL_MANIFEST_MODULE_TYPES;
+        }
+
+        private const int DefaultChecksumCacheTtlSeconds = 3600;
+
+        private static bool ShouldFetchLatestManifest() =>
+            SherpaOnnxEnvironment.GetBool(SherpaOnnxEnvironment.BuiltinKeys.FetchLatestManifest, @default: true);
+
+        private static int GetChecksumCacheTtlSeconds()
+        {
+            try
+            {
+                return SherpaOnnxEnvironment.GetInt(
+                    SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
+                    DefaultChecksumCacheTtlSeconds);
+            }
+            catch
+            {
+                return DefaultChecksumCacheTtlSeconds;
+            }
+        }
+
+        private static bool TryReadChecksumCache(string tag, bool allowExpired, out string content)
+        {
+            content = string.Empty;
+            var ttlSeconds = GetChecksumCacheTtlSeconds();
+            if (ttlSeconds == 0)
+            {
+                return false; // caching disabled
+            }
+
+            var cachePath = BuildChecksumCachePath(tag);
+            if (string.IsNullOrEmpty(cachePath) || !File.Exists(cachePath))
+            {
+                return false;
+            }
+
+            if (!allowExpired && ttlSeconds > 0)
+            {
+                var maxAge = TimeSpan.FromSeconds(ttlSeconds);
+                var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(cachePath);
+                if (age > maxAge)
+                {
+                    return false;
+                }
+            }
+
+            try
+            {
+                content = File.ReadAllText(cachePath);
+                return !string.IsNullOrWhiteSpace(content);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache read failed ({cachePath}): {ex.Message}");
+                return false;
+            }
+        }
+
+        private static void WriteChecksumCache(string tag, string content)
+        {
+            var ttlSeconds = GetChecksumCacheTtlSeconds();
+            if (ttlSeconds == 0)
+            {
+                return;
+            }
+
+            var cachePath = BuildChecksumCachePath(tag);
+            if (string.IsNullOrEmpty(cachePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var directory = Path.GetDirectoryName(cachePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                File.WriteAllText(cachePath, content);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache write failed ({cachePath}): {ex.Message}");
+            }
+        }
+
+        private static string BuildChecksumCachePath(string tag)
+        {
+            try
+            {
+                var customRoot = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheDirectory, string.Empty);
+                var root = string.IsNullOrWhiteSpace(customRoot) ? ResolveDefaultCacheRoot() : customRoot.Trim();
+                var safeFileName = SanitizeFileName(string.IsNullOrWhiteSpace(tag) ? "default" : tag);
+                return Path.Combine(root, "manifest-cache", $"{safeFileName}-checksum.txt");
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string ResolveDefaultCacheRoot()
+        {
+            try
+            {
+                var unityTemp = UnityEngine.Application.temporaryCachePath;
+                if (!string.IsNullOrEmpty(unityTemp))
+                {
+                    return Path.Combine(unityTemp, "SherpaOnnxUnity");
+                }
+            }
+            catch
+            {
+                // ignored, fall back to system temp
+            }
+
+            try
+            {
+                var systemTemp = Path.GetTempPath();
+                if (!string.IsNullOrEmpty(systemTemp))
+                {
+                    return Path.Combine(systemTemp, "SherpaOnnxUnity");
+                }
+            }
+            catch
+            {
+                // ignored, as a last resort fall through to current directory
+            }
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", "SherpaOnnxUnity");
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return "default";
+            }
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var buffer = new char[name.Length];
+            var length = 0;
+            for (int i = 0; i < name.Length; i++)
+            {
+                var ch = name[i];
+                buffer[length++] = Array.IndexOf(invalidChars, ch) >= 0 ? '_' : ch;
+            }
+
+            return new string(buffer, 0, length);
         }
 
         // Read-only initialization blacklist (unified): supports Exact, Prefix, Suffix, Contains, and Regex.
@@ -550,9 +701,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
             }
 
+            var fetchAllowed = ShouldFetchLatestManifest();
+            if (TryReadChecksumCache(tag, allowExpired: !fetchAllowed, out var cachedContent) &&
+                !string.IsNullOrWhiteSpace(cachedContent))
+            {
+                return ParseChecksumContent(cachedContent, moduleType, tag);
+            }
+
+            if (!fetchAllowed)
+            {
+                UnityEngine.Debug.Log($"FetchModelsAsync({moduleType}) skipped network fetch because {SherpaOnnxEnvironment.BuiltinKeys.FetchLatestManifest}=false and no cache was present.");
+                return Array.Empty<SherpaOnnxModelMetadata>();
+            }
+
             var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/checksum.txt";
             var url = ApplyGithubProxyIfAny(rawUrl);
-
             try
             {
                 var (ok, content) = await TryHttpGetTextAsync(url, 20000).ConfigureAwait(true);
@@ -570,89 +733,97 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                     return Array.Empty<SherpaOnnxModelMetadata>();
                 }
 
-                var list = new List<SherpaOnnxModelMetadata>();
-                var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                var rkRegex = new Regex(@"rk\d{4}", RegexOptions.IgnoreCase);
-
-                bool isOnnxOnly = moduleType == SherpaOnnxModuleType.VoiceActivityDetection
-                               || moduleType == SherpaOnnxModuleType.SpeechEnhancement;
-                string wantedExt = isOnnxOnly ? ".onnx" : ".tar.bz2";
-                bool isSlidModel = moduleType == SherpaOnnxModuleType.SpokenLanguageIdentification;
-
-                foreach (var raw in lines)
-                {
-                    var line = raw.Trim();
-                    if (line.Length == 0 || line.StartsWith("#"))
-                    {
-                        continue;
-                    }
-
-
-                    var parts = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length < 2)
-                    {
-                        continue;
-                    }
-
-
-                    var fileName = parts[0].Trim();
-                    var hash = parts[1].Trim();
-
-                    // Apply read-only initialization blacklist (names and suffixes)
-                    if (IsInitBlacklisted(fileName))
-                    {
-                        continue;
-                    }
-
-                    if (!fileName.EndsWith(wantedExt, StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    if (rkRegex.IsMatch(fileName))
-                    {
-                        continue;
-                    }
-
-
-                    if (isSlidModel && fileName.IndexOf("whisper", StringComparison.OrdinalIgnoreCase) < 0)
-                    {
-                        continue;
-                    }
-
-                    string modelId;
-                    if (isOnnxOnly)
-                    {
-                        modelId = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)
-                            ? fileName.Substring(0, fileName.Length - ".onnx".Length)
-                            : fileName;
-                    }
-                    else
-                    {
-                        modelId = fileName.Substring(0, fileName.Length - ".tar.bz2".Length);
-                    }
-
-                    var downloadUrl = ApplyGithubProxyIfAny(
-                        $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{(isOnnxOnly ? modelId + ".onnx" : modelId + ".tar.bz2")}"
-                    );
-
-                    var meta = new SherpaOnnxModelMetadata
-                    {
-                        modelId = modelId,
-                        downloadFileHash = hash,
-                        downloadUrl = downloadUrl
-                    };
-
-                    list.Add(meta);
-                }
-
-                return list.ToArray();
+                WriteChecksumCache(tag, content);
+                return ParseChecksumContent(content, moduleType, tag);
             }
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogWarning($"FetchModelsAsync({moduleType}) failed: {ex.GetType().Name}: {ex.Message}");
                 return Array.Empty<SherpaOnnxModelMetadata>();
             }
+        }
+
+        private static SherpaOnnxModelMetadata[] ParseChecksumContent(string content, SherpaOnnxModuleType moduleType, string tag)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return Array.Empty<SherpaOnnxModelMetadata>();
+            }
+
+            var list = new List<SherpaOnnxModelMetadata>();
+            var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var rkRegex = new Regex(@"rk\d{4}", RegexOptions.IgnoreCase);
+
+            bool isOnnxOnly = moduleType == SherpaOnnxModuleType.VoiceActivityDetection
+                           || moduleType == SherpaOnnxModuleType.SpeechEnhancement;
+            string wantedExt = isOnnxOnly ? ".onnx" : ".tar.bz2";
+            bool isSlidModel = moduleType == SherpaOnnxModuleType.SpokenLanguageIdentification;
+
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("#"))
+                {
+                    continue;
+                }
+
+                var parts = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2)
+                {
+                    continue;
+                }
+
+                var fileName = parts[0].Trim();
+                var hash = parts[1].Trim();
+
+                // Apply read-only initialization blacklist (names and suffixes)
+                if (IsInitBlacklisted(fileName))
+                {
+                    continue;
+                }
+
+                if (!fileName.EndsWith(wantedExt, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (rkRegex.IsMatch(fileName))
+                {
+                    continue;
+                }
+
+                if (isSlidModel && fileName.IndexOf("whisper", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    continue;
+                }
+
+                string modelId;
+                if (isOnnxOnly)
+                {
+                    modelId = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)
+                        ? fileName.Substring(0, fileName.Length - ".onnx".Length)
+                        : fileName;
+                }
+                else
+                {
+                    modelId = fileName.Substring(0, fileName.Length - ".tar.bz2".Length);
+                }
+
+                var downloadUrl = ApplyGithubProxyIfAny(
+                    $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{(isOnnxOnly ? modelId + ".onnx" : modelId + ".tar.bz2")}"
+                );
+
+                var meta = new SherpaOnnxModelMetadata
+                {
+                    modelId = modelId,
+                    downloadFileHash = hash,
+                    downloadUrl = downloadUrl
+                };
+
+                list.Add(meta);
+            }
+
+            return list.ToArray();
         }
 
     }

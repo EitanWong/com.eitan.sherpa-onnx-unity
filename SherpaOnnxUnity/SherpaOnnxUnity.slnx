@@ -3,8 +3,8 @@
   <Project Path="UnityEngine.TestRunner.csproj" />
   <Project Path="UnityEngine.UI.csproj" />
   <Project Path="Eitan.SherpaOnnxUnity.Samples.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.csproj" />
   <Project Path="Eitan.SherpaOnnxUnity.csproj" />
+  <Project Path="Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.csproj" />
   <Project Path="Unity.TextMeshPro.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
   <Project Path="UnityEditor.UI.csproj" />

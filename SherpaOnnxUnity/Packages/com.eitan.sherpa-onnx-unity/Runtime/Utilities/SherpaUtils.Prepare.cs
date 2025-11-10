@@ -134,6 +134,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         return false;
                     }
 
+                    var autoDownloadEnabled = IsAutoDownloadEnabled();
+
                     for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -141,6 +143,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false))
                         {
                             return true;
+                        }
+
+                        if (!autoDownloadEnabled)
+                        {
+                            ReportAutoDownloadDisabled(metadata, reporter, paths.ModelDirectory);
+                            return false;
                         }
 
                         var downloadSucceeded = await DownloadModelAsync(metadata, paths.DownloadFilePath, reporter, attempt, cancellationToken).ConfigureAwait(false);
@@ -492,6 +500,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             {
                 try
                 {
+                    if (!IsAutoDownloadEnabled())
+                    {
+                        var directory = Path.GetDirectoryName(downloadFilePath) ?? downloadFilePath;
+                        ReportAutoDownloadDisabled(metadata, reporter, directory);
+                        return false;
+                    }
+
                     // Check if the file is already downloaded with hash verification
                     var (_, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, metadata.downloadFileHash, reporter, cancellationToken).ConfigureAwait(false);
                     if (downloadedFileCheckResult.Status == FileVerificationStatus.Success)
@@ -692,6 +707,16 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             private static bool IsHashValidationForced() =>
                 SherpaOnnxEnvironment.GetBool(FORCE_HASH_VALIDATION_KEY, @default: false);
+
+            private static bool IsAutoDownloadEnabled() =>
+                SherpaOnnxEnvironment.GetBool(SherpaOnnxEnvironment.BuiltinKeys.AutoDownloadModels, @default: true);
+
+            private static void ReportAutoDownloadDisabled(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter, string targetDirectory)
+            {
+                var key = SherpaOnnxEnvironment.BuiltinKeys.AutoDownloadModels;
+                var message = $"Automatic download skipped because {key}=false. Ensure the model files exist under {targetDirectory}.";
+                ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: targetDirectory));
+            }
 
             private static void EnsureTargetDirectories(ModelPaths paths)
             {

@@ -176,7 +176,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// </summary>
         public async Task<bool> WaitForAllAsync(int timeoutMs = 5000)
         {
-            if (_disposed || _activeTasks.IsEmpty)
+            if (_activeTasks.IsEmpty)
             { return true; }
 
             var activeTasks = _activeTasks.Keys.ToArray();
@@ -231,7 +231,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             }
             finally
             {
-                _concurrencyLimiter.Release();
+                SafeReleaseSemaphore();
 
                 if (onComplete != null)
                 {
@@ -277,6 +277,27 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 {
                     break;
                 }
+            }
+        }
+
+        private void SafeReleaseSemaphore()
+        {
+            if (_concurrencyLimiter == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _concurrencyLimiter.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The limiter can be disposed while tasks unwind during shutdown; ignore.
+            }
+            catch (SemaphoreFullException)
+            {
+                // Guard against rare double-release during fault paths.
             }
         }
 
@@ -415,22 +436,20 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             if (IsUnityContext())
             { UnityEngine.Application.quitting -= Dispose; }
 
-            // Cancel all operations
+            _cleanupTimer?.Dispose();
             _globalCts?.Cancel();
 
-            // Cleanup resources
-            _cleanupTimer?.Dispose();
-            _concurrencyLimiter?.Dispose();
-
-            // Async cleanup without blocking
+            // Async cleanup without blocking the caller thread
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await WaitForAllAsync(2000);
+                    await WaitForAllAsync(2000).ConfigureAwait(false);
                 }
                 finally
                 {
+                    try { _concurrencyLimiter?.Dispose(); }
+                    catch { }
                     _globalCts?.Dispose();
                     _globalCts = null;
                 }
