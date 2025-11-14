@@ -1,4 +1,4 @@
-﻿namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.Exception
+﻿namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Exception
 {
     /// <summary>
     /// 拼音异常类

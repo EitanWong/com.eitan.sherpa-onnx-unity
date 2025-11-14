@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     // 建議將此函式放在一個靜態的工具類別中
     public static class MathUtils
@@ -8,7 +8,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
         /// </summary>
         public static int NextPowerOfTwo(int n)
         {
-            if (n <= 0){ return 1;}
+            if (n <= 0) { return 1; }
             n--;
             n |= n >> 1;
             n |= n >> 2;

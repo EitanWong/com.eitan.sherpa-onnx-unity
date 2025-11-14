@@ -3,15 +3,16 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin;
+
 using Eitan.SherpaOnnxUnity.Runtime.Native;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
 {
     public sealed class KeywordSpotting : SherpaOnnxModule
     {

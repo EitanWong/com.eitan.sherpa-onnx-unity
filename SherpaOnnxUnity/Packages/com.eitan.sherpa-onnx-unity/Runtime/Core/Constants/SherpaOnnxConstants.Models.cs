@@ -266,6 +266,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 {
                     modelId = "sherpa-onnx-dolphin-small-ctc-multi-lang-2025-04-02",
                 },
+                new SherpaOnnxModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12",
+                },
+                new SherpaOnnxModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-2025-11-12",
+                },
+                new SherpaOnnxModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-int8-2025-11-12",
+                },
+
             };
 
             public static readonly SherpaOnnxModelMetadata[] VAD_MODELS_METADATA_TABLES = new[]

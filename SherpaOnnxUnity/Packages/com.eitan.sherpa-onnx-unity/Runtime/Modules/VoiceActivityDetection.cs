@@ -1,14 +1,14 @@
-using System;
-using System.Buffers; // For ArrayPool
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For MathUtils
-using Eitan.SherpaOnnxUnity.Runtime.Native;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
+    using System;
+    using System.Buffers; // For ArrayPool
+    using System.Collections.Concurrent;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
+
     /// <summary>
     /// [FINAL, SIMPLIFIED & FULLY OPTIMIZED]
     /// Detects speech segments from a real-time audio stream using high-performance, zero-GC techniques,

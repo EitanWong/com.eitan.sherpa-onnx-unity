@@ -1,12 +1,13 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using Eitan.SherpaOnnxUnity.Runtime.Native;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
 {
+
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using System.Runtime.CompilerServices;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
     /// <summary>
     /// High-level Unity wrapper for sherpa-onnx audio tagging.
     /// Provides both non-streaming (one-shot) and streaming (buffered) APIs.

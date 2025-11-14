@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     using ICSharpCode.SharpZipLib.BZip2;
     using ICSharpCode.SharpZipLib.GZip;

@@ -7,7 +7,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
 
 namespace Eitan.SherpaOnnxUnity.Tests
 {

@@ -1,5 +1,5 @@
 using System.Linq;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
 
 namespace Eitan.SherpaOnnxUnity.Runtime
 {

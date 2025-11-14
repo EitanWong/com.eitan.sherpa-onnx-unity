@@ -1,9 +1,10 @@
 
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     public partial class SherpaUtils
     {
@@ -31,6 +32,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             private static readonly string[] fireredasr_keywords = { "fire-red-asr" };
             private static readonly string[] dolphin_keywords = { "dolphin" };
             private static readonly string[] telespeech_keywords = { "telespeech" };
+
+            private static readonly string[] omnilingual_keywords = { "omnilingual" };
 
             // Special model keywords that take precedence
             #endregion
@@ -145,6 +148,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
                 else if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
                 { return SpeechRecognitionModelType.Tdnn; }
+                else if (ContainsAnyKeyword(lowerModelID, omnilingual_keywords))
+                { return SpeechRecognitionModelType.Omnilingual; }
+
 
                 // NeMo family special cases
                 // 1) Parakeet TDT CTC should map to Nemo CTC explicitly to avoid falling into generic CTC
@@ -246,7 +252,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             }
 
-            internal static bool IsOnlineModel(string modelID)
+            public static bool IsOnlineModel(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
                 { return false; }
@@ -372,6 +378,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                         return dolphin_keywords;
                     case SpeechRecognitionModelType.TeleSpeech:
                         return telespeech_keywords;
+                    case SpeechRecognitionModelType.Omnilingual:
+                        return omnilingual_keywords;
                     default:
                         return new string[0];
                 }

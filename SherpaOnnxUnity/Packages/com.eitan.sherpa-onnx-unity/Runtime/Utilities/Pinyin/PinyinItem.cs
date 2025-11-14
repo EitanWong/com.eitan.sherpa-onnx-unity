@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin
 {
     /// <summary>
     /// 调用 GetPinyinArray 时的返回项数据结构，其用于兼容：多音字时返回多个拼音

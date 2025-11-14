@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     internal static class UnityMainThreadScheduler
     {

@@ -1,6 +1,6 @@
 using Eitan.SherpaOnnxUnity.Runtime.Constants;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
 
     internal static class SherpaPathResolver
@@ -53,7 +53,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
             return System.IO.Path.Combine(modelFolderPath, modelFile);
 
         }
-        
+
     }
 
 }

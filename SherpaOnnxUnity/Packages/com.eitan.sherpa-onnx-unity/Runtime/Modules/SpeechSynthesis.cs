@@ -1,13 +1,12 @@
 // SpeechSynthesis.cs
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+
     using Eitan.SherpaOnnxUnity.Runtime.Native;
     using UnityEngine;
 

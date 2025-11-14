@@ -4,9 +4,11 @@ namespace Eitan.SherpaOnnxUnity.Tests
 
     using System.Collections.Generic;
     using NUnit.Framework;
-    using Eitan.SherpaOnnxUnity.Runtime.Utilities;
     using Eitan.SherpaOnnxUnity.Runtime;
     using Eitan.SherpaOnnxUnity.Runtime.Constants;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+
+
     public class SherpaModelMatcherTests
     {
         // ===== Dynamic UseCases generated from Constants =====

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
 using UnityEngine.Networking;
 
 namespace Eitan.SherpaOnnxUnity.Runtime.Constants
@@ -23,7 +24,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             SherpaOnnxModuleType.AudioTagging,
             SherpaOnnxModuleType.SpeakerIdentification,
             SherpaOnnxModuleType.SourceSeparation,
-            SherpaOnnxModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained 
+            SherpaOnnxModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained
         };
 
         internal static IEnumerable<SherpaOnnxModuleType> EnumerateManifestModuleTypes()
@@ -120,14 +121,141 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         {
             try
             {
-                var customRoot = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheDirectory, string.Empty);
-                var root = string.IsNullOrWhiteSpace(customRoot) ? ResolveDefaultCacheRoot() : customRoot.Trim();
+                var cacheDirectory = ResolveChecksumCacheDirectory();
+                if (string.IsNullOrEmpty(cacheDirectory))
+                {
+                    return string.Empty;
+                }
+
                 var safeFileName = SanitizeFileName(string.IsNullOrWhiteSpace(tag) ? "default" : tag);
-                return Path.Combine(root, "manifest-cache", $"{safeFileName}-checksum.txt");
+                return Path.Combine(cacheDirectory, $"{safeFileName}-checksum.txt");
             }
             catch
             {
                 return string.Empty;
+            }
+        }
+
+        private static string ResolveChecksumCacheDirectory()
+        {
+            try
+            {
+                var root = ResolveChecksumCacheRoot();
+                if (string.IsNullOrWhiteSpace(root))
+                {
+                    return string.Empty;
+                }
+
+                return Path.Combine(root, "manifest-cache");
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string ResolveChecksumCacheRoot()
+        {
+            var customRoot = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheDirectory, string.Empty);
+            return string.IsNullOrWhiteSpace(customRoot) ? ResolveDefaultCacheRoot() : customRoot.Trim();
+        }
+
+        public static SherpaChecksumCacheClearResult ClearChecksumCache()
+        {
+            var cacheDirectory = ResolveChecksumCacheDirectory();
+            if (string.IsNullOrWhiteSpace(cacheDirectory))
+            {
+                return new SherpaChecksumCacheClearResult(
+                    cacheDirectory,
+                    directoryFound: false,
+                    deletedFiles: 0,
+                    failedFiles: 0,
+                    errors: new[] { "Checksum cache directory could not be resolved." });
+            }
+
+            if (!Directory.Exists(cacheDirectory))
+            {
+                return new SherpaChecksumCacheClearResult(
+                    cacheDirectory,
+                    directoryFound: false,
+                    deletedFiles: 0,
+                    failedFiles: 0,
+                    errors: Array.Empty<string>());
+            }
+
+            var deleted = 0;
+            var failed = 0;
+            var errors = new List<string>();
+            IEnumerable<string> filesToDelete;
+
+            try
+            {
+                filesToDelete = Directory.EnumerateFiles(cacheDirectory, "*-checksum.txt", SearchOption.AllDirectories);
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex.Message);
+                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache enumeration failed ({cacheDirectory}): {ex.Message}");
+                return new SherpaChecksumCacheClearResult(
+                    cacheDirectory,
+                    directoryFound: true,
+                    deletedFiles: 0,
+                    failedFiles: 0,
+                    errors: errors);
+            }
+
+            foreach (var file in filesToDelete)
+            {
+                try
+                {
+                    if (File.Exists(file))
+                    {
+                        File.Delete(file);
+                        deleted++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    errors.Add($"{file}: {ex.Message}");
+                    UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache delete failed ({file}): {ex.Message}");
+                }
+            }
+
+            TryDeleteEmptyDirectories(cacheDirectory, errors);
+
+            return new SherpaChecksumCacheClearResult(
+                cacheDirectory,
+                directoryFound: true,
+                deletedFiles: deleted,
+                failedFiles: failed,
+                errors: errors);
+        }
+
+        private static void TryDeleteEmptyDirectories(string directory, List<string> errors)
+        {
+            if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+            {
+                return;
+            }
+
+            try
+            {
+                var subDirectories = Directory.GetDirectories(directory);
+                foreach (var sub in subDirectories)
+                {
+                    TryDeleteEmptyDirectories(sub, errors);
+                }
+
+                if (!Directory.EnumerateFileSystemEntries(directory).Any())
+                {
+                    Directory.Delete(directory);
+                }
+            }
+            catch (Exception ex)
+            {
+                errors?.Add($"{directory}: {ex.Message}");
+                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache cleanup failed ({directory}): {ex.Message}");
             }
         }
 
@@ -510,7 +638,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
         private static string GetModelDownloadUrl(string modelId)
         {
-            var sherpaModelType = Utilities.SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            var sherpaModelType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             var tag = GetReleaseTagByModuleType(sherpaModelType);
             var ext = sherpaModelType == SherpaOnnxModuleType.VoiceActivityDetection ? ".onnx" : ".tar.bz2";
             var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{modelId}{ext}";
@@ -697,7 +825,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
             if (moduleType == SherpaOnnxModuleType.SpeakerDiarization)
             {
-                // There is no checksum.txt file in https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-segmentation-models, so the model cannot be obtained 
+                // There is no checksum.txt file in https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-segmentation-models, so the model cannot be obtained
                 return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
             }
 

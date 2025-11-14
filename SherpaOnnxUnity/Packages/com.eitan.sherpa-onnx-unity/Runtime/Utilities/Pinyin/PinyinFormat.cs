@@ -1,6 +1,6 @@
 using System;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin
 {
     [Flags]
     public enum PinyinFormat

@@ -5,7 +5,7 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
     /// <summary>
     /// Centralized string keys so we can avoid inline literals throughout the editors.
     /// </summary>
-internal static class SherpaOnnxI18n
+    internal static class SherpaOnnxL10n
     {
         internal static class Common
         {
@@ -72,6 +72,11 @@ internal static class SherpaOnnxI18n
             internal const string CacheDirectoryTooltip = "settings.cacheDirectory.tooltip";
             internal const string CacheTtlLabel = "settings.cacheTtl.label";
             internal const string CacheTtlTooltip = "settings.cacheTtl.tooltip";
+            internal const string CacheClearButton = "settings.cacheClear.button";
+            internal const string CacheClearTooltip = "settings.cacheClear.tooltip";
+            internal const string CacheClearSuccess = "settings.cacheClear.success";
+            internal const string CacheClearEmpty = "settings.cacheClear.empty";
+            internal const string CacheClearError = "settings.cacheClear.error";
         }
 
         internal static class KeywordDrawer
@@ -167,6 +172,146 @@ internal static class SherpaOnnxI18n
             internal const string StatusGenericError = "models.status.genericError";
             internal const string StatusUnknown = "models.status.unknown";
             internal const string StatusDownloadedWithCheck = "models.status.downloadedWithCheck";
+        }
+
+        internal static class Inspectors
+        {
+            internal static class Common
+            {
+                internal const string SectionModelSettings = "inspectors.common.section.modelSettings";
+                internal const string SectionEvents = "inspectors.common.section.events";
+                internal const string SectionLifecycleEvents = "inspectors.common.section.lifecycleEvents";
+                internal const string SectionAudioInput = "inspectors.common.section.audioInput";
+                internal const string FieldModelId = "inspectors.common.field.modelId";
+                internal const string FieldSampleRate = "inspectors.common.field.sampleRate";
+                internal const string FieldLoadOnAwake = "inspectors.common.field.loadOnAwake";
+                internal const string FieldDisposeOnDestroy = "inspectors.common.field.disposeOnDestroy";
+                internal const string FieldLogFeedback = "inspectors.common.field.logFeedback";
+                internal const string FieldInputSource = "inspectors.common.field.inputSource";
+                internal const string FieldAutoBind = "inspectors.common.field.autoBind";
+                internal const string FieldDeduplicate = "inspectors.common.field.deduplicate";
+                internal const string EventInitialized = "inspectors.common.event.initialized";
+                internal const string EventFeedback = "inspectors.common.event.feedback";
+                internal const string ButtonSelectInput = "inspectors.common.button.selectInput";
+                internal const string HelpAssignInput = "inspectors.common.help.assignInput";
+                internal const string HelpInputLivesOnSource = "inspectors.common.help.inputLivesOnSource";
+                internal const string WarningSampleRateRange = "inspectors.common.warning.sampleRateRange";
+                internal const string HelpSampleRateIgnored = "inspectors.common.help.sampleRateIgnored";
+                internal const string HelpPlaymodeRequired = "inspectors.common.help.playmodeRequired";
+            }
+
+            internal static class ModelSelector
+            {
+                internal const string ButtonPick = "inspectors.modelSelector.button.pick";
+                internal const string ButtonPickCount = "inspectors.modelSelector.button.pickCount";
+                internal const string ButtonFetching = "inspectors.modelSelector.button.fetching";
+                internal const string StatusLoading = "inspectors.modelSelector.status.loading";
+                internal const string StatusError = "inspectors.modelSelector.status.error";
+                internal const string StatusEmpty = "inspectors.modelSelector.status.empty";
+                internal const string MenuClear = "inspectors.modelSelector.menu.clear";
+                internal const string TooltipRefresh = "inspectors.modelSelector.tooltip.refresh";
+            }
+
+            internal static class SpeechRecognizer
+            {
+                internal const string EventTranscriptionReady = "inspectors.speechRecognizer.event.transcriptionReady";
+            }
+
+            internal static class SpeechEnhancer
+            {
+                internal const string SectionEnhancement = "inspectors.speechEnhancer.section.enhancement";
+                internal const string FieldTargetAudioSource = "inspectors.speechEnhancer.field.targetAudioSource";
+                internal const string FieldClipReference = "inspectors.speechEnhancer.field.clipReference";
+                internal const string FieldEnhanceOnEnable = "inspectors.speechEnhancer.field.enhanceOnEnable";
+                internal const string FieldDuplicateClip = "inspectors.speechEnhancer.field.duplicateClip";
+                internal const string HelpAssignClip = "inspectors.speechEnhancer.help.assignClip";
+                internal const string ButtonEnhanceNow = "inspectors.speechEnhancer.button.enhanceNow";
+                internal const string EventClipEnhanced = "inspectors.speechEnhancer.event.clipEnhanced";
+                internal const string EventEnhancementFailed = "inspectors.speechEnhancer.event.enhancementFailed";
+            }
+
+            internal static class SpeechSynthesizer
+            {
+                internal const string SectionSynthesis = "inspectors.speechSynth.section.synthesis";
+                internal const string SectionPreview = "inspectors.speechSynth.section.preview";
+                internal const string FieldOutputAudioSource = "inspectors.speechSynth.field.outputAudioSource";
+                internal const string FieldAutoplay = "inspectors.speechSynth.field.autoplay";
+                internal const string FieldVoiceId = "inspectors.speechSynth.field.voiceId";
+                internal const string FieldSpeechRate = "inspectors.speechSynth.field.speechRate";
+                internal const string ButtonSynthesizePreview = "inspectors.speechSynth.button.synthesizePreview";
+                internal const string EventStarted = "inspectors.speechSynth.event.started";
+                internal const string EventClipReady = "inspectors.speechSynth.event.clipReady";
+                internal const string EventFailed = "inspectors.speechSynth.event.failed";
+                internal const string PreviewDefaultText = "inspectors.speechSynth.preview.defaultText";
+            }
+
+            internal static class Microphone
+            {
+                internal const string SectionCapture = "inspectors.microphone.section.capture";
+                internal const string FieldAutoStart = "inspectors.microphone.field.autoStart";
+                internal const string FieldSampleRate = "inspectors.microphone.field.sampleRate";
+                internal const string FieldChunkDuration = "inspectors.microphone.field.chunkDuration";
+                internal const string FieldBufferLength = "inspectors.microphone.field.bufferLength";
+                internal const string FieldDownmix = "inspectors.microphone.field.downmix";
+                internal const string FieldDevice = "inspectors.microphone.field.device";
+                internal const string HelpNoDevices = "inspectors.microphone.help.noDevices";
+                internal const string ButtonStart = "inspectors.microphone.button.start";
+                internal const string ButtonStop = "inspectors.microphone.button.stop";
+                internal const string EventChunkReady = "inspectors.microphone.event.chunkReady";
+                internal const string EventRecordingState = "inspectors.microphone.event.recordingState";
+            }
+
+            internal static class VoiceActivityDetection
+            {
+                internal const string SectionDetector = "inspectors.vad.section.detector";
+                internal const string FieldThreshold = "inspectors.vad.field.threshold";
+                internal const string FieldMinSilence = "inspectors.vad.field.minSilence";
+                internal const string FieldMinSpeech = "inspectors.vad.field.minSpeech";
+                internal const string FieldMaxSpeech = "inspectors.vad.field.maxSpeech";
+                internal const string FieldLeadingPadding = "inspectors.vad.field.leadingPadding";
+                internal const string ButtonFlush = "inspectors.vad.button.flush";
+                internal const string EventSegment = "inspectors.vad.event.segment";
+                internal const string EventSpeaking = "inspectors.vad.event.speaking";
+                internal const string WarningSampleRateMismatch = "inspectors.vad.warning.sampleRateMismatch";
+            }
+
+            internal static class OfflineAsr
+            {
+                internal const string SectionVad = "inspectors.offlineAsr.section.vad";
+                internal const string FieldVadSource = "inspectors.offlineAsr.field.vadSource";
+                internal const string HelpAssignVad = "inspectors.offlineAsr.help.assignVad";
+                internal const string ButtonSelectVad = "inspectors.offlineAsr.button.selectVad";
+                internal const string EventTranscriptReady = "inspectors.offlineAsr.event.transcriptReady";
+                internal const string EventFailed = "inspectors.offlineAsr.event.failed";
+            }
+
+            internal static class KeywordSpotting
+            {
+                internal const string SectionKeywords = "inspectors.keyword.section.keywords";
+                internal const string FieldScore = "inspectors.keyword.field.score";
+                internal const string FieldThreshold = "inspectors.keyword.field.threshold";
+                internal const string FieldCustomKeywords = "inspectors.keyword.field.custom";
+                internal const string EventDetected = "inspectors.keyword.event.detected";
+            }
+
+            internal static class Punctuation
+            {
+                internal const string SectionPreview = "inspectors.punctuation.section.preview";
+                internal const string FieldInputText = "inspectors.punctuation.field.inputText";
+                internal const string ButtonRun = "inspectors.punctuation.button.run";
+                internal const string EventReady = "inspectors.punctuation.event.ready";
+                internal const string EventFailed = "inspectors.punctuation.event.failed";
+            }
+
+            internal static class SpokenLanguageIdentification
+            {
+                internal const string SectionClip = "inspectors.sli.section.clip";
+                internal const string FieldClip = "inspectors.sli.field.clip";
+                internal const string FieldIdentifyOnStart = "inspectors.sli.field.identifyOnStart";
+                internal const string ButtonIdentify = "inspectors.sli.button.identify";
+                internal const string EventIdentified = "inspectors.sli.event.identified";
+                internal const string EventFailed = "inspectors.sli.event.failed";
+            }
         }
     }
 }

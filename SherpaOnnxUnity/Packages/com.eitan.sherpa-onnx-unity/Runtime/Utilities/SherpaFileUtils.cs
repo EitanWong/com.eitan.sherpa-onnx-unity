@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     /// <summary>
     /// Represents the status of a file verification operation.
@@ -55,7 +55,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
     {
         // Use a 64KB buffer for better I/O performance.
         private const int BufferSize = 65536;
-        
+
         // Cache file extension
         private const string HashCacheExtension = ".sha256";
 
@@ -183,7 +183,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
                     // Get file info for cache validation
                     DateTime fileLastWriteTime = File.GetLastWriteTime(path);
-                    
+
                     // Try to read cached hash first
                     string actualHash = await ReadCachedHashAsync(path, fileLastWriteTime);
                     bool usedCache = actualHash != null;
@@ -257,7 +257,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 else if (File.Exists(path))
                 {
                     File.Delete(path);
-                    
+
                     // Also delete the cache file if it exists
                     string cacheFilePath = GetCacheFilePath(path);
                     if (File.Exists(cacheFilePath))
@@ -317,7 +317,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
                 SearchOption searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
                 string[] cacheFiles = Directory.GetFiles(directoryPath, "*" + HashCacheExtension, searchOption);
-                
+
                 foreach (string cacheFile in cacheFiles)
                 {
                     try

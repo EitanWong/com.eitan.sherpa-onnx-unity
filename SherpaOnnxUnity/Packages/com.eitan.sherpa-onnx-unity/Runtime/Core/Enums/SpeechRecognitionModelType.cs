@@ -18,6 +18,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         SenseVoice,
         FireRedAsr,
         Dolphin,
+        Omnilingual
     }
 
 }

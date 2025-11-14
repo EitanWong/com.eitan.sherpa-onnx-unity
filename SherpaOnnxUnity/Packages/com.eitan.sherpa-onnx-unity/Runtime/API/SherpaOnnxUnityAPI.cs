@@ -6,7 +6,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities; // For SherpaOnnxEnvironment
+using Eitan.SherpaOnnxUnity.Runtime.Constants;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+
 
 /// <summary>
 /// Thin, user-friendly facade for common Sherpa ONNX settings.
@@ -52,4 +54,11 @@ public static class SherpaOnnxUnityAPI
         return SherpaUtils.Model.IsOnlineModel(modelID);
     }
 
+    /// <summary>
+    /// Delete downloaded checksum.txt cache files to force the next lookup to re-fetch manifests.
+    /// </summary>
+    public static SherpaChecksumCacheClearResult ClearChecksumCache()
+    {
+        return SherpaOnnxConstants.ClearChecksumCache();
+    }
 }

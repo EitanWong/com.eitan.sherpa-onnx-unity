@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.Data
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Data
 {
     /// <summary>
     /// 拼音数据库文件操作（单实例类）

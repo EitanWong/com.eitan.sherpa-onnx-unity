@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon
 {
     using System;
     using System.Collections.Generic;
@@ -169,7 +169,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon
     /// A high-performance utility to convert all-caps English text to proper sentence case.
     /// Handles sentence boundaries, proper nouns, acronyms, and multi-word phrases
     /// based on a configurable lexicon. Designed for speed with real-time ASR results.
-    /// 
+    ///
     /// Perf notes:
     /// - Streaming tokenizer: no array allocations from string.Split.
     /// - Bounded greedy phrase lookahead using lexicon.MaxPhraseLen.

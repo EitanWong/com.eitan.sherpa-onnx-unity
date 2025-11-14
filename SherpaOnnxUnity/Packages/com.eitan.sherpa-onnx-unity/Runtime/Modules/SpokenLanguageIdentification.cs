@@ -1,14 +1,12 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
-using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Native;
-using NativeSpokenLanguageIdentification = Eitan.SherpaOnnxUnity.Runtime.Native.SpokenLanguageIdentification;
-namespace Eitan.SherpaOnnxUnity
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using UnityEngine;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using NativeSpokenLanguageIdentification = Eitan.SherpaOnnxUnity.Runtime.Native.SpokenLanguageIdentification;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
     public class SpokenLanguageIdentification : SherpaOnnxModule
     {
 
@@ -29,7 +27,7 @@ namespace Eitan.SherpaOnnxUnity
                 // ignore the prarmeter sampleRate it's not correct.
 
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-                var modelType = Runtime.Utilities.SherpaUtils.Model.GetSpokenLanguageIdentificationModelType(metadata.modelId);
+                var modelType = SherpaUtils.Model.GetSpokenLanguageIdentificationModelType(metadata.modelId);
                 this.SampleRate = metadata.sampleRate;
 
                 var sliConfig = CreateSliConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);
@@ -117,7 +115,7 @@ namespace Eitan.SherpaOnnxUnity
                 }
                 return Task.FromResult(result);
 
-            }, cancellationToken: ct ?? CancellationToken.None, policy: Runtime.Utilities.ExecutionPolicy.Auto);
+            }, cancellationToken: ct ?? CancellationToken.None, policy: ExecutionPolicy.Auto);
         }
 
         public async Task<string> IdentifyAsync(AudioClip clip, CancellationToken? ct = null)

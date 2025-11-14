@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Eitan.SherpaOnnxUnity.Runtime;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     internal readonly struct ModelFileCriteria
     {

@@ -1,14 +1,15 @@
 // SpeechRecognition.cs (Refactored and Optimized)
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
-    using Eitan.SherpaOnnxUnity.Runtime.Utilities;
-    using Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon;
+
     using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon;
 
     public class SpeechRecognition : SherpaOnnxModule
     {
@@ -356,6 +357,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                         fallbackReporter,
                         ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("decoder"));
+                    break;
+                case SpeechRecognitionModelType.Omnilingual:
+                    config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Omnilingual ASR encoder",
+                        fallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
+                        ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 default:

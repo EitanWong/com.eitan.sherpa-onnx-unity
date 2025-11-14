@@ -5,7 +5,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
 
     public abstract class SherpaOnnxModule : IDisposable
     {
@@ -103,7 +103,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 {
                     reporterAdapter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
                 }
-            }, policy: Utilities.ExecutionPolicy.Never);
+            }, policy: ExecutionPolicy.Never);
         }
 
         // --- 实现完整的、标准的 IDisposable 模式 ---

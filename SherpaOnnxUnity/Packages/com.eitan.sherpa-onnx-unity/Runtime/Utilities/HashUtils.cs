@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     using System;
     using System.Buffers;
@@ -35,8 +35,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 
             // Define a buffer size for reading the file in chunks. 64KB is a common choice.
 
-            const int BufferSize = 64 * 1024; 
-            
+            const int BufferSize = 64 * 1024;
+
             // Rent a buffer from the shared pool to avoid frequent memory allocations.
             var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
 
@@ -62,12 +62,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
                 while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                 {
                     // The ReadAsync call will throw OperationCanceledException if cancellation is requested.
-                    
+
                     // Update the hash with the chunk of data read from the file.
                     sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
 
                     totalBytesRead += bytesRead;
-                    
+
                     // Report progress if a progress reporter is provided.
                     progress?.Report((float)totalBytesRead / fileLength);
                 }

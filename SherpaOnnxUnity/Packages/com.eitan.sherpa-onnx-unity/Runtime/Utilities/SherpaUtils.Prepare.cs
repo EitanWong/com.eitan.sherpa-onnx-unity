@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 {
     /// <summary>
     /// Base class for SherpaOnnx models with improved error handling and resource management.
@@ -334,23 +334,23 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Utilities
 #if UNITY_ANDROID && !UNITY_EDITOR
                     // On Android, test write access to the actual target directory
                     // as DriveInfo doesn't work reliably on Android
-                    
+
                     // Ensure the directory exists for testing
                     if (!Directory.Exists(directoryPath))
                     {
                         Directory.CreateDirectory(directoryPath);
                     }
-                    
+
                     // Try to create a small test file to verify write access and available space
                     var testFilePath = Path.Combine(directoryPath, $"space_test_{System.Guid.NewGuid()}.tmp");
-                    
+
                     try
                     {
                         // Create a small test file (1KB) to verify space availability
                         var testData = new byte[1024];
                         File.WriteAllBytes(testFilePath, testData);
                         File.Delete(testFilePath);
-                        
+
                         // If we can write a small file, assume we have enough space
                         // This is a pragmatic approach since Android's storage APIs are limited
                         return true;

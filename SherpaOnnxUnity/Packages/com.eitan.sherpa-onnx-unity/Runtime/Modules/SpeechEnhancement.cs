@@ -1,12 +1,11 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Native;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
     /// <summary>
     /// High-performance speech enhancement module for noise reduction and audio quality improvement.
     /// Supports both real-time streaming and batch processing with zero-GC design.

@@ -2,14 +2,17 @@
 
 using System.Runtime.InteropServices;
 
+
 namespace Eitan.SherpaOnnxUnity.Runtime.Native
 {
+
 
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineModelConfig
     {
         public OfflineModelConfig(bool initializeDefaults = true)
         {
+
             this = default;
 
             if (!initializeDefaults)
@@ -37,6 +40,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             ZipformerCtc = new OfflineZipformerCtcModelConfig();
             Canary = new OfflineCanaryModelConfig();
             WenetCtc = new OfflineWenetCtcModelConfig();
+            Omnilingual = new OfflineOmnilingualAsrCtcModelConfig();
         }
         public OfflineTransducerModelConfig Transducer;
         public OfflineParaformerModelConfig Paraformer;
@@ -73,5 +77,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         public OfflineZipformerCtcModelConfig ZipformerCtc;
         public OfflineCanaryModelConfig Canary;
         public OfflineWenetCtcModelConfig WenetCtc;
+        public OfflineOmnilingualAsrCtcModelConfig Omnilingual;
     }
 }

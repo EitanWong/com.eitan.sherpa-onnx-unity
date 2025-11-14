@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
 using UnityEngine;
 
 namespace Eitan.SherpaOnnxUnity.Runtime
@@ -263,7 +264,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
-            var moduleType = Utilities.SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            var moduleType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             await EnsureModuleDataAsync(moduleType, cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
             return GetMetadata(modelId);

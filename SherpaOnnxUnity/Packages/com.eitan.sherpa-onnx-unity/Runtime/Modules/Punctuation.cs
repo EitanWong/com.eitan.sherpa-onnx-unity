@@ -1,13 +1,13 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities;
-using Eitan.SherpaOnnxUnity.Runtime.Native;
 
-namespace Eitan.SherpaOnnxUnity
+namespace Eitan.SherpaOnnxUnity.Runtime.Core
 {
+
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
     public class Punctuation : SherpaOnnxModule
     {
         private OfflinePunctuation _punct;
@@ -100,7 +100,7 @@ namespace Eitan.SherpaOnnxUnity
             {
                 var sanitizedInput = text.Trim();
                 return Task.FromResult(_punct.AddPunct(sanitizedInput));
-            }, cancellationToken: ct ?? CancellationToken.None, policy: Runtime.Utilities.ExecutionPolicy.Auto);
+            }, cancellationToken: ct ?? CancellationToken.None, policy: ExecutionPolicy.Auto);
         }
 
         #endregion

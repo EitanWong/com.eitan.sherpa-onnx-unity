@@ -1,9 +1,9 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.Exception;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.Data;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Exception;
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Data;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin
+namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin
 {
     /// <summary>
     /// 处理姓氏专用

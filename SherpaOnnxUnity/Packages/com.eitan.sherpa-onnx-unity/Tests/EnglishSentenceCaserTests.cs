@@ -1,6 +1,6 @@
 // Packages/com.eitan.sherpa-onnx-unity/Tests/EnglishSentenceCaserTests.cs
+using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon;
 using NUnit.Framework;
-using Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon;
 
 namespace Eitan.SherpaOnnxUnity.Tests
 {

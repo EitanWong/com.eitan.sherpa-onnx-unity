@@ -5,7 +5,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using System.Linq;
     using System.Threading.Tasks;
     using Eitan.SherpaOnnxUnity.Runtime;
-
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;

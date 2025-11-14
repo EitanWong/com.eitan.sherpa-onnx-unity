@@ -177,15 +177,19 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
         private static string ResolveEditorLanguageName()
         {
             const string defaultLanguage = "English";
+
             try
             {
                 var type = Type.GetType("UnityEditor.LocalizationDatabase, UnityEditor");
+
                 var property = type?.GetProperty(
                     "currentEditorLanguage",
                     BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-                if (property != null && property.GetValue(null) is string value && !string.IsNullOrEmpty(value))
+
+                if (property != null)
                 {
-                    return value;
+                    SystemLanguage language = (SystemLanguage)property.GetValue(null);
+                    return language.ToString();
                 }
             }
             catch

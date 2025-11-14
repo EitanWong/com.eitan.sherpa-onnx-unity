@@ -5,6 +5,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
     using System;
     using System.Linq;
     using System.Text;
+    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
+
+
     /// <summary>
     /// Useful extensions for working with <see cref="AudioTagging.AudioTag"/> arrays.
     /// </summary>
