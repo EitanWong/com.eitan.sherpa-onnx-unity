@@ -4,7 +4,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     /// It expects 16 kHz 16-bit single channel wave format.
     [StructLayout(LayoutKind.Sequential)]

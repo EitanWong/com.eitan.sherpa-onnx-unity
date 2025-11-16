@@ -1,17 +1,17 @@
 ﻿<Solution>
-  <Project Path="Eitan.SherpaOnnxUnity.Runtime.Native.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.Runtime.Native.csproj" />
   <Project Path="UnityEngine.TestRunner.csproj" />
   <Project Path="UnityEngine.UI.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.Samples.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.Runtime.Utilities.Pinyin.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.Samples.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.Runtime.Utilities.Pinyin.csproj" />
   <Project Path="Unity.TextMeshPro.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
   <Project Path="UnityEditor.UI.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.TextMeshPro.Editor.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.Editor.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.Editor.csproj" />
   <Project Path="Utilities.BuildPipeline.Editor.csproj" />
-  <Project Path="Eitan.SherpaOnnxUnity.Tests.csproj" />
+  <Project Path="Eitan.SherpaONNXUnity.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

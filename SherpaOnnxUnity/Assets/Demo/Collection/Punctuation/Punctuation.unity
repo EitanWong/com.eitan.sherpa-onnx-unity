@@ -382,8 +382,8 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 0}
-          m_TargetAssemblyTypeName: Eitan.SherpaOnnxUnity.Samples.SpeechRecognitionExample,
-            Eitan.SherpaOnnxUnity.Demo
+          m_TargetAssemblyTypeName: Eitan.SherpaONNXUnity.Samples.SpeechRecognitionExample,
+            Eitan.SherpaONNXUnity.Demo
           m_MethodName: OpenGithubRepo
           m_Mode: 1
           m_Arguments:
@@ -1340,7 +1340,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "<size=64><b><i>SherpaOnnx Unity</i></b></size>\n  <size=36>Punctuation</size>"
+  m_Text: "<size=64><b><i>SherpaONNX Unity</i></b></size>\n  <size=36>Punctuation</size>"
 --- !u!222 &902469263
 CanvasRenderer:
   m_ObjectHideFlags: 0

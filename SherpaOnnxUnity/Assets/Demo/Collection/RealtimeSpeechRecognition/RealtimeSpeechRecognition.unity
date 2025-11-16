@@ -382,8 +382,8 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 1905868303}
-          m_TargetAssemblyTypeName: Eitan.SherpaOnnxUnity.Samples.SpeechRecognitionExample,
-            Eitan.SherpaOnnxUnity.Demo
+          m_TargetAssemblyTypeName: Eitan.SherpaONNXUnity.Samples.SpeechRecognitionExample,
+            Eitan.SherpaONNXUnity.Demo
           m_MethodName: OpenGithubRepo
           m_Mode: 1
           m_Arguments:
@@ -666,7 +666,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 936170856}
+  m_Material: {fileID: 1544988355}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -1071,6 +1071,67 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 698925324}
   m_CullTransparentMesh: 1
+--- !u!1 &750350728
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 750350730}
+  - component: {fileID: 750350729}
+  m_Layer: 0
+  m_Name: Speech Recognizer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &750350729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 750350728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e0495cbaa2d4e699f3b180efb2a0258, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelId: 
+  sampleRate: 16000
+  loadOnAwake: 0
+  disposeOnDestroy: 1
+  logFeedbackToConsole: 0
+  onInitializationStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  onFeedbackMessage:
+    m_PersistentCalls:
+      m_Calls: []
+  audioInput: {fileID: 0}
+  autoBindInput: 1
+  deduplicateStreamingResults: 1
+  onTranscriptionReady:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!4 &750350730
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 750350728}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &873079504
 GameObject:
   m_ObjectHideFlags: 0
@@ -1221,7 +1282,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "<size=64><b><i>SherpaOnnx Unity</i></b></size>\n  <size=36>Realtime Speech
+  m_Text: "<size=64><b><i>SherpaONNX Unity</i></b></size>\n  <size=36>Realtime Speech
     Recognition</size>"
 --- !u!222 &902469263
 CanvasRenderer:
@@ -1231,43 +1292,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 902469260}
   m_CullTransparentMesh: 1
---- !u!21 &936170856
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: UI/Easy Progress Bar
-  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _BorderSize: 0.15
-    - _FillAmount: 1
-    - _Gradient: 1
-    - _Roundness: 1
-    m_Colors:
-    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
-    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
-    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
-    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &1116691014
 GameObject:
   m_ObjectHideFlags: 0
@@ -1648,6 +1672,62 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1340148028}
   m_CullTransparentMesh: 1
+--- !u!1 &1393433390
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1393433392}
+  - component: {fileID: 1393433391}
+  m_Layer: 0
+  m_Name: Sherpa Microphone Input
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1393433391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1393433390}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cdd4f1b3722478da74366678415a8d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  autoStartOnEnable: 1
+  preferredDevice: "Eitan\u2019s iPhone Microphone"
+  requestedSampleRate: 16000
+  chunkDurationSeconds: 0.2
+  bufferLengthSeconds: 5
+  downmixToMono: 1
+  onChunkReady:
+    m_PersistentCalls:
+      m_Calls: []
+  onRecordingStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!4 &1393433392
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1393433390}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1467524663
 GameObject:
   m_ObjectHideFlags: 0
@@ -1804,6 +1884,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1476831182}
   m_CullTransparentMesh: 1
+--- !u!21 &1544988355
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: UI/Easy Progress Bar
+  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BorderSize: 0.15
+    - _FillAmount: 1
+    - _Gradient: 1
+    - _Roundness: 1
+    m_Colors:
+    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
+    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
+    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
+    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &1631532992
 GameObject:
   m_ObjectHideFlags: 0
@@ -2292,13 +2409,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23720d55d66d467d9d0b38c2291c667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _modelIDDropdown: {fileID: 243020564}
-  _modelLoadOrUnloadButton: {fileID: 22177317}
-  _initMessageText: {fileID: 1683833390}
-  _totalInitProgressBar: {fileID: 408431302}
-  _totalInitBarText: {fileID: 698925326}
-  _tipsText: {fileID: 211519517}
-  _transcriptionText: {fileID: 1131376238}
+  recognizer: {fileID: 750350729}
+  microphone: {fileID: 1393433391}
+  modelDropdown: {fileID: 243020564}
+  loadOrUnloadButton: {fileID: 22177317}
+  statusText: {fileID: 1683833390}
+  transcriptText: {fileID: 1131376238}
+  loadingMessage: "Fetching speech recognition manifest\u2026"
 --- !u!1 &1936031081
 GameObject:
   m_ObjectHideFlags: 0

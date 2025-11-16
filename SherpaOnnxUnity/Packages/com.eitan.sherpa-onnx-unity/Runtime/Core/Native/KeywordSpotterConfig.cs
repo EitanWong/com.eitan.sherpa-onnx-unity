@@ -2,7 +2,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct KeywordSpotterConfig
@@ -24,8 +24,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             KeywordsScore = 1.0F;
             KeywordsThreshold = 0.25F;
             KeywordsFile = "";
-            KeywordsBuf= "";
-            KeywordsBufSize= 0;
+            KeywordsBuf = "";
+            KeywordsBufSize = 0;
         }
         public FeatureConfig FeatConfig;
         public OnlineModelConfig ModelConfig;

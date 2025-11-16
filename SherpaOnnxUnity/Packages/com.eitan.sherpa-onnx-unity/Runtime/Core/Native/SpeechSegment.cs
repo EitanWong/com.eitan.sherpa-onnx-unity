@@ -2,7 +2,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class SpeechSegment
     {

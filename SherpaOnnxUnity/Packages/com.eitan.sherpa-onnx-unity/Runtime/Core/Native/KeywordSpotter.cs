@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     // please see
     // https://www.mono-project.com/docs/advanced/pinvoke/#gc-safe-pinvoke-code
@@ -13,13 +13,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
     {
         public KeywordSpotter(KeywordSpotterConfig config)
         {
-            IntPtr h = SherpaOnnxCreateKeywordSpotter(ref config);
+            IntPtr h = SherpaONNXCreateKeywordSpotter(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public OnlineStream CreateStream()
         {
-            IntPtr p = SherpaOnnxCreateKeywordStream(_handle.Handle);
+            IntPtr p = SherpaONNXCreateKeywordStream(_handle.Handle);
             return new OnlineStream(p);
         }
 
@@ -29,7 +29,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8BytesWithNull = new byte[utf8Bytes.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Bytes, utf8BytesWithNull, utf8Bytes.Length);
             utf8BytesWithNull[utf8Bytes.Length] = 0; // Null terminator
-            IntPtr p = SherpaOnnxCreateKeywordStreamWithKeywords(_handle.Handle, utf8BytesWithNull);
+            IntPtr p = SherpaONNXCreateKeywordStreamWithKeywords(_handle.Handle, utf8BytesWithNull);
             return new OnlineStream(p);
         }
 
@@ -59,7 +59,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             List<IntPtr> list = new List<IntPtr>();
             foreach (OnlineStream s in streams)
             {
-              list.Add(s.Handle);
+                list.Add(s.Handle);
             }
 
             IntPtr[] ptrs = list.ToArray();
@@ -89,7 +89,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyKeywordSpotter(_handle.Handle);
+            SherpaONNXDestroyKeywordSpotter(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -98,33 +98,33 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         private HandleRef _handle;
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateKeywordSpotter(ref KeywordSpotterConfig config);
+        private static extern IntPtr SherpaONNXCreateKeywordSpotter(ref KeywordSpotterConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyKeywordSpotter(IntPtr handle);
+        private static extern void SherpaONNXDestroyKeywordSpotter(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateKeywordStream(IntPtr handle);
+        private static extern IntPtr SherpaONNXCreateKeywordStream(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateKeywordStreamWithKeywords(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Keywords);
+        private static extern IntPtr SherpaONNXCreateKeywordStreamWithKeywords(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Keywords);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxIsKeywordStreamReady")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXIsKeywordStreamReady")]
         private static extern int IsReady(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeKeywordStream")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeKeywordStream")]
         private static extern void Decode(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxResetKeywordStream")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXResetKeywordStream")]
         private static extern void Reset(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeMultipleKeywordStreams")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeMultipleKeywordStreams")]
         private static extern void Decode(IntPtr handle, IntPtr[] streams, int n);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxGetKeywordResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXGetKeywordResult")]
         private static extern IntPtr GetResult(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDestroyKeywordResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDestroyKeywordResult")]
         private static extern void DestroyResult(IntPtr result);
     }
 }

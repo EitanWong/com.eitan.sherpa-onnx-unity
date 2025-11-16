@@ -1,7 +1,7 @@
 using System.Linq;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
 
     internal static class SherpaMetadataExtensions
@@ -91,7 +91,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return string.IsNullOrEmpty(ext) ? 0 : 10;
         }
 
-        internal static string GetModelFilePath(this SherpaOnnxModelMetadata metadata, string modelFile)
+        internal static string GetModelFilePath(this SherpaONNXModelMetadata metadata, string modelFile)
         {
             if (string.IsNullOrEmpty(modelFile))
             {
@@ -108,7 +108,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         }
 
-        internal static string[] ListModelFiles(this SherpaOnnxModelMetadata metadata, bool fileNameOnly = false)
+        internal static string[] ListModelFiles(this SherpaONNXModelMetadata metadata, bool fileNameOnly = false)
         {
             // Validate inputs
             if (metadata == null)
@@ -216,7 +216,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// (3) number of exact word matches (descending), then (4) filename length (ascending).
         /// Returns <c>null</c> if there are no keywords or no files match.
         /// </returns>
-        internal static string[] GetModelFilePathByKeywords(this SherpaOnnxModelMetadata metadata, params string[] keywords)
+        internal static string[] GetModelFilePathByKeywords(this SherpaONNXModelMetadata metadata, params string[] keywords)
         {
             if (string.IsNullOrEmpty(metadata.modelId))
             {
@@ -307,7 +307,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return ordered;
         }
 
-        internal static string[] GetModelFilesByExtensionName(this SherpaOnnxModelMetadata metadata, params string[] extensions)
+        internal static string[] GetModelFilesByExtensionName(this SherpaONNXModelMetadata metadata, params string[] extensions)
         {
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {
@@ -347,7 +347,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
 
 
-        internal static bool IsOnlineModel(this SherpaOnnxModelMetadata metadata)
+        internal static bool IsOnlineModel(this SherpaONNXModelMetadata metadata)
         {
             return SherpaUtils.Model.IsOnlineModel(metadata.modelId);
         }

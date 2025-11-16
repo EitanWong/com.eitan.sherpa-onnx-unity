@@ -4,8 +4,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -20,6 +20,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 
         private SerializedProperty audioInputProp;
         private SerializedProperty autoBindInputProp;
+        private SerializedProperty autoStartCaptureProp;
         private SerializedProperty thresholdProp;
         private SerializedProperty minSilenceProp;
         private SerializedProperty minSpeechProp;
@@ -51,6 +52,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 
             audioInputProp = serializedObject.FindProperty("audioInput");
             autoBindInputProp = serializedObject.FindProperty("autoBindInput");
+            autoStartCaptureProp = serializedObject.FindProperty("startCaptureWhenReady");
             thresholdProp = serializedObject.FindProperty("threshold");
             minSilenceProp = serializedObject.FindProperty("minSilenceDuration");
             minSpeechProp = serializedObject.FindProperty("minSpeechDuration");
@@ -59,7 +61,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onSegmentProp = serializedObject.FindProperty("onSpeechSegment");
             onSpeakingStateProp = serializedObject.FindProperty("onSpeakingStateChanged");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.VoiceActivityDetection, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.VoiceActivityDetection, Repaint);
             modelSelector.Refresh();
         }
 
@@ -87,12 +89,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -100,18 +102,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionAudioInput, "Audio Input"), Styles.Header);
-                EditorGUILayout.PropertyField(audioInputProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldInputSource, "Source"));
-                EditorGUILayout.PropertyField(autoBindInputProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldAutoBind, "Auto Bind Source"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionAudioInput, "Audio Input"), Styles.Header);
+                EditorGUILayout.PropertyField(audioInputProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldInputSource, "Source"));
+                EditorGUILayout.PropertyField(autoBindInputProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldAutoBind, "Auto Bind Source"));
+                EditorGUILayout.PropertyField(autoStartCaptureProp, SherpaInspectorContent.Label(null, "Start Capture When Ready"));
 
                 var audioSource = audioInputProp.objectReferenceValue as Object;
                 if (audioSource == null)
                 {
                     EditorGUILayout.HelpBox(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.HelpAssignInput, "Assign a SherpaAudioInputSource (e.g., SherpaMicrophoneInput) to stream audio automatically."),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.HelpAssignInput, "Assign a SherpaAudioInputSource (e.g., SherpaMicrophoneInput) to stream audio automatically."),
                         MessageType.Info);
                 }
-                else if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.ButtonSelectInput, "Select Audio Input")))
+                else if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.ButtonSelectInput, "Select Audio Input")))
                 {
                     Selection.activeObject = audioSource;
                 }
@@ -124,7 +127,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                     {
                         var warning = string.Format(
                             SherpaInspectorContent.Text(
-                                SherpaOnnxL10n.Inspectors.VoiceActivityDetection.WarningSampleRateMismatch,
+                                SherpaONNXL10n.Inspectors.VoiceActivityDetection.WarningSampleRateMismatch,
                                 "Sample rate mismatch. Input={0} Hz Component={1} Hz. Consider aligning values to avoid drift."),
                             inputSampleRate,
                             componentSampleRate);
@@ -132,7 +135,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                     }
                 }
 
-                if (Application.isPlaying && GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.ButtonFlush, "Flush Pending Segments")))
+                if (Application.isPlaying && GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.VoiceActivityDetection.ButtonFlush, "Flush Pending Segments")))
                 {
                     _ = runtimeComponent.FlushAsync();
                 }
@@ -143,12 +146,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.SectionDetector, "Detector Parameters"), Styles.Header);
-                EditorGUILayout.Slider(thresholdProp, 0f, 1f, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.FieldThreshold, "Threshold"));
-                EditorGUILayout.PropertyField(minSilenceProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.FieldMinSilence, "Min Silence (s)"));
-                EditorGUILayout.PropertyField(minSpeechProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.FieldMinSpeech, "Min Speech (s)"));
-                EditorGUILayout.PropertyField(maxSpeechProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.FieldMaxSpeech, "Max Speech (s)"));
-                EditorGUILayout.PropertyField(leadingPaddingProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.FieldLeadingPadding, "Leading Padding (s)"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.VoiceActivityDetection.SectionDetector, "Detector Parameters"), Styles.Header);
+                EditorGUILayout.Slider(thresholdProp, 0f, 1f, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.FieldThreshold, "Threshold"));
+                EditorGUILayout.PropertyField(minSilenceProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.FieldMinSilence, "Min Silence (s)"));
+                EditorGUILayout.PropertyField(minSpeechProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.FieldMinSpeech, "Min Speech (s)"));
+                EditorGUILayout.PropertyField(maxSpeechProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.FieldMaxSpeech, "Max Speech (s)"));
+                EditorGUILayout.PropertyField(leadingPaddingProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.FieldLeadingPadding, "Leading Padding (s)"));
             }
         }
 
@@ -156,9 +159,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onSegmentProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.EventSegment, "On Speech Segment"));
-                EditorGUILayout.PropertyField(onSpeakingStateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.VoiceActivityDetection.EventSpeaking, "On Speaking State Changed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onSegmentProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.EventSegment, "On Speech Segment"));
+                EditorGUILayout.PropertyField(onSpeakingStateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.VoiceActivityDetection.EventSpeaking, "On Speaking State Changed"));
             }
         }
     }

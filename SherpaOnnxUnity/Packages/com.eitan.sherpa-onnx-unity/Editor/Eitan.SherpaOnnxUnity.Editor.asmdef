@@ -1,8 +1,8 @@
 {
-    "name": "Eitan.SherpaOnnxUnity.Editor",
-    "rootNamespace": "Eitan.SherpaOnnxUnity.Editor",
+    "name": "Eitan.SherpaONNXUnity.Editor",
+    "rootNamespace": "Eitan.SherpaONNXUnity.Editor",
     "references": [
-        "Eitan.SherpaOnnxUnity"
+        "Eitan.SherpaONNXUnity"
     ],
     "includePlatforms": [
         "Editor"

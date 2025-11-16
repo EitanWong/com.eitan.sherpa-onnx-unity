@@ -1,10 +1,10 @@
 #if UNITY_EDITOR
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
     using UnityEditor;
     using UnityEngine;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Modules;
 
 
     [CustomPropertyDrawer(typeof(KeywordSpotting.KeywordRegistration))]
@@ -25,8 +25,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             if (keywordProp == null || boostingProp == null || thresholdProp == null)
             {
                 EditorGUI.LabelField(position, label, new GUIContent(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.KeywordDrawer.ErrorMissingFields,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.KeywordDrawer.ErrorMissingFields,
                         "KeywordRegistration fields not found.")));
                 EditorGUI.EndProperty();
                 return;
@@ -58,8 +58,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var boostValue = EditorGUI.FloatField(
                 boostingRect,
                 new GUIContent(
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.KeywordDrawer.BoostLabel, "Boost"),
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.KeywordDrawer.BoostTooltip,
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.KeywordDrawer.BoostLabel, "Boost"),
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.KeywordDrawer.BoostTooltip,
                         "Hotword boosting score (> 0). Increase to make the keyword easier to trigger.")),
                 boostingProp.floatValue);
             if (EditorGUI.EndChangeCheck())
@@ -72,8 +72,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var thresholdValue = EditorGUI.Slider(
                 thresholdRect,
                 new GUIContent(
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.KeywordDrawer.ThresholdLabel, "Threshold"),
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.KeywordDrawer.ThresholdTooltip,
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.KeywordDrawer.ThresholdLabel, "Threshold"),
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.KeywordDrawer.ThresholdTooltip,
                         "Minimum acoustic score (0-1). Lower values make the keyword easier to trigger.")),
                 thresholdProp.floatValue,
                 0f,

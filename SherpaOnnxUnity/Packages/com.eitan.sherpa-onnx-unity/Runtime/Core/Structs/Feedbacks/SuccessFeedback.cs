@@ -1,10 +1,10 @@
 using System;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     public class SuccessFeedback : SherpaFeedback
     {
-        public SuccessFeedback(SherpaOnnxModelMetadata metadata, string message, Exception exception = null) : base(metadata, message, exception)
+        public SuccessFeedback(SherpaONNXModelMetadata metadata, string message, Exception exception = null) : base(metadata, message, exception)
         {
         }
 

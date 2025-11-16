@@ -1,7 +1,7 @@
 using System;
 
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
 
     /// <summary>
@@ -26,6 +26,6 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// </summary>
         /// <param name="message">The informational message to log.</param>
         void LogInfo(string message);
-    } 
+    }
 
 }

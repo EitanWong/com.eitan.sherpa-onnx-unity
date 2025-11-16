@@ -1,11 +1,11 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
 
     using System;
     using System.Linq;
     using System.Text;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Modules;
 
 
     /// <summary>

@@ -1,261 +1,199 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
-
+    using Eitan.Sherpa.Onnx.Unity.Mono.Components;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
-    using static UnityEngine.UI.Dropdown;
 
-    public class PunctuationExample : MonoBehaviour, ISherpaFeedbackHandler
+    /// <summary>
+    /// Tiny UI controller that showcases <see cref="PunctuationComponent"/>.
+    /// </summary>
+    public sealed class PunctuationExample : MonoBehaviour
     {
-        [Header("UI Components")]
-        [SerializeField] private Dropdown _modelIDDropdown;
-        [SerializeField] private Button _modelLoadOrUnloadButton;
-        [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
-        [SerializeField] private Text _totalInitBarText;
-        [SerializeField] private Text _tipsText;
+        [Header("Sherpa Component")]
+        [SerializeField] private PunctuationComponent punctuation;
 
-        [Header("Punctuation UI")]
-        [SerializeField] private GameObject _punctuationUIPanel;
-        [SerializeField] private InputField _inputTextField;
-        [SerializeField] private Text _resultText;
-        [SerializeField] private Button _addPunctuationButton;
+        [Header("UI")]
+        [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Button loadOrUnloadButton;
+        [SerializeField] private InputField inputField;
+        [SerializeField] private Button punctuateButton;
+        [SerializeField] private Text resultText;
+        [SerializeField] private Text statusText;
 
-        private Punctuation punctuation;
+        private bool modelRequested;
 
-        private bool _modelLoadFlag;
-
-        private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12";
-        private ModelLoadProgressTracker _progressTracker;
-
-        private void Start()
+        private void Awake()
         {
-            Application.runInBackground = true;
-            _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            _addPunctuationButton.onClick.AddListener(HandleAddPunctuationButtonClick);
-
-            _tipsText.text = "Please load a punctuation model first.";
-            _resultText.text = string.Empty;
-            _inputTextField.text = "restoring punctuation is a neat trick isn't it a model predicts commas periods and more how does it work it learns from tons of text what a concept but can it handle questions or exclamations yes advanced models analyze context to figure it out pretty smart";
-
-            _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-
-            _punctuationUIPanel.SetActive(false);
-
-            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
-
-            _ = InitDropdownAsync();
-        }
-
-        private async Task InitDropdownAsync()
-        {
-
-            _modelIDDropdown.options.Clear();
-            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
-            _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.AddPunctuation);
-            _modelLoadOrUnloadButton.gameObject.SetActive(true);
-
-            _modelIDDropdown.options.Clear();
-            if (manifest.models != null)
+            if (loadOrUnloadButton != null)
             {
-                List<OptionData> modelOptions = manifest.models.Select(m => new OptionData(m.modelId)).ToList();
-                _modelIDDropdown.AddOptions(modelOptions);
-
-                var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);
-                if (defaultIndex != -1)
-                {
-                    _modelIDDropdown.value = defaultIndex;
-                }
-                _modelIDDropdown.interactable = true;
-            }
-            else
-            {
-                _modelIDDropdown.interactable = false;
-            }
-        }
-
-        private void HandleModelLoadOrUnloadButtonClick()
-        {
-            if (_modelLoadFlag)
-            {
-                Unload();
-            }
-            else
-            {
-                Load(_modelIDDropdown.captionText.text);
-            }
-        }
-
-        private async void HandleAddPunctuationButtonClick()
-        {
-            if (punctuation == null || !_modelLoadFlag)
-            {
-                Debug.LogWarning("Punctuation model not loaded.");
-                _tipsText.text = "<color=red>Punctuation model not loaded.</color>";
-                return;
+                loadOrUnloadButton.onClick.AddListener(ToggleModel);
             }
 
-            if (string.IsNullOrWhiteSpace(_inputTextField.text))
+            if (punctuateButton != null)
             {
-                _tipsText.text = "<color=yellow>Please enter some text to add punctuation.</color>";
-                return;
+                punctuateButton.onClick.AddListener(ApplyPunctuationAsync);
             }
 
-            _addPunctuationButton.interactable = false;
-            _tipsText.text = "Adding punctuation...";
-
-            try
-            {
-                var inputText = _inputTextField.text;
-                var result = await punctuation.AddPunctuationAsync(inputText);
-                _resultText.text = result;
-                _tipsText.text = "<color=green>Punctuation added successfully.</color>";
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Error adding punctuation: {e.Message}");
-                _tipsText.text = $"<color=red>Error: {e.Message}</color>";
-            }
-            finally
-            {
-                _addPunctuationButton.interactable = true;
-            }
-        }
-
-        private void Load(string modelID)
-        {
             if (punctuation != null)
             {
-                UnityEngine.Debug.LogError("Please Unload current model first");
-                return;
+                punctuation.PunctuationReadyEvent.AddListener(HandlePunctuationReady);
+                punctuation.PunctuationFailedEvent.AddListener(HandlePunctuationFailed);
             }
-
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
-            punctuation = new Punctuation(modelID, reporter: reporter);
-
-            _modelLoadOrUnloadButton.interactable = false;
-            _modelIDDropdown.interactable = false;
         }
 
-        private void Unload()
+        private void OnEnable()
         {
-            if (punctuation != null)
-            {
-                punctuation.Dispose();
-                punctuation = null;
-            }
-
-            _modelLoadFlag = false;
-            _progressTracker.Reset();
-            _progressTracker.SetVisible(false);
-            UpdateUI();
+            _ = PopulateDropdownAsync();
+            UpdateButtonLabel();
+            resultText.text = string.Empty;
+            statusText.text = "Load a punctuation model to enable the button.";
         }
 
         private void OnDestroy()
         {
-            if (_modelLoadOrUnloadButton != null)
+            if (loadOrUnloadButton != null)
             {
-                _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
+                loadOrUnloadButton.onClick.RemoveListener(ToggleModel);
             }
-            if (_addPunctuationButton != null)
+
+            if (punctuateButton != null)
             {
-                _addPunctuationButton.onClick.RemoveListener(HandleAddPunctuationButtonClick);
+                punctuateButton.onClick.RemoveListener(ApplyPunctuationAsync);
             }
-            Unload();
+
+            if (punctuation != null)
+            {
+                punctuation.PunctuationReadyEvent.RemoveListener(HandlePunctuationReady);
+                punctuation.PunctuationFailedEvent.RemoveListener(HandlePunctuationFailed);
+            }
         }
 
-        private void UpdateUI()
+        private async Task PopulateDropdownAsync()
         {
-            _punctuationUIPanel.SetActive(_modelLoadFlag);
-            _modelLoadOrUnloadButton.interactable = true;
-
-            if (_modelLoadFlag)
+            if (modelDropdown == null)
             {
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Unload Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = Color.red;
-                _modelIDDropdown.interactable = false;
+                return;
+            }
+
+            modelDropdown.options.Clear();
+            modelDropdown.captionText.text = "Loading punctuation models…";
+            modelDropdown.interactable = false;
+
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.AddPunctuation).ConfigureAwait(true);
+
+            if (manifest.models == null || manifest.models.Count == 0)
+            {
+                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
+                return;
+            }
+
+            List<Dropdown.OptionData> options = manifest.models
+                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                .Select(m => new Dropdown.OptionData(m.modelId))
+                .ToList();
+
+            modelDropdown.AddOptions(options);
+            modelDropdown.interactable = true;
+        }
+
+        private string SelectedModelId =>
+            modelDropdown != null && modelDropdown.options.Count > 0
+                ? modelDropdown.options[modelDropdown.value].text
+                : string.Empty;
+
+        private void ToggleModel()
+        {
+            if (punctuation == null)
+            {
+                statusText.text = "Assign the PunctuationComponent.";
+                return;
+            }
+
+            if (!modelRequested)
+            {
+                var modelId = SelectedModelId;
+                if (string.IsNullOrWhiteSpace(modelId))
+                {
+                    statusText.text = "Select a model first.";
+                    return;
+                }
+
+                punctuation.ModelId = modelId.Trim();
+                if (punctuation.TryLoadModule())
+                {
+                    modelRequested = true;
+                    statusText.text = $"Loaded {punctuation.ModelId}.";
+                }
             }
             else
             {
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Load Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = _originLoadBtnColor;
-                _modelIDDropdown.interactable = true;
-                _resultText.text = string.Empty;
-                _tipsText.text = "Please load a punctuation model first.";
+                punctuation.DisposeModule();
+                modelRequested = false;
+                statusText.text = "Model disposed.";
+                resultText.text = string.Empty;
+            }
+
+            UpdateButtonLabel();
+            punctuateButton.interactable = modelRequested;
+        }
+
+        private void UpdateButtonLabel()
+        {
+            if (loadOrUnloadButton == null)
+            {
+                return;
+            }
+
+            var label = loadOrUnloadButton.GetComponentInChildren<Text>();
+            if (label != null)
+            {
+                label.text = modelRequested ? "Unload Model" : "Load Model";
             }
         }
 
-        #region FeedbackHandler
-
-        public void OnFeedback(PrepareFeedback feedback)
+        private async void ApplyPunctuationAsync()
         {
-            _progressTracker.Reset();
-            _progressTracker.MarkStageComplete(ModelLoadProgressTracker.Stage.Prepare, feedback.Message);
-            _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId} The punctuation model is loading, please wait patiently.";
+            if (!modelRequested || punctuation == null)
+            {
+                statusText.text = "Load a model first.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(inputField?.text))
+            {
+                statusText.text = "Enter some text to punctuate.";
+                return;
+            }
+
+            statusText.text = "Processing…";
+            resultText.text = string.Empty;
+            var output = await punctuation.AddPunctuationAsync(inputField.text).ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                statusText.text = "No text returned.";
+            }
+            else
+            {
+                statusText.text = "Done.";
+            }
         }
 
-        public void OnFeedback(DownloadFeedback feedback)
+        private void HandlePunctuationReady(string text)
         {
-            _progressTracker.UpdateStage(ModelLoadProgressTracker.Stage.Download, feedback.Message, feedback.Progress);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                resultText.text = text;
+            }
         }
 
-        public void OnFeedback(DecompressFeedback feedback)
+        private void HandlePunctuationFailed(string message)
         {
-            _progressTracker.UpdateStage(ModelLoadProgressTracker.Stage.Decompress, feedback.Message, feedback.Progress);
+            statusText.text = message;
         }
-
-        public void OnFeedback(VerifyFeedback feedback)
-        {
-            _progressTracker.UpdateStage(ModelLoadProgressTracker.Stage.Verify, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(LoadFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(ModelLoadProgressTracker.Stage.Load, feedback.Message);
-            _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> The punctuation model {feedback.Metadata.modelId} is loading.";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            _progressTracker.Reset();
-            _progressTracker.SetVisible(false);
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}{feedback.Message}";
-            Unload();
-        }
-
-        public void OnFeedback(SuccessFeedback feedback)
-        {
-            _progressTracker.Complete("Success");
-            _progressTracker.SetVisible(false);
-            _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId} Punctuation model is ready.";
-
-            _modelLoadFlag = true;
-            UpdateUI();
-        }
-
-        public void OnFeedback(FailedFeedback feedback)
-        {
-            _progressTracker.Reset();
-            _progressTracker.SetVisible(false);
-            Debug.LogError($"[Failed] :{feedback.Message}");
-            _initMessageText.text = feedback.Message;
-            _tipsText.text = $"<b><color=red>[Failed]</color>:</b> The punctuation model load failed.";
-            Unload();
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(ModelLoadProgressTracker.Stage.Clean, feedback.Message);
-        }
-        #endregion
 
         public void OpenGithubRepo()
         {

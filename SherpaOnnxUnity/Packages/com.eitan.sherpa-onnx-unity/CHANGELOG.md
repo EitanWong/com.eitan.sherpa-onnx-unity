@@ -33,9 +33,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Used a self-optimized and compiled sherpa-onnx.dll .NET library to enhance P/Invoke security and compatibility with the iOS platform. (https://github.com/EitanWong/sherpa-onnx/tree/unity)
 - **License**: The project license has been changed from MIT to **Apache 2.0**.
 - **Model Management Overhaul**:
-  - The model registry (`SherpaOnnxModelRegistry`) is now fully asynchronous, fetching the latest model list from GitHub releases instead of relying on a local, static manifest. This ensures access to the newest models without package updates.
+  - The model registry (`SherpaONNXModelRegistry`) is now fully asynchronous, fetching the latest model list from GitHub releases instead of relying on a local, static manifest. This ensures access to the newest models without package updates.
   - The model downloader (`SherpaFileDownloader`) has been completely rewritten for improved robustness, featuring chunked downloading, automatic retry logic, network health checks, and adaptive concurrency.
-  - Simplified `SherpaOnnxModelMetadata`, removing the need to declare individual model files. The system now dynamically detects files after extraction.
+  - Simplified `SherpaONNXModelMetadata`, removing the need to declare individual model files. The system now dynamically detects files after extraction.
 - **iOS Integration**: Renamed iOS native libraries from `*.a` to `lib*.a` to align with standard conventions, improving compatibility with build systems.
 
 ### Added
@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Improved
 - Improved the stability of model loading by using reflection to confirm that the model has been loaded.
 - **Editor UX**:
-  - The "Sherpa ONNX Models" editor window now uses a high-performance virtualized scroll list, allowing it to display thousands of models without freezing or slowing down.
+  - The "SherpaONNX Models" editor window now uses a high-performance virtualized scroll list, allowing it to display thousands of models without freezing or slowing down.
   - A loading spinner is now displayed while fetching the model manifest, providing better user feedback.
   - Language filtering is now more intelligent, supporting multi-language models and providing a cleaner UI.
 - **Demo Scenes**: All demo scenes now fetch the model list asynchronously and display a "Fetching..." message to the user, improving the initial user experience.
@@ -108,7 +108,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Updated sherpa-onnx to v1.12.7
 - Simplified platform library dependencies, removing unsupported architectures for Unity
-- Enhanced `SherpaOnnxModuleType` enum with `KeywordSpotting` and `SpeechEnhancement` types
+- Enhanced `SherpaONNXModuleType` enum with `KeywordSpotting` and `SpeechEnhancement` types
 - Improved model download URL generation for new module types
 - Enhanced `UnityLogger` with better error handling and disposal safety
 
@@ -130,7 +130,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.1.0-exp.1] - 2025-07-28
 
 ### Added
-- Initial release of SherpaOnnxUnity package
+- Initial release of SherpaONNXUnity package
 - Offline speech recognition (ASR) functionality using sherpa-onnx
 - Text-to-speech (TTS) synthesis capabilities
 - Voice Activity Detection (VAD) module
@@ -143,8 +143,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Android (ARM64, ARMv7, x86, x64)
 - Automatic model management system with download and verification
 - Unity integration components:
-  - `SherpaOnnxAnchor` main scene component
-  - `SherpaOnnxModule` base class system
+  - `SherpaONNXAnchor` main scene component
+  - `SherpaONNXModule` base class system
   - `SpeechRecognition` module
   - `VoiceActivityDetection` module
 - Sample collection with example scenes and scripts

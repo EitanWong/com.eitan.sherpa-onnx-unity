@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
 
     // The base interface for all feedback types. It defines a contract for the Visitor pattern.

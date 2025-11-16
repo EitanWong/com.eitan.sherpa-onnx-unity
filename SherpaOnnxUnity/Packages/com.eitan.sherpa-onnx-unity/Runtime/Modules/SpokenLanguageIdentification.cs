@@ -1,26 +1,26 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using UnityEngine;
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
-    using NativeSpokenLanguageIdentification = Eitan.SherpaOnnxUnity.Runtime.Native.SpokenLanguageIdentification;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-    public class SpokenLanguageIdentification : SherpaOnnxModule
+    using Eitan.SherpaONNXUnity.Runtime.Native;
+    using NativeSpokenLanguageIdentification = Eitan.SherpaONNXUnity.Runtime.Native.SpokenLanguageIdentification;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+    public class SpokenLanguageIdentification : SherpaONNXModule
     {
 
         private NativeSpokenLanguageIdentification _slid;
         public int SampleRate { get; private set; }
 
-        public SpokenLanguageIdentification(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null) : base(modelID, sampleRate, reporter)
+        public SpokenLanguageIdentification(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null) : base(modelID, sampleRate, reporter)
         {
 
         }
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpokenLanguageIdentification;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpokenLanguageIdentification;
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -67,7 +67,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
 
         }
 
-        private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var sliModelConfig = new SpokenLanguageIdentificationConfig { NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };

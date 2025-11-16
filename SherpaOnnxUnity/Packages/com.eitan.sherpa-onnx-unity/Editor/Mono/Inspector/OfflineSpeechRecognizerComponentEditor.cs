@@ -3,8 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -45,7 +45,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onTranscriptProp = serializedObject.FindProperty("onTranscriptReady");
             onFailedProp = serializedObject.FindProperty("onTranscriptionFailed");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.SpeechRecognition, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.SpeechRecognition, Repaint);
             modelSelector.Refresh();
         }
 
@@ -71,15 +71,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
                 EditorGUILayout.HelpBox(
-                    SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.WarningSampleRateRange, "Speech models usually expect 8k–48k sample rates. Verify the selected model supports the configured value."),
+                    SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.WarningSampleRateRange, "Speech models usually expect 8k–48k sample rates. Verify the selected model supports the configured value."),
                     MessageType.Info);
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -87,17 +87,17 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.OfflineAsr.SectionVad, "Voice Activity Detector"), Styles.Header);
-                EditorGUILayout.PropertyField(vadSourceProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.OfflineAsr.FieldVadSource, "Source Component"));
-                EditorGUILayout.PropertyField(autoBindVadProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldAutoBind, "Auto Bind Source"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.OfflineAsr.SectionVad, "Voice Activity Detector"), Styles.Header);
+                EditorGUILayout.PropertyField(vadSourceProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.OfflineAsr.FieldVadSource, "Source Component"));
+                EditorGUILayout.PropertyField(autoBindVadProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldAutoBind, "Auto Bind Source"));
 
                 if (vadSourceProp.objectReferenceValue == null)
                 {
                     EditorGUILayout.HelpBox(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.OfflineAsr.HelpAssignVad, "Assign a VoiceActivityDetectionComponent to feed segments into the offline recognizer."),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.OfflineAsr.HelpAssignVad, "Assign a VoiceActivityDetectionComponent to feed segments into the offline recognizer."),
                         MessageType.Warning);
                 }
-                else if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.OfflineAsr.ButtonSelectVad, "Select VAD Component")))
+                else if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.OfflineAsr.ButtonSelectVad, "Select VAD Component")))
                 {
                     Selection.activeObject = vadSourceProp.objectReferenceValue;
                 }
@@ -108,9 +108,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onTranscriptProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.OfflineAsr.EventTranscriptReady, "On Transcript Ready"));
-                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.OfflineAsr.EventFailed, "On Transcription Failed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onTranscriptProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.OfflineAsr.EventTranscriptReady, "On Transcript Ready"));
+                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.OfflineAsr.EventFailed, "On Transcription Failed"));
             }
         }
     }

@@ -1,640 +1,296 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
-    using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
-
+    using Eitan.Sherpa.Onnx.Unity.Mono.Components;
+    using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
-    using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
     /// <summary>
-    /// 语言识别示例 / Offline Speech Recognition Example
+    /// Minimal example using <see cref="SpokenLanguageIdentificationComponent"/> with a short microphone recording.
     /// </summary>
-    public class SpokenLanguageIdentificationExample : MonoBehaviour, ISherpaFeedbackHandler
+    public sealed class SpokenLanguageIdentificationExample : MonoBehaviour
     {
-        #region Constants and Configuration
-        // 常量配置 / Constants Configuration
-        private const int SAMPLE_RATE = 16000;
-        private const int MAX_RECORDING_DURATION = 60;
-        private const string DEFAULT_MODEL_ID = "sherpa-onnx-whisper-tiny";
-        private const int TARGET_FRAME_RATE = 30;
-        private const int MIC_FRAME_LENGTH = 10; // 毫秒 / milliseconds
-        #endregion
+        [Header("Sherpa Components")]
+        [SerializeField] private SpokenLanguageIdentificationComponent identifier;
+        [SerializeField] private SherpaMicrophoneInput microphone;
 
-        #region UI Components
-        // UI组件引用 / UI Component References
-        [Header("UI Components")]
-        [SerializeField] private Dropdown _modelIDDropdown;
-        [SerializeField] private Button _modelLoadOrUnloadButton;
-        [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
-        [SerializeField] private Text _totalInitBarText;
-        [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _langText;
-        [SerializeField] private Button _recordingBtn;
-        #endregion
+        [Header("UI")]
+        [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Button loadOrUnloadButton;
+        [SerializeField] private Button recordButton;
+        [SerializeField] private Text statusText;
+        [SerializeField] private Text resultText;
 
-        #region Private Fields
-        // 核心组件 / Core Components
-        private SpokenLanguageIdentification spokenLanguageIdentification;
-        private Mic.Device device;
-        private RingBuffer<float> _ringBuffer;
+        [Header("Recording")]
+        [SerializeField] private float captureDurationSeconds = 4f;
 
-        // 状态管理 / State Management
-        private bool _modelLoadFlag;
-        private string lastCachedLang;
+        private readonly List<float> captureBuffer = new List<float>(8192);
+        private bool modelRequested;
+        private bool modelReady;
+        private bool recording;
+        private Coroutine captureRoutine;
 
-        // UI状态缓存 / UI State Cache
-        private Color _originLoadBtnColor;
-        private Color _originRecordingBtnColor;
-
-        // 进度跟踪 / Progress Tracking
-        private ModelLoadProgressTracker _progressTracker;
-        #endregion
-
-        #region Properties
-        // 属性 / Properties
-        /// <summary>
-        /// 当前是否正在录音 / Whether currently recording
-        /// </summary>
-        private bool IsRecording => device != null && device.IsRecording;
-
-        /// <summary>
-        /// 模型是否已加载 / Whether model is loaded
-        /// </summary>
-        private bool IsModelLoaded => spokenLanguageIdentification != null && _modelLoadFlag;
-        #endregion
-
-        #region Unity Lifecycle
-        /// <summary>
-        /// 初始化组件 / Initialize components
-        /// </summary>
-        private void Start()
+        private void Awake()
         {
-            InitializeApplication();
-            InitializeUI();
-            InitializeEventListeners();
-            _ = InitializeDropdownAsync();
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.onClick.AddListener(ToggleModel);
+            }
+
+            if (recordButton != null)
+            {
+                recordButton.onClick.AddListener(ToggleRecording);
+            }
+
+            if (identifier != null)
+            {
+                identifier.LanguageIdentifiedEvent.AddListener(text => resultText.text = text);
+                identifier.IdentificationFailedEvent.AddListener(message => statusText.text = message);
+                identifier.InitializationStateChangedEvent.AddListener(HandleIdentifierReadyState);
+            }
         }
 
-        /// <summary>
-        /// 清理资源 / Clean up resources
-        /// </summary>
+        private void OnEnable()
+        {
+            _ = PopulateDropdownAsync();
+            UpdateButtons();
+            statusText.text = "Load a language id model.";
+            resultText.text = string.Empty;
+        }
+
         private void OnDestroy()
         {
-            CleanupResources();
-        }
-        #endregion
-
-        #region Initialization Methods
-        /// <summary>
-        /// 初始化应用程序设置 / Initialize application settings
-        /// </summary>
-        private void InitializeApplication()
-        {
-            Application.runInBackground = true;
-            Application.targetFrameRate = TARGET_FRAME_RATE;
-        }
-
-        /// <summary>
-        /// 初始化UI状态 / Initialize UI state
-        /// </summary>
-        private void InitializeUI()
-        {
-            // 隐藏初始化相关UI / Hide initialization related UI
-            _totalInitProgressBar.gameObject.SetActive(false);
-            _initMessageText.gameObject.SetActive(false);
-            _recordingBtn.gameObject.SetActive(false);
-
-            // 设置初始文本 / Set initial text
-            _langText.text = "Please click the button to load the model";
-            _tipsText.text = string.Empty;
-
-            // 缓存原始颜色 / Cache original colors
-            _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _originRecordingBtnColor = _recordingBtn.GetComponent<Image>().color;
-
-            // 更新UI状态 / Update UI state
-            UpdateLoadButtonUI();
-            UpdateRecordingButtonUI();
-
-            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
-        }
-
-        /// <summary>
-        /// 初始化事件监听器 / Initialize event listeners
-        /// </summary>
-        private void InitializeEventListeners()
-        {
-            _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            _recordingBtn.onClick.AddListener(HandleRecordingButtonClick);
-        }
-
-        /// <summary>
-        /// 异步初始化下拉菜单 / Asynchronously initialize dropdown
-        /// </summary>
-        private async Task InitializeDropdownAsync()
-        {
-            try
+            if (loadOrUnloadButton != null)
             {
-                _modelIDDropdown.options.Clear();
-                _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
-                _modelLoadOrUnloadButton.gameObject.SetActive(false);
-                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpokenLanguageIdentification);
-                _modelLoadOrUnloadButton.gameObject.SetActive(true);
-                PopulateModelDropdown(manifest);
+                loadOrUnloadButton.onClick.RemoveListener(ToggleModel);
             }
-            catch (Exception ex)
+
+            if (recordButton != null)
             {
-                Debug.LogError($"Failed to initialize dropdown: {ex.Message}");
-                _modelIDDropdown.interactable = false;
+                recordButton.onClick.RemoveListener(ToggleRecording);
+            }
+
+            if (identifier != null)
+            {
+                identifier.LanguageIdentifiedEvent.RemoveAllListeners();
+                identifier.IdentificationFailedEvent.RemoveAllListeners();
+                identifier.InitializationStateChangedEvent.RemoveListener(HandleIdentifierReadyState);
+            }
+
+            if (microphone != null)
+            {
+                microphone.ChunkReady -= HandleMicrophoneChunk;
+            }
+
+            if (captureRoutine != null)
+            {
+                StopCoroutine(captureRoutine);
+                captureRoutine = null;
             }
         }
 
-        /// <summary>
-        /// 填充模型下拉菜单 / Populate model dropdown
-        /// </summary>
-        private void PopulateModelDropdown(SherpaOnnxModelManifest manifest)
+        private async Task PopulateDropdownAsync()
         {
-            _modelIDDropdown.options.Clear();
-
-            if (manifest.models != null)
+            if (modelDropdown == null)
             {
-                var modelOptions = manifest.models
-                    .Select(m => new OptionData(m.modelId))
-                    .ToList();
+                return;
+            }
 
-                _modelIDDropdown.AddOptions(modelOptions);
+            modelDropdown.options.Clear();
+            modelDropdown.captionText.text = "Loading language models…";
+            modelDropdown.interactable = false;
 
-                // 设置默认选中项 / Set default selected item
-                var defaultIndex = modelOptions.FindIndex(m => m.text == DEFAULT_MODEL_ID);
-                if (defaultIndex >= 0)
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpokenLanguageIdentification).ConfigureAwait(true);
+
+            if (manifest.models == null || manifest.models.Count == 0)
+            {
+                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
+                return;
+            }
+
+            List<Dropdown.OptionData> options = manifest.models
+                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                .Select(m => new Dropdown.OptionData(m.modelId))
+                .ToList();
+
+            modelDropdown.AddOptions(options);
+            modelDropdown.interactable = true;
+        }
+
+        private string SelectedModelId =>
+            modelDropdown != null && modelDropdown.options.Count > 0
+                ? modelDropdown.options[modelDropdown.value].text
+                : string.Empty;
+
+        private void ToggleModel()
+        {
+            if (identifier == null)
+            {
+                statusText.text = "Assign the SpokenLanguageIdentificationComponent.";
+                return;
+            }
+
+            if (!modelRequested)
+            {
+                var modelId = SelectedModelId;
+                if (string.IsNullOrWhiteSpace(modelId))
                 {
-                    _modelIDDropdown.value = defaultIndex;
+                    statusText.text = "Select a model first.";
+                    return;
                 }
 
-                _modelIDDropdown.interactable = true;
+                identifier.ModelId = modelId.Trim();
+                if (identifier.TryLoadModule())
+                {
+                    modelRequested = true;
+                    modelReady = false;
+                    statusText.text = $"Loading {identifier.ModelId}…";
+                }
             }
             else
             {
-                _modelIDDropdown.interactable = false;
+                identifier.DisposeModule();
+                modelRequested = false;
+                modelReady = false;
+                statusText.text = "Model disposed.";
+                resultText.text = string.Empty;
+            }
+
+            UpdateButtons();
+        }
+
+        private void UpdateButtons()
+        {
+            if (loadOrUnloadButton != null)
+            {
+                var label = loadOrUnloadButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = modelRequested ? "Unload Model" : "Load Model";
+                }
+            }
+
+            if (recordButton != null)
+            {
+                recordButton.interactable = modelRequested && modelReady && !recording;
             }
         }
-        #endregion
 
-        #region Model Management
-        /// <summary>
-        /// 加载语音识别模型 / Load speech recognition model
-        /// </summary>
-        /// <param name="modelID">模型ID / Model ID</param>
-        private void LoadModel(string modelID)
+        private void ToggleRecording()
         {
-            if (IsModelLoaded)
+            if (!modelRequested || !modelReady || microphone == null)
             {
-                Debug.LogError("Please unload current model first");
+                statusText.text = "Wait for the model to finish loading before recording.";
                 return;
             }
 
-            try
+            if (recording)
             {
-                var reporter = new SherpaOnnxFeedbackReporter(null, this);
-                spokenLanguageIdentification = new SpokenLanguageIdentification(modelID, SAMPLE_RATE, reporter);
-                _modelLoadFlag = true;
-                UpdateLoadButtonUI();
-
-                Debug.Log($"Started loading model: {modelID}");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Failed to load model: {ex.Message}");
-                UnloadModel();
-            }
-        }
-
-        /// <summary>
-        /// 卸载语音识别模型 / Unload speech recognition model
-        /// </summary>
-        private void UnloadModel()
-        {
-            if (!IsModelLoaded)
-            {
-                Debug.LogWarning("No model loaded, no need to unload");
                 return;
             }
 
-            try
+            captureBuffer.Clear();
+            microphone.ChunkReady += HandleMicrophoneChunk;
+            if (!microphone.TryStartCapture())
             {
-                spokenLanguageIdentification?.Dispose();
-                spokenLanguageIdentification = null;
-                _modelLoadFlag = false;
-                UpdateLoadButtonUI();
-                _progressTracker?.Reset();
-                _progressTracker?.SetVisible(false);
-
-                Debug.Log("Model unloaded successfully");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Failed to unload model: {ex.Message}");
-            }
-        }
-        #endregion
-
-        #region Recording Management
-        /// <summary>
-        /// 开始录音 / Start recording
-        /// </summary>
-        private void StartRecording()
-        {
-            if (!IsModelLoaded)
-            {
-                Debug.LogError("Please load model first");
+                statusText.text = "Unable to access microphone.";
+                microphone.ChunkReady -= HandleMicrophoneChunk;
                 return;
             }
 
-            try
-            {
-                if (!Mic.Initialized)
-                {
-                    Mic.Init();
-                }
-                _ringBuffer = new RingBuffer<float>(SAMPLE_RATE * MAX_RECORDING_DURATION);
-
-                var devices = Mic.AvailableDevices;
-                if (devices.Count > 0)
-                {
-                    // 使用默认设备或重用现有设备 / Use default device or reuse existing device
-                    if (device == null || device != devices[0])
-                    {
-                        device = devices[0];
-                        device.OnFrameCollected += HandleAudioFrameCollected;
-                    }
-
-                    device.StartRecording(SAMPLE_RATE, MIC_FRAME_LENGTH);
-                    Debug.Log($"Recording started with device: {device.Name}, Sample Rate: {device.SamplingFrequency}Hz");
-                }
-                else
-                {
-                    Debug.LogError("No microphone device available");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Failed to start recording: {ex.Message}");
-            }
+            recording = true;
+            UpdateButtons();
+            statusText.text = "Recording sample…";
+            captureRoutine = StartCoroutine(CaptureRoutine());
         }
 
-        /// <summary>
-        /// 停止录音 / Stop recording
-        /// </summary>
-        private void StopRecording()
+        private System.Collections.IEnumerator CaptureRoutine()
         {
-            if (device != null)
-            {
-                try
-                {
-                    device.OnFrameCollected -= HandleAudioFrameCollected;
-                    device.StopRecording();
-                    device = null;
-
-                    Debug.Log("Recording stopped");
-                    _ = ProcessSpokenIdentificationAsync();
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"Failed to stop recording: {ex.Message}");
-                }
-            }
+            yield return new WaitForSeconds(captureDurationSeconds);
+            StopRecordingAndIdentify();
         }
 
-        /// <summary>
-        /// 处理音频帧数据 / Handle audio frame data
-        /// </summary>
-        private void HandleAudioFrameCollected(int sampleRate, int channelCount, float[] pcm)
+        private void StopRecordingAndIdentify()
         {
-            try
+            if (!recording)
             {
-                if (_ringBuffer != null)
-                {
-                    // 将音频数据添加到环形缓冲区 / Add audio data to ring buffer
-                    for (int i = 0; i < pcm.Length; i++)
-                    {
-                        _ringBuffer.Enqueue(pcm[i]);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Error in HandleAudioFrameCollected: {ex.Message}");
-            }
-        }
-        #endregion
-
-        #region Speech Identification
-        /// <summary>
-        /// 异步处理语言识别 / Asynchronously process speech Identification
-        /// </summary>
-        private async Task ProcessSpokenIdentificationAsync()
-        {
-            if (_ringBuffer == null || _ringBuffer.Count == 0)
-            {
-                Debug.LogWarning("No audio data to transcribe");
                 return;
             }
 
-            try
+            microphone.StopCapture();
+            microphone.ChunkReady -= HandleMicrophoneChunk;
+            recording = false;
+            if (captureRoutine != null)
             {
-                float[] samples = new float[_ringBuffer.Count];
-                for (int i = 0; i < samples.Length; i++)
-                {
-                    samples[i] = _ringBuffer.Dequeue();
-                }
-                var result = await spokenLanguageIdentification.IdentifyAsync(samples, SAMPLE_RATE);
-
-                UpdateIdentificationResult(result);
-
-                Debug.Log($"Identification completed: {result}");
+                StopCoroutine(captureRoutine);
+                captureRoutine = null;
             }
-            catch (Exception ex)
+            UpdateButtons();
+
+            if (captureBuffer.Count == 0)
             {
-                Debug.LogError($"Failed to process Identification: {ex.Message}");
-                _langText.text = "<color=red><b>Identification failed</b></color>";
+                statusText.text = "No audio captured.";
+                return;
             }
+
+            _ = IdentifyAsync();
         }
 
-        /// <summary>
-        /// 保存音频剪辑用于调试 / Save audio clip for debugging
-        /// </summary>
-        private void SaveAudioClipForDebug(float[] samples)
+        private void HandleMicrophoneChunk(float[] samples, int sampleRate)
         {
-            try
+            if (!recording || samples == null)
             {
-                AudioClip clip = AudioClip.Create("RecordedAudio", samples.Length, 1, SAMPLE_RATE, false);
-                clip.SetData(samples, 0);
-                clip.Save("RecordedAudio");
+                return;
             }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"Failed to save audio clip: {ex.Message}");
-            }
+
+            captureBuffer.AddRange(samples);
         }
 
-        /// <summary>
-        /// 更新转录结果显示 / Update Identification result display
-        /// </summary>
-        private void UpdateIdentificationResult(string result)
+        private async Task IdentifyAsync()
         {
-            if (!string.IsNullOrWhiteSpace(result))
+            if (identifier == null)
             {
-                _langText.text = result;
-                lastCachedLang = result;
+                return;
+            }
+
+            statusText.text = "Inferring language…";
+            var samples = captureBuffer.ToArray();
+            var language = await identifier.IdentifySamplesAsync(samples, microphone.OutputSampleRate).ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                statusText.text = "No language detected.";
             }
             else
             {
-                _langText.text = "<i>No speech detected</i>";
+                statusText.text = "Language detected:";
             }
         }
-        #endregion
 
-        #region UI Updates
-        /// <summary>
-        /// 更新加载按钮UI状态 / Update load button UI state
-        /// </summary>
-        private void UpdateLoadButtonUI()
+        private void HandleIdentifierReadyState(bool ready)
         {
-            var buttonText = _modelLoadOrUnloadButton.GetComponentInChildren<Text>();
-            var buttonImage = _modelLoadOrUnloadButton.GetComponent<Image>();
-
-            if (_modelLoadFlag) // 模型已加载 / Model loaded
+            modelReady = ready && modelRequested;
+            if (!ready && recording)
             {
-                buttonText.text = "Unload Model";
-                buttonImage.color = Color.red;
-                _modelIDDropdown.interactable = false;
-
-                // 显示加载进度UI / Show loading progress UI
-                _totalInitProgressBar.gameObject.SetActive(true);
-                _initMessageText.gameObject.SetActive(true);
-
-                // 停止录音并隐藏录音按钮 / Stop recording and hide recording button
-                StopRecording();
-                _recordingBtn.gameObject.SetActive(false);
+                StopRecordingAndIdentify();
             }
-            else // 模型未加载 / Model not loaded
+
+            UpdateButtons();
+
+            if (modelRequested)
             {
-                buttonText.text = "Load Model";
-                buttonImage.color = _originLoadBtnColor;
-                _modelIDDropdown.interactable = true;
-
-                // 隐藏加载进度UI / Hide loading progress UI
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-
-                // 清空显示内容 / Clear display content
-                _langText.text = string.Empty;
-                _tipsText.text = string.Empty;
-                _recordingBtn.gameObject.SetActive(false);
+                statusText.text = ready
+                    ? $"Loaded {identifier.ModelId}. Tap record and speak."
+                    : "Loading model…";
             }
         }
 
-        /// <summary>
-        /// 更新录音按钮UI状态 / Update recording button UI state
-        /// </summary>
-        private void UpdateRecordingButtonUI()
-        {
-            var buttonText = _recordingBtn.GetComponentInChildren<Text>();
-            var buttonImage = _recordingBtn.GetComponent<Image>();
-
-            if (IsRecording) // 正在录音 / Currently recording
-            {
-                buttonText.text = "Stop Recording";
-                buttonImage.color = Color.red;
-
-                // 禁用其他控件 / Disable other controls
-                _modelLoadOrUnloadButton.interactable = false;
-                _modelIDDropdown.interactable = false;
-
-                // 隐藏进度条 / Hide progress bar
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-
-                // 显示录音提示 / Show recording hint
-                _langText.text = "<b><i>When you are done speaking, \nclick the Stop Recording button.</i></b>";
-            }
-            else // 未在录音 / Not recording
-            {
-                buttonText.text = "Start Recording";
-                buttonImage.color = _originRecordingBtnColor;
-
-                // 启用其他控件 / Enable other controls
-                _modelLoadOrUnloadButton.interactable = true;
-                _modelIDDropdown.interactable = !_modelLoadFlag;
-
-                // 隐藏进度条 / Hide progress bar
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-            }
-        }
-        #endregion
-
-        #region Event Handlers
-        /// <summary>
-        /// 处理模型加载/卸载按钮点击 / Handle model load/unload button click
-        /// </summary>
-        private void HandleModelLoadOrUnloadButtonClick()
-        {
-            if (_modelLoadFlag) // 已加载模型，执行卸载 / Model loaded, perform unload
-            {
-                UnloadModel();
-            }
-            else // 未加载模型，执行加载 / Model not loaded, perform load
-            {
-                var selectedModelID = _modelIDDropdown.captionText.text;
-                LoadModel(selectedModelID);
-            }
-        }
-
-        /// <summary>
-        /// 处理录音按钮点击 / Handle recording button click
-        /// </summary>
-        private void HandleRecordingButtonClick()
-        {
-            if (IsRecording) // 正在录音，停止录音 / Currently recording, stop recording
-            {
-                StopRecording();
-            }
-            else // 未在录音，开始录音 / Not recording, start recording
-            {
-                StartRecording();
-            }
-
-            UpdateRecordingButtonUI();
-        }
-        #endregion
-
-        #region Resource Management
-        /// <summary>
-        /// 清理资源 / Clean up resources
-        /// </summary>
-        private void CleanupResources()
-        {
-            try
-            {
-                // 清理音频设备 / Clean up audio device
-                if (device != null)
-                {
-                    device.OnFrameCollected -= HandleAudioFrameCollected;
-                    device.StopRecording();
-                    device = null;
-                }
-
-                // 清理语音识别 / Clean up speech recognition
-                spokenLanguageIdentification?.Dispose();
-                spokenLanguageIdentification = null;
-
-                // 清理事件监听器 / Clean up event listeners
-                if (_modelLoadOrUnloadButton != null)
-                {
-                    _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
-                }
-
-                if (_recordingBtn != null)
-                {
-                    _recordingBtn.onClick.RemoveListener(HandleRecordingButtonClick);
-                }
-
-                _progressTracker?.Reset();
-                _progressTracker?.SetVisible(false);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Error during cleanup: {ex.Message}");
-            }
-        }
-        #endregion
-
-        #region Feedback Handler Implementation
-        /// <summary>
-        public void OnFeedback(PrepareFeedback feedback)
-        {
-            _progressTracker.Reset();
-            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
-            _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
-            _langText.text = "Preparing spoken language identification model...";
-        }
-
-        public void OnFeedback(DownloadFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
-            _langText.text = "Downloading spoken language identification model...";
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
-            _langText.text = "Cleaning previous model files...";
-        }
-
-        public void OnFeedback(VerifyFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
-            _langText.text = "Verifying spoken language identification assets...";
-        }
-
-        public void OnFeedback(DecompressFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
-            _langText.text = "Decompressing spoken language identification package...";
-        }
-
-        public void OnFeedback(LoadFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
-            _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-            _langText.text = "Finishing model load...";
-        }
-
-        public void OnFeedback(SuccessFeedback feedback)
-        {
-            _progressTracker.Complete("Success");
-            _progressTracker.SetVisible(false);
-            _initMessageText.text = string.Empty;
-            _langText.text = "<b><i>Please click the record button and start speaking.</i></b>";
-            _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test language identification by speaking.";
-            if (_recordingBtn != null)
-            {
-                _recordingBtn.gameObject.SetActive(true);
-            }
-        }
-
-        public void OnFeedback(FailedFeedback feedback)
-        {
-            Debug.LogError($"[Failed] :{feedback.Message}");
-            UnloadModel();
-            _initMessageText.text = feedback.Message;
-            _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model loading failed.";
-            _langText.text = "<color=red><b>Model load failed</b></color>";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            UnloadModel();
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-            _langText.text = "Model loading cancelled.";
-        }
-        #endregion
-
-        #region Public Methods
-        /// <summary>
-        /// 打开GitHub仓库链接 / Open GitHub repository link
-        /// </summary>
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
         }
-        #endregion
     }
 }

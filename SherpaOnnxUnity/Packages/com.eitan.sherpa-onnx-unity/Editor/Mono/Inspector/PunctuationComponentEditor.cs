@@ -3,8 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -44,7 +44,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onReadyProp = serializedObject.FindProperty("onPunctuationReady");
             onFailedProp = serializedObject.FindProperty("onPunctuationFailed");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.AddPunctuation, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.AddPunctuation, Repaint);
             modelSelector.Refresh();
         }
 
@@ -70,12 +70,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -83,11 +83,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Punctuation.SectionPreview, "Preview"), Styles.Header);
-                EditorGUILayout.PropertyField(previewTextProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Punctuation.FieldInputText, "Input Text"), true);
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Punctuation.SectionPreview, "Preview"), Styles.Header);
+                EditorGUILayout.PropertyField(previewTextProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Punctuation.FieldInputText, "Input Text"), true);
                 using (new EditorGUI.DisabledScope(Application.isPlaying == false))
                 {
-                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Punctuation.ButtonRun, "Add Punctuation")))
+                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Punctuation.ButtonRun, "Add Punctuation")))
                     {
                         runtimeComponent.RunPreview();
                     }
@@ -96,7 +96,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                 if (!Application.isPlaying)
                 {
                     EditorGUILayout.HelpBox(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.HelpPlaymodeRequired, "Enter Play Mode to run this preview directly from the inspector."),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.HelpPlaymodeRequired, "Enter Play Mode to run this preview directly from the inspector."),
                         MessageType.Info);
                 }
             }
@@ -106,9 +106,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onReadyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Punctuation.EventReady, "On Punctuation Ready"));
-                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Punctuation.EventFailed, "On Punctuation Failed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onReadyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Punctuation.EventReady, "On Punctuation Ready"));
+                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Punctuation.EventFailed, "On Punctuation Failed"));
             }
         }
     }

@@ -3,19 +3,19 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
-    public class OfflineSpeechDenoiser: IDisposable
+    public class OfflineSpeechDenoiser : IDisposable
     {
         public OfflineSpeechDenoiser(OfflineSpeechDenoiserConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOfflineSpeechDenoiser(ref config);
+            IntPtr h = SherpaONNXCreateOfflineSpeechDenoiser(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public DenoisedAudio Run(float[] samples, int sampleRate)
         {
-            IntPtr p = SherpaOnnxOfflineSpeechDenoiserRun(_handle.Handle, samples, samples.Length, sampleRate);
+            IntPtr p = SherpaONNXOfflineSpeechDenoiserRun(_handle.Handle, samples, samples.Length, sampleRate);
             return new DenoisedAudio(p);
         }
 
@@ -34,7 +34,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflineSpeechDenoiser(_handle.Handle);
+            SherpaONNXDestroyOfflineSpeechDenoiser(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -46,20 +46,20 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             get
             {
-                return SherpaOnnxOfflineSpeechDenoiserGetSampleRate(_handle.Handle);
+                return SherpaONNXOfflineSpeechDenoiserGetSampleRate(_handle.Handle);
             }
         }
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflineSpeechDenoiser(ref OfflineSpeechDenoiserConfig config);
+        private static extern IntPtr SherpaONNXCreateOfflineSpeechDenoiser(ref OfflineSpeechDenoiserConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflineSpeechDenoiser(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflineSpeechDenoiser(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOfflineSpeechDenoiserGetSampleRate(IntPtr handle);
+        private static extern int SherpaONNXOfflineSpeechDenoiserGetSampleRate(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxOfflineSpeechDenoiserRun(IntPtr handle, float[] samples, int n, int sampleRate);
+        private static extern IntPtr SherpaONNXOfflineSpeechDenoiserRun(IntPtr handle, float[] samples, int n, int sampleRate);
     }
 }

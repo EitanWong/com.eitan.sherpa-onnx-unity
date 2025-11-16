@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor.Localization
+namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     using System;
     using System.Collections.Generic;
@@ -10,7 +10,7 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
     /// JSON-serializable representation of a localization table.
     /// </summary>
     [Serializable]
-    internal sealed class SherpaOnnxLocalizationTable
+    internal sealed class SherpaONNXLocalizationTable
     {
         [SerializeField]
         private Entry[] entries = Array.Empty<Entry>();
@@ -23,14 +23,14 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
                 return dict;
             }
 
-            SherpaOnnxLocalizationTable table = null;
+            SherpaONNXLocalizationTable table = null;
             try
             {
-                table = JsonUtility.FromJson<SherpaOnnxLocalizationTable>(json);
+                table = JsonUtility.FromJson<SherpaONNXLocalizationTable>(json);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to parse SherpaOnnx localization JSON: {ex.Message}");
+                Debug.LogError($"Failed to parse SherpaONNX localization JSON: {ex.Message}");
                 return dict;
             }
 

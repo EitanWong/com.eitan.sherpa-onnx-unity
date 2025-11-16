@@ -3,57 +3,57 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class CircularBuffer : IDisposable
     {
         public CircularBuffer(int capacity)
         {
-            IntPtr h = SherpaOnnxCreateCircularBuffer(capacity);
+            IntPtr h = SherpaONNXCreateCircularBuffer(capacity);
             _handle = new HandleRef(this, h);
         }
 
         public void Push(float[] data)
         {
-            SherpaOnnxCircularBufferPush(_handle.Handle, data, data.Length);
+            SherpaONNXCircularBufferPush(_handle.Handle, data, data.Length);
         }
 
         public float[] Get(int startIndex, int n)
         {
-            IntPtr p = SherpaOnnxCircularBufferGet(_handle.Handle, startIndex, n);
+            IntPtr p = SherpaONNXCircularBufferGet(_handle.Handle, startIndex, n);
 
             float[] ans = new float[n];
             Marshal.Copy(p, ans, 0, n);
 
-            SherpaOnnxCircularBufferFree(p);
+            SherpaONNXCircularBufferFree(p);
 
             return ans;
         }
 
         public void Pop(int n)
         {
-            SherpaOnnxCircularBufferPop(_handle.Handle, n);
+            SherpaONNXCircularBufferPop(_handle.Handle, n);
         }
 
         public int Size
         {
-          get
-          {
-              return SherpaOnnxCircularBufferSize(_handle.Handle);
-          }
+            get
+            {
+                return SherpaONNXCircularBufferSize(_handle.Handle);
+            }
         }
 
         public int Head
         {
-          get
-          {
-              return SherpaOnnxCircularBufferHead(_handle.Handle);
-          }
+            get
+            {
+                return SherpaONNXCircularBufferHead(_handle.Handle);
+            }
         }
 
         public void Reset()
         {
-            SherpaOnnxCircularBufferReset(_handle.Handle);
+            SherpaONNXCircularBufferReset(_handle.Handle);
         }
 
         public void Dispose()
@@ -71,7 +71,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyCircularBuffer(_handle.Handle);
+            SherpaONNXDestroyCircularBuffer(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -80,30 +80,30 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         private HandleRef _handle;
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateCircularBuffer(int capacity);
+        private static extern IntPtr SherpaONNXCreateCircularBuffer(int capacity);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyCircularBuffer(IntPtr handle);
+        private static extern void SherpaONNXDestroyCircularBuffer(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxCircularBufferPush(IntPtr handle, float[] p, int n);
+        private static extern void SherpaONNXCircularBufferPush(IntPtr handle, float[] p, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCircularBufferGet(IntPtr handle, int startIndex, int n);
+        private static extern IntPtr SherpaONNXCircularBufferGet(IntPtr handle, int startIndex, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxCircularBufferFree(IntPtr p);
+        private static extern void SherpaONNXCircularBufferFree(IntPtr p);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxCircularBufferPop(IntPtr handle, int n);
+        private static extern void SherpaONNXCircularBufferPop(IntPtr handle, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxCircularBufferSize(IntPtr handle);
+        private static extern int SherpaONNXCircularBufferSize(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxCircularBufferHead(IntPtr handle);
+        private static extern int SherpaONNXCircularBufferHead(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxCircularBufferReset(IntPtr handle);
+        private static extern void SherpaONNXCircularBufferReset(IntPtr handle);
     }
 }

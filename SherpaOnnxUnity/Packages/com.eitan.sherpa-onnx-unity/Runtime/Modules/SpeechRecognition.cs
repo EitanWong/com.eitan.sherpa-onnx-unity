@@ -1,17 +1,17 @@
 // SpeechRecognition.cs (Refactored and Optimized)
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
 
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Lexicon;
 
-    public class SpeechRecognition : SherpaOnnxModule
+    public class SpeechRecognition : SherpaONNXModule
     {
         private OnlineRecognizer _onlineRecognizer;
         private OnlineStream _onlineStream;
@@ -21,21 +21,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
         private readonly object _lockObject = new object();
         public bool IsOnlineModel { get; private set; }
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechRecognition;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechRecognition;
 
         public float Rule1MinTrailingSilence = 2.4f;
         public float Rule2MinTrailingSilence = 1.2f;
         public float Rule3MinUtteranceLength = 30f;
 
 
-        public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public SpeechRecognition(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             IsOnlineModel = SherpaUtils.Model.IsOnlineModel(modelID);
             _modelType = SherpaUtils.Model.GetSpeechRecognitionModelType(modelID);
         }
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -58,7 +58,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             }
         }
 
-        private async Task<bool> LoadOnlineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<bool> LoadOnlineModelAsync(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOnlineRecognizerConfig(metadata, sampleRate, isMobilePlatform, reporter);
 
@@ -80,7 +80,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             });
         }
 
-        private async Task<bool> LoadOfflineModelAsync(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<bool> LoadOfflineModelAsync(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             var config = CreateOfflineRecognizerConfig(metadata, sampleRate, isMobilePlatform, reporter);
 
@@ -102,7 +102,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
              });
         }
 
-        private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
+        private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
@@ -179,7 +179,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             return config;
         }
 
-        private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
+        private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();

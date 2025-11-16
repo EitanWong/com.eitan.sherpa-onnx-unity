@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class SpeakerEmbeddingManager : IDisposable
     {
         public SpeakerEmbeddingManager(int dim)
         {
-            IntPtr h = SherpaOnnxCreateSpeakerEmbeddingManager(dim);
+            IntPtr h = SherpaONNXCreateSpeakerEmbeddingManager(dim);
             _handle = new HandleRef(this, h);
             this._dim = dim;
         }
@@ -21,7 +21,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8NameWithNull = new byte[utf8Name.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Name, utf8NameWithNull, utf8Name.Length);
             utf8NameWithNull[utf8Name.Length] = 0; // Null terminator
-            return SherpaOnnxSpeakerEmbeddingManagerAdd(_handle.Handle, utf8NameWithNull, v) == 1;
+            return SherpaONNXSpeakerEmbeddingManagerAdd(_handle.Handle, utf8NameWithNull, v) == 1;
         }
 
         public bool Add(string name, ICollection<float[]> v_list)
@@ -39,7 +39,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8NameWithNull = new byte[utf8Name.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Name, utf8NameWithNull, utf8Name.Length);
             utf8NameWithNull[utf8Name.Length] = 0; // Null terminator
-            return SherpaOnnxSpeakerEmbeddingManagerAddListFlattened(_handle.Handle, utf8NameWithNull, v, n) == 1;
+            return SherpaONNXSpeakerEmbeddingManagerAddListFlattened(_handle.Handle, utf8NameWithNull, v, n) == 1;
         }
 
         public bool Remove(string name)
@@ -48,12 +48,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8NameWithNull = new byte[utf8Name.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Name, utf8NameWithNull, utf8Name.Length);
             utf8NameWithNull[utf8Name.Length] = 0; // Null terminator
-            return SherpaOnnxSpeakerEmbeddingManagerRemove(_handle.Handle, utf8NameWithNull) == 1;
+            return SherpaONNXSpeakerEmbeddingManagerRemove(_handle.Handle, utf8NameWithNull) == 1;
         }
 
         public string Search(float[] v, float threshold)
         {
-            IntPtr p = SherpaOnnxSpeakerEmbeddingManagerSearch(_handle.Handle, v, threshold);
+            IntPtr p = SherpaONNXSpeakerEmbeddingManagerSearch(_handle.Handle, v, threshold);
 
             string s = "";
             int length = 0;
@@ -78,7 +78,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                 s = Encoding.UTF8.GetString(stringBuffer);
             }
 
-            SherpaOnnxSpeakerEmbeddingManagerFreeSearch(p);
+            SherpaONNXSpeakerEmbeddingManagerFreeSearch(p);
 
             return s;
         }
@@ -89,7 +89,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8NameWithNull = new byte[utf8Name.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Name, utf8NameWithNull, utf8Name.Length);
             utf8NameWithNull[utf8Name.Length] = 0; // Null terminator
-            return SherpaOnnxSpeakerEmbeddingManagerVerify(_handle.Handle, utf8NameWithNull, v, threshold) == 1;
+            return SherpaONNXSpeakerEmbeddingManagerVerify(_handle.Handle, utf8NameWithNull, v, threshold) == 1;
         }
 
         public bool Contains(string name)
@@ -98,7 +98,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8NameWithNull = new byte[utf8Name.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Name, utf8NameWithNull, utf8Name.Length);
             utf8NameWithNull[utf8Name.Length] = 0; // Null terminator
-            return SherpaOnnxSpeakerEmbeddingManagerContains(_handle.Handle, utf8NameWithNull) == 1;
+            return SherpaONNXSpeakerEmbeddingManagerContains(_handle.Handle, utf8NameWithNull) == 1;
         }
 
         public string[] GetAllSpeakers()
@@ -108,7 +108,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                 return new string[] { };
             }
 
-            IntPtr names = SherpaOnnxSpeakerEmbeddingManagerGetAllSpeakers(_handle.Handle);
+            IntPtr names = SherpaONNXSpeakerEmbeddingManagerGetAllSpeakers(_handle.Handle);
 
             string[] ans = new string[NumSpeakers];
 
@@ -130,7 +130,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                 }
             }
 
-            SherpaOnnxSpeakerEmbeddingManagerFreeAllSpeakers(names);
+            SherpaONNXSpeakerEmbeddingManagerFreeAllSpeakers(names);
 
             return ans;
         }
@@ -150,7 +150,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroySpeakerEmbeddingManager(_handle.Handle);
+            SherpaONNXDestroySpeakerEmbeddingManager(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -160,7 +160,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             get
             {
-                return SherpaOnnxSpeakerEmbeddingManagerNumSpeakers(_handle.Handle);
+                return SherpaONNXSpeakerEmbeddingManagerNumSpeakers(_handle.Handle);
             }
         }
 
@@ -169,39 +169,39 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateSpeakerEmbeddingManager(int dim);
+        private static extern IntPtr SherpaONNXCreateSpeakerEmbeddingManager(int dim);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroySpeakerEmbeddingManager(IntPtr handle);
+        private static extern void SherpaONNXDestroySpeakerEmbeddingManager(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerAdd(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerAdd(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerAddListFlattened(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v, int n);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerAddListFlattened(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerRemove(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerRemove(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxSpeakerEmbeddingManagerSearch(IntPtr handle, float[] v, float threshold);
+        private static extern IntPtr SherpaONNXSpeakerEmbeddingManagerSearch(IntPtr handle, float[] v, float threshold);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxSpeakerEmbeddingManagerFreeSearch(IntPtr p);
+        private static extern void SherpaONNXSpeakerEmbeddingManagerFreeSearch(IntPtr p);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerVerify(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v, float threshold);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerVerify(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name, float[] v, float threshold);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerContains(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerContains(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Name);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxSpeakerEmbeddingManagerNumSpeakers(IntPtr handle);
+        private static extern int SherpaONNXSpeakerEmbeddingManagerNumSpeakers(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxSpeakerEmbeddingManagerGetAllSpeakers(IntPtr handle);
+        private static extern IntPtr SherpaONNXSpeakerEmbeddingManagerGetAllSpeakers(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxSpeakerEmbeddingManagerFreeAllSpeakers(IntPtr names);
+        private static extern void SherpaONNXSpeakerEmbeddingManagerFreeAllSpeakers(IntPtr names);
     }
 }

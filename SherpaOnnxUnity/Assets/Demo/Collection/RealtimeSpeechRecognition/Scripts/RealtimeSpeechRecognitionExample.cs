@@ -1,296 +1,214 @@
 
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
-    using System;
+    using System.Collections.Generic;
     using System.Linq;
-
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.Sherpa.Onnx.Unity.Mono.Components;
+    using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
-    using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
-
-    public class RealtimeSpeechRecognitionExample : MonoBehaviour, ISherpaFeedbackHandler
+    /// <summary>
+    /// Minimal controller that wires <see cref="SpeechRecognizerComponent"/> to the UI and microphone.
+    /// Demonstrates the component driven workflow instead of the manual module management that was used previously.
+    /// </summary>
+    public sealed class RealtimeSpeechRecognitionExample : MonoBehaviour
     {
+        [Header("Sherpa Components")]
+        [SerializeField] private SpeechRecognizerComponent recognizer;
+        [SerializeField] private SherpaMicrophoneInput microphone;
 
-        // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
-        [Header("UI Components")]
-        [SerializeField] private Dropdown _modelIDDropdown;
-        [SerializeField] private Button _modelLoadOrUnloadButton;
-        [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
-        [SerializeField] private Text _totalInitBarText;
-        [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _transcriptionText;
+        [Header("UI")]
+        [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Button loadOrUnloadButton;
+        [SerializeField] private Text statusText;
+        [SerializeField] private Text transcriptText;
 
-        private SpeechRecognition speechRecognition;
+        [SerializeField]
+        [Tooltip("Optional message shown while fetching the manifest.")]
+        private string loadingMessage = "Fetching speech recognition manifest…";
 
-        private readonly int SampleRate = 16000;
+        private bool moduleRequested;
 
-        private Mic.Device device;
-        private string lastCachedText;
-
-        private bool _modelLoadFlag;
-
-        private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
-        private ModelLoadProgressTracker _progressTracker;
-        // Start is called once before the first execution of Update after the MonoBehaviour is created
-        private void Start()
+        private void Awake()
         {
-            Application.runInBackground = true;
-            Application.targetFrameRate = 30;
-            _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            _totalInitProgressBar.gameObject.SetActive(false);
-            _initMessageText.gameObject.SetActive(false);
-            _transcriptionText.text = "Please click the button to load the model";
-            _tipsText.text = string.Empty;
-            _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
-            _ = InitDropdownAsync();
-            UpdateLoadButtonUI();
-        }
-
-        private void Load(string modelID)
-        {
-            if (speechRecognition == null)
+            if (loadOrUnloadButton != null)
             {
-                var reporter = new SherpaOnnxFeedbackReporter(null, this);
-                speechRecognition = new SpeechRecognition(modelID, SampleRate, reporter);
-
-                _modelLoadFlag = true;
-            }
-            else
-            {
-                UnityEngine.Debug.LogError("Please Unload current model first");
-            }
-            UpdateLoadButtonUI();
-
-        }
-        private void Unload()
-        {
-            if (speechRecognition == null)
-            {
-                UnityEngine.Debug.LogWarning("No model loaded, no need to unload");
-            }
-            else
-            {
-                speechRecognition.Dispose();
-                speechRecognition = null;
-                _modelLoadFlag = false;
-
-            }
-            if (device != null)
-            {
-                device.StopRecording();
-                device.OnFrameCollected -= HandleAudioFrameCollected;
-                device = null;
+                loadOrUnloadButton.onClick.AddListener(ToggleModel);
             }
 
-            _progressTracker?.Reset();
-            _progressTracker?.SetVisible(false);
-
-            UpdateLoadButtonUI();
-
-        }
-
-        private void StartRecording()
-        {
-            if (!Mic.Initialized)
+            if (recognizer != null)
             {
-                Mic.Init();
-            }
-            var devices = Mic.AvailableDevices;
-            if (devices.Count > 0)
-            {
-                // use default device
-                device = devices[0];
-                device.OnFrameCollected += HandleAudioFrameCollected;
-                device.StartRecording(SampleRate, 10); // 16kHz sample rate
-                Debug.Log($"Using device: {device.Name}, Sampling Frequency: {device.SamplingFrequency}");
+                recognizer.TranscriptionReadyEvent.AddListener(HandleTranscriptReady);
+                recognizer.InitializationStateChangedEvent.AddListener(HandleRecognizerReadyState);
+                recognizer.FeedbackMessages.AddListener(message => statusText.text = message);
+                if (microphone != null)
+                {
+                    recognizer.BindInput(microphone);
+                }
             }
         }
 
+        private void OnEnable()
+        {
+            _ = PopulateModelDropdownAsync();
+            RefreshButtonLabel();
+            transcriptText.text = "Tap Load Model to start streaming transcription.";
+        }
 
         private void OnDestroy()
         {
-            if (device != null)
+            if (loadOrUnloadButton != null)
             {
-                device.OnFrameCollected -= HandleAudioFrameCollected;
+                loadOrUnloadButton.onClick.RemoveListener(ToggleModel);
             }
 
-            if (_modelLoadOrUnloadButton != null)
+            if (recognizer != null)
             {
-                _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            }
-        }
-
-        private async Task InitDropdownAsync()
-        {
-            _modelIDDropdown.options.Clear();
-            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
-            _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechRecognition);
-            _modelLoadOrUnloadButton.gameObject.SetActive(true);
-
-            _modelIDDropdown.options.Clear();
-            if (manifest.models != null)
-            {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.models.Select(m => new OptionData(m.modelId)).ToList();
-                _modelIDDropdown.AddOptions(modelOptions);
-
-                var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);
-                _modelIDDropdown.value = defaultIndex;
-                _modelIDDropdown.interactable = true;
-            }
-            else
-            {
-                _modelIDDropdown.interactable = false;
+                recognizer.TranscriptionReadyEvent.RemoveListener(HandleTranscriptReady);
+                recognizer.InitializationStateChangedEvent.RemoveListener(HandleRecognizerReadyState);
             }
         }
 
-        private void UpdateLoadButtonUI()
+        private async Task PopulateModelDropdownAsync()
         {
-
-            if (_modelLoadFlag)// already has model loaded
+            if (modelDropdown == null)
             {
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Unload Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = Color.red;
-                _modelIDDropdown.interactable = false;
-
-                _totalInitProgressBar.gameObject.SetActive(true);
-                _initMessageText.gameObject.SetActive(true);
+                return;
             }
-            else // no model loaded, init new model
+
+            modelDropdown.options.Clear();
+            if (!string.IsNullOrEmpty(loadingMessage))
             {
-
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Load Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = _originLoadBtnColor;
-                _modelIDDropdown.interactable = true;
-
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-                _transcriptionText.text = string.Empty;
-                _tipsText.text = string.Empty;
+                modelDropdown.captionText.text = loadingMessage;
             }
+
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.interactable = false;
+            }
+
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechRecognition).ConfigureAwait(true);
+
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.interactable = true;
+            }
+
+            modelDropdown.options.Clear();
+
+            if (manifest.models == null || manifest.models.Count == 0)
+            {
+                modelDropdown.options.Add(new Dropdown.OptionData("<no speech models>"));
+                modelDropdown.interactable = false;
+                return;
+            }
+
+            List<Dropdown.OptionData> options = manifest.models
+                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                .Select(m => new Dropdown.OptionData(m.modelId))
+                .ToList();
+
+            modelDropdown.AddOptions(options);
+            modelDropdown.interactable = true;
+            modelDropdown.value = Mathf.Clamp(modelDropdown.value, 0, options.Count - 1);
         }
 
-        private void HandleModelLoadOrUnloadButtonClick()
+        private string SelectedModelId =>
+            modelDropdown != null &&
+            modelDropdown.options != null &&
+            modelDropdown.options.Count > 0
+                ? modelDropdown.options[modelDropdown.value].text
+                : string.Empty;
+
+        private void ToggleModel()
         {
-            if (_modelLoadFlag)// already has model loaded
+            if (recognizer == null)
             {
-                Unload();
-            }
-            else // no model loaded, init new model
-            {
-                Load(_modelIDDropdown.captionText.text);
+                statusText.text = "SpeechRecognizerComponent reference missing.";
+                return;
             }
 
-        }
-
-        private async void HandleAudioFrameCollected(int sampleRate, int channelCount, float[] pcm)
-        {
-            try
+            if (!moduleRequested)
             {
-                // Don't process if the recognizer isn't ready or is disposed
-                if (speechRecognition == null)
+                var modelId = SelectedModelId;
+                if (string.IsNullOrWhiteSpace(modelId))
                 {
+                    statusText.text = "Select a model first.";
                     return;
                 }
 
-                var result = await speechRecognition.SpeechTranscriptionAsync(pcm, sampleRate);
-                if (result != lastCachedText)
+                recognizer.ModelId = modelId.Trim();
+                if (recognizer.TryLoadModule())
                 {
-                    lastCachedText = result;
-                    if (!string.IsNullOrWhiteSpace(lastCachedText))
-                    {
-                        _transcriptionText.text = lastCachedText;
-                    }
+                    moduleRequested = true;
+                    statusText.text = $"Loading {recognizer.ModelId}…";
+                }
+                else
+                {
+                    statusText.text = "Model already loading or missing configuration.";
                 }
             }
-            catch (Exception ex)
+            else
             {
-                // Log errors to avoid crashing the application
-                Debug.LogError($"An error occurred in HandleAudioFrameCollected: {ex}");
+                recognizer.DisposeModule();
+                moduleRequested = false;
+                transcriptText.text = string.Empty;
+                statusText.text = "Model disposed.";
+            }
+
+            RefreshButtonLabel();
+        }
+
+        private void RefreshButtonLabel()
+        {
+            if (loadOrUnloadButton == null)
+            {
+                return;
+            }
+
+            var label = loadOrUnloadButton.GetComponentInChildren<Text>();
+            if (label == null)
+            {
+                return;
+            }
+
+            label.text = moduleRequested ? "Unload Model" : "Load Model";
+        }
+
+        private void HandleRecognizerReadyState(bool ready)
+        {
+            if (!moduleRequested)
+            {
+                return;
+            }
+
+            if (ready)
+            {
+                statusText.text = "Recognizer ready. Speak into the microphone.";
+                transcriptText.text = "Awaiting speech…";
+            }
+            else
+            {
+                statusText.text = "Recognizer not ready.";
             }
         }
 
-        #region FeedbackHandler
-
-        public void OnFeedback(PrepareFeedback feedback)
+        private void HandleTranscriptReady(string transcript)
         {
-            _progressTracker.Reset();
-            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
-            _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
-            _transcriptionText.text = "Preparing streaming speech recognition model...";
-        }
+            if (string.IsNullOrWhiteSpace(transcript))
+            {
+                return;
+            }
 
-        public void OnFeedback(DownloadFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Downloading streaming speech recognition model...";
+            transcriptText.text = transcript;
         }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
-            _transcriptionText.text = "Cleaning previous model files...";
-        }
-
-        public void OnFeedback(VerifyFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Verifying streaming speech recognition assets...";
-        }
-
-        public void OnFeedback(DecompressFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
-            _transcriptionText.text = "Decompressing streaming speech recognition package...";
-        }
-
-        public void OnFeedback(LoadFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
-            _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-            _transcriptionText.text = "Finishing model load...";
-        }
-
-        public void OnFeedback(SuccessFeedback feedback)
-        {
-            _progressTracker.Complete("Success");
-            _progressTracker.SetVisible(false);
-            _initMessageText.text = string.Empty;
-            _transcriptionText.text = "<b><i>Now you can speak</i></b>";
-            _tipsText.text = $"<b><color=green>[Loaded]:</color></b> {feedback.Metadata.modelId}\nYou can now test speech-to-text by speaking directly.";
-
-            StartRecording();
-        }
-
-        public void OnFeedback(FailedFeedback feedback)
-        {
-            UnityEngine.Debug.LogError($"[Failed] :{feedback.Message}");
-            Unload();
-            _initMessageText.text = feedback.Message;
-            _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model load failed.";
-            _transcriptionText.text = "<color=red><b>Model load failed</b></color>";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            Unload();
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-            _transcriptionText.text = "Model loading cancelled.";
-        }
-        #endregion
 
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
         }
     }
-
 }

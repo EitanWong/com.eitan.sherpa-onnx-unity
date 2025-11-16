@@ -2,60 +2,60 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class VoiceActivityDetector : IDisposable
     {
         public VoiceActivityDetector(VadModelConfig config, float bufferSizeInSeconds)
         {
-            IntPtr h = SherpaOnnxCreateVoiceActivityDetector(ref config, bufferSizeInSeconds);
+            IntPtr h = SherpaONNXCreateVoiceActivityDetector(ref config, bufferSizeInSeconds);
             _handle = new HandleRef(this, h);
         }
 
         public void AcceptWaveform(float[] samples)
         {
-            SherpaOnnxVoiceActivityDetectorAcceptWaveform(_handle.Handle, samples, samples.Length);
+            SherpaONNXVoiceActivityDetectorAcceptWaveform(_handle.Handle, samples, samples.Length);
         }
 
         public bool IsEmpty()
         {
-            return SherpaOnnxVoiceActivityDetectorEmpty(_handle.Handle) == 1;
+            return SherpaONNXVoiceActivityDetectorEmpty(_handle.Handle) == 1;
         }
 
         public bool IsSpeechDetected()
         {
-            return SherpaOnnxVoiceActivityDetectorDetected(_handle.Handle) == 1;
+            return SherpaONNXVoiceActivityDetectorDetected(_handle.Handle) == 1;
         }
 
         public void Pop()
         {
-            SherpaOnnxVoiceActivityDetectorPop(_handle.Handle);
+            SherpaONNXVoiceActivityDetectorPop(_handle.Handle);
         }
 
         public SpeechSegment Front()
         {
-            IntPtr p = SherpaOnnxVoiceActivityDetectorFront(_handle.Handle);
+            IntPtr p = SherpaONNXVoiceActivityDetectorFront(_handle.Handle);
 
             SpeechSegment segment = new SpeechSegment(p);
 
-            SherpaOnnxDestroySpeechSegment(p);
+            SherpaONNXDestroySpeechSegment(p);
 
             return segment;
         }
 
         public void Clear()
         {
-            SherpaOnnxVoiceActivityDetectorClear(_handle.Handle);
+            SherpaONNXVoiceActivityDetectorClear(_handle.Handle);
         }
 
         public void Reset()
         {
-            SherpaOnnxVoiceActivityDetectorReset(_handle.Handle);
+            SherpaONNXVoiceActivityDetectorReset(_handle.Handle);
         }
 
         public void Flush()
         {
-            SherpaOnnxVoiceActivityDetectorFlush(_handle.Handle);
+            SherpaONNXVoiceActivityDetectorFlush(_handle.Handle);
         }
 
         public void Dispose()
@@ -73,7 +73,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyVoiceActivityDetector(_handle.Handle);
+            SherpaONNXDestroyVoiceActivityDetector(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -82,36 +82,36 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         private HandleRef _handle;
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateVoiceActivityDetector(ref VadModelConfig config, float bufferSizeInSeconds);
+        private static extern IntPtr SherpaONNXCreateVoiceActivityDetector(ref VadModelConfig config, float bufferSizeInSeconds);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyVoiceActivityDetector(IntPtr handle);
+        private static extern void SherpaONNXDestroyVoiceActivityDetector(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxVoiceActivityDetectorAcceptWaveform(IntPtr handle, float[] samples, int n);
+        private static extern void SherpaONNXVoiceActivityDetectorAcceptWaveform(IntPtr handle, float[] samples, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxVoiceActivityDetectorEmpty(IntPtr handle);
+        private static extern int SherpaONNXVoiceActivityDetectorEmpty(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxVoiceActivityDetectorDetected(IntPtr handle);
+        private static extern int SherpaONNXVoiceActivityDetectorDetected(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxVoiceActivityDetectorPop(IntPtr handle);
+        private static extern void SherpaONNXVoiceActivityDetectorPop(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxVoiceActivityDetectorClear(IntPtr handle);
+        private static extern void SherpaONNXVoiceActivityDetectorClear(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxVoiceActivityDetectorFront(IntPtr handle);
+        private static extern IntPtr SherpaONNXVoiceActivityDetectorFront(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroySpeechSegment(IntPtr segment);
+        private static extern void SherpaONNXDestroySpeechSegment(IntPtr segment);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxVoiceActivityDetectorReset(IntPtr handle);
+        private static extern void SherpaONNXVoiceActivityDetectorReset(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxVoiceActivityDetectorFlush(IntPtr handle);
+        private static extern void SherpaONNXVoiceActivityDetectorFlush(IntPtr handle);
     }
 }

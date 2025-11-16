@@ -1,14 +1,14 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
+    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
 
     [RequireComponent(typeof(AudioSource))]
     public class SpeechEnhancementExample : MonoBehaviour, ISherpaFeedbackHandler
@@ -115,7 +115,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 return;
             }
 
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
+            var reporter = new SherpaONNXFeedbackReporter(null, this);
             _speechEnhancement = new SpeechEnhancement(modelID, SampleRate, reporter);
 
             IsModelLoaded = true;// let ui refersh to show the unload button
@@ -397,7 +397,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
 
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechEnhancement);
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechEnhancement);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();

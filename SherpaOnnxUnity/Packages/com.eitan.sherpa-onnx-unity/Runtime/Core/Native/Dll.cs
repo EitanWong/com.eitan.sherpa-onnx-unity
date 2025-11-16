@@ -2,7 +2,7 @@
 /// Copyright (c)  2023 by manyeyes
 /// Copyright (c)  2024.5 by 东风破
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
         internal static class Dll
         {

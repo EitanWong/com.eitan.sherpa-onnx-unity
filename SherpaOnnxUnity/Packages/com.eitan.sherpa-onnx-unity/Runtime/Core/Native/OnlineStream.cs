@@ -4,7 +4,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
     public class OnlineStream : IDisposable
@@ -16,12 +16,12 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         public void AcceptWaveform(int sampleRate, float[] samples)
         {
-            SherpaOnnxOnlineStreamAcceptWaveform(Handle, sampleRate, samples, samples.Length);
+            SherpaONNXOnlineStreamAcceptWaveform(Handle, sampleRate, samples, samples.Length);
         }
 
         public void InputFinished()
         {
-            SherpaOnnxOnlineStreamInputFinished(Handle);
+            SherpaONNXOnlineStreamInputFinished(Handle);
         }
 
         ~OnlineStream()
@@ -39,7 +39,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOnlineStream(Handle);
+            SherpaONNXDestroyOnlineStream(Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -49,13 +49,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         public IntPtr Handle => _handle.Handle;
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOnlineStream(IntPtr handle);
+        private static extern void SherpaONNXDestroyOnlineStream(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOnlineStreamAcceptWaveform(IntPtr handle, int sampleRate, float[] samples, int n);
+        private static extern void SherpaONNXOnlineStreamAcceptWaveform(IntPtr handle, int sampleRate, float[] samples, int n);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOnlineStreamInputFinished(IntPtr handle);
+        private static extern void SherpaONNXOnlineStreamInputFinished(IntPtr handle);
     }
 
 }

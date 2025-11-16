@@ -31,25 +31,30 @@ using System.IO;
 using UnityEngine;
 using System.Collections.Generic;
 
-public static class AudioExtension {
+public static class AudioExtension
+{
 
-	const int HEADER_SIZE = 44;
+	private const int HEADER_SIZE = 44;
 
-	public static bool Save(this AudioClip clip, string filename = null) {
+	public static bool Save(this AudioClip clip, string filename = null)
+	{
 		//if filename is null, use current time as filename
-		if(string.IsNullOrEmpty(filename)){
-			filename = string.IsNullOrEmpty(clip.name)?$"AudioClip_{clip.frequency}Hz_{clip.channels}ch_{clip.length}s_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}": clip.name;
+		if (string.IsNullOrEmpty(filename))
+		{
+			filename = string.IsNullOrEmpty(clip.name) ? $"AudioClip_{clip.frequency}Hz_{clip.channels}ch_{clip.length}s_{DateTime.Now.ToString("yyyyMMdd_HHmmss")}" : clip.name;
 		}
 
-		if (!filename.ToLower().EndsWith(".wav")) {
+		if (!filename.ToLower().EndsWith(".wav"))
+		{
 			filename += ".wav";
 		}
 
-		string directoryPath = Application.isMobilePlatform 
-			? Path.Combine(Application.persistentDataPath, "Recordings/Audio") 
+		string directoryPath = Application.isMobilePlatform
+			? Path.Combine(Application.persistentDataPath, "Recordings/Audio")
 			: Path.Combine(System.IO.Directory.GetParent(Application.dataPath).ToString(), "Recordings/Audio");
 
-		if (!Directory.Exists(directoryPath)) {
+		if (!Directory.Exists(directoryPath))
+		{
 			Directory.CreateDirectory(directoryPath);
 		}
 		var filepath = Path.Combine(directoryPath, filename);
@@ -60,7 +65,8 @@ public static class AudioExtension {
 		// Make sure directory exists if user is saving to sub dir.
 		Directory.CreateDirectory(Path.GetDirectoryName(filepath));
 
-		using (var fileStream = CreateEmpty(filepath)) {
+		using (var fileStream = CreateEmpty(filepath))
+		{
 
 			ConvertAndWrite(fileStream, clip);
 
@@ -70,7 +76,8 @@ public static class AudioExtension {
 		return true; // TODO: return false if there's a failure saving the file
 	}
 
-	public static AudioClip TrimSilence(AudioClip clip, float min) {
+	public static AudioClip TrimSilence(AudioClip clip, float min)
+	{
 		var samples = new float[clip.samples * clip.channels]; // Fixed: account for all channels
 
 		clip.GetData(samples, 0);
@@ -79,12 +86,15 @@ public static class AudioExtension {
 	}
 
 
-	public static AudioClip TrimSilence(List<float> samples, float min, int channels, int hz) {
+	public static AudioClip TrimSilence(List<float> samples, float min, int channels, int hz)
+	{
 		int i;
 
 		// Find start of audio (skip leading silence)
-		for (i = 0; i < samples.Count; i++) {
-			if (Mathf.Abs(samples[i]) > min) {
+		for (i = 0; i < samples.Count; i++)
+		{
+			if (Mathf.Abs(samples[i]) > min)
+			{
 				break;
 			}
 		}
@@ -92,8 +102,10 @@ public static class AudioExtension {
 		samples.RemoveRange(0, i);
 
 		// Find end of audio (skip trailing silence)
-		for (i = samples.Count - 1; i > 0; i--) {
-			if (Mathf.Abs(samples[i]) > min) {
+		for (i = samples.Count - 1; i > 0; i--)
+		{
+			if (Mathf.Abs(samples[i]) > min)
+			{
 				break;
 			}
 		}
@@ -102,32 +114,35 @@ public static class AudioExtension {
 
 		// Ensure sample count is divisible by channel count
 		int validSampleCount = (samples.Count / channels) * channels;
-		if (validSampleCount != samples.Count) {
+		if (validSampleCount != samples.Count)
+		{
 			samples.RemoveRange(validSampleCount, samples.Count - validSampleCount);
 		}
 
-		var clip = AudioClip.Create("TempClip", samples.Count / channels, channels, hz,false);
+		var clip = AudioClip.Create("TempClip", samples.Count / channels, channels, hz, false);
 
 		clip.SetData(samples.ToArray(), 0);
 
 		return clip;
 	}
 
-	static FileStream CreateEmpty(string filepath) {
+	private static FileStream CreateEmpty(string filepath)
+	{
 		var fileStream = new FileStream(filepath, FileMode.Create);
-	    byte emptyByte = new byte();
+		byte emptyByte = new byte();
 
-	    for(int i = 0; i < HEADER_SIZE; i++) //preparing the header
-	    {
-	        fileStream.WriteByte(emptyByte);
-	    }
+		for (int i = 0; i < HEADER_SIZE; i++) //preparing the header
+		{
+			fileStream.WriteByte(emptyByte);
+		}
 
 		return fileStream;
 	}
 
-	static void ConvertAndWrite(FileStream fileStream, AudioClip clip) {
+	private static void ConvertAndWrite(FileStream fileStream, AudioClip clip)
+	{
 		// FIXED: Properly handle multi-channel audio data
-		
+
 		// Total samples = samples per channel * number of channels
 		int totalSamples = clip.samples * clip.channels;
 		var samples = new float[totalSamples];
@@ -143,22 +158,24 @@ public static class AudioExtension {
 
 		int rescaleFactor = 32767; // Convert float to Int16
 
-		for (int i = 0; i < totalSamples; i++) {
+		for (int i = 0; i < totalSamples; i++)
+		{
 			// Clamp the sample to prevent overflow
 			float clampedSample = Mathf.Clamp(samples[i], -1f, 1f);
 			intData[i] = (short)(clampedSample * rescaleFactor);
-			
+
 			// Convert to bytes (little-endian)
 			Byte[] byteArr = BitConverter.GetBytes(intData[i]);
 			byteArr.CopyTo(bytesData, i * 2);
 		}
 
 		fileStream.Write(bytesData, 0, bytesData.Length);
-		
+
 		// Debug.Log($"[WavUtils] Wrote {bytesData.Length} bytes of audio data");
 	}
 
-	static void WriteHeader(FileStream fileStream, AudioClip clip) {
+	private static void WriteHeader(FileStream fileStream, AudioClip clip)
+	{
 		var hz = clip.frequency;
 		var channels = clip.channels;
 		var samplesPerChannel = clip.samples; // This is samples per channel, not total samples

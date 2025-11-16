@@ -1,14 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Eitan.SherpaOnnxUnity.Samples.UI
+namespace Eitan.SherpaONNXUnity.Samples.UI
 {
     [ExecuteInEditMode]
     [RequireComponent(typeof(Image))]
     public class EasyProgressBar : MonoBehaviour
     {
         private const string ShaderName = "UI/Easy Progress Bar";
-        
+
         private int _mainTexPropertyID;
         private int _mainColorPropertyID;
         private int _startColorPropertyID;
@@ -27,29 +27,29 @@ namespace Eitan.SherpaOnnxUnity.Samples.UI
         [SerializeField] private Color _startColor = Color.white;
         [SerializeField] private Color _endColor = Color.white;
         [SerializeField] private Color _backColor = Color.black;
-        [SerializeField] [Range(0f, 1f)] private float _gradient = 0f;
-        [SerializeField] [Range(0f, 1f)] private float _roundness = 0.5f;
-        [SerializeField] [Range(0f, 1f)] private float _borderSize = 0.15f;
-        [SerializeField] [Range(0f, 1f)] private float _fillAmount = 1f;
+        [SerializeField][Range(0f, 1f)] private float _gradient = 0f;
+        [SerializeField][Range(0f, 1f)] private float _roundness = 0.5f;
+        [SerializeField][Range(0f, 1f)] private float _borderSize = 0.15f;
+        [SerializeField][Range(0f, 1f)] private float _fillAmount = 1f;
 
         public float Gradient
         {
             get => _gradient;
             set => _gradient = value;
         }
-        
+
         public float BorderSize
         {
             get => _borderSize;
             set => _borderSize = value;
         }
-        
+
         public float Roundness
         {
             get => _roundness;
             set => _roundness = value;
         }
-        
+
         public float FillAmount
         {
             get => _fillAmount;
@@ -68,12 +68,12 @@ namespace Eitan.SherpaOnnxUnity.Samples.UI
             _borderSizePropertyID = Shader.PropertyToID("_BorderSize");
             _fillAmountPropertyID = Shader.PropertyToID("_FillAmount");
             _sizePropertyID = Shader.PropertyToID("_Size");
-            
+
             _image = GetComponent<Image>();
             _image.material = _material = new Material(Shader.Find(ShaderName));
             UpdateView();
         }
-        
+
         private void Update()
         {
             UpdateView();
@@ -95,7 +95,7 @@ namespace Eitan.SherpaOnnxUnity.Samples.UI
                         _material.SetTexture(_mainTexPropertyID, null);
                     }
                 }
-            
+
                 _material.SetColor(_mainColorPropertyID, _image.color);
                 _material.SetColor(_startColorPropertyID, _startColor);
                 _material.SetColor(_endColorPropertyID, _endColor);
@@ -104,10 +104,10 @@ namespace Eitan.SherpaOnnxUnity.Samples.UI
                 _material.SetFloat(_roundnessSizePropertyID, _roundness);
                 _material.SetFloat(_borderSizePropertyID, _borderSize);
                 _material.SetFloat(_fillAmountPropertyID, _fillAmount);
-            
+
                 var scale = transform.lossyScale;
                 var rect = _image.rectTransform.rect;
-            
+
                 _material.SetVector(_sizePropertyID, new Vector4(scale.x * rect.width, scale.y * rect.height, 0, 0));
             }
         }

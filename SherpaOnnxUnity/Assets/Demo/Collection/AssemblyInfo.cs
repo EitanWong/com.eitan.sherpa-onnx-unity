@@ -3,7 +3,7 @@
 using System.Reflection;
 
 
-[assembly: AssemblyTitle("SherpaOnnxUnity Examples")]
+[assembly: AssemblyTitle("SherpaONNXUnity Examples")]
 [assembly: AssemblyDescription("Examples/demo scenes and scripts for using Sherpa-Onnx keyword spotting in Unity.")]
 [assembly: AssemblyConfiguration("")]  // 可填 "Debug" 或 "Release" 或其他自定义配置
 [assembly: AssemblyCompany("YourCompanyName")]  // 替换成你的公司或组织名

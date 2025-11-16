@@ -5,15 +5,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
     using UnityEngine;
     using UnityEngine.Events;
 
     /// <summary>
     /// Simple text post-processor that adds punctuation via the sherpa-onnx OfflinePunctuation model.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Text Processing/Punctuation")]
+    [AddComponentMenu("SherpaONNX/Text Processing/Punctuation")]
     [DisallowMultipleComponent]
     public sealed class PunctuationComponent : SherpaModuleComponent<Punctuation>
     {
@@ -29,7 +29,17 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onPunctuationFailed = new UnityEvent<string>();
 
-        protected override Punctuation CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        /// <summary>
+        /// Allows runtime listeners to observe punctuation results.
+        /// </summary>
+        public UnityEvent<string> PunctuationReadyEvent => onPunctuationReady;
+
+        /// <summary>
+        /// Allows runtime listeners to observe punctuation errors.
+        /// </summary>
+        public UnityEvent<string> PunctuationFailedEvent => onPunctuationFailed;
+
+        protected override Punctuation CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new Punctuation(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }

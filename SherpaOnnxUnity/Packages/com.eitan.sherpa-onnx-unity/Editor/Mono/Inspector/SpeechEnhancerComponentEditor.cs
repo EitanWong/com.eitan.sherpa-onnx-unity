@@ -3,8 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -57,7 +57,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onFeedbackProp = serializedObject.FindProperty("onFeedbackMessage");
             onInitializedProp = serializedObject.FindProperty("onInitializationStateChanged");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.SpeechEnhancement, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.SpeechEnhancement, Repaint);
             modelSelector.Refresh();
         }
 
@@ -83,12 +83,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -96,23 +96,23 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechEnhancer.SectionEnhancement, "Enhancement"), Styles.Header);
-                EditorGUILayout.PropertyField(audioSourceProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.FieldTargetAudioSource, "Target Audio Source"));
-                EditorGUILayout.PropertyField(clipReferenceProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.FieldClipReference, "Clip Reference"));
-                EditorGUILayout.PropertyField(enhanceOnEnableProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.FieldEnhanceOnEnable, "Enhance On Enable"));
-                EditorGUILayout.PropertyField(duplicateClipProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.FieldDuplicateClip, "Duplicate Clip"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechEnhancer.SectionEnhancement, "Enhancement"), Styles.Header);
+                EditorGUILayout.PropertyField(audioSourceProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.FieldTargetAudioSource, "Target Audio Source"));
+                EditorGUILayout.PropertyField(clipReferenceProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.FieldClipReference, "Clip Reference"));
+                EditorGUILayout.PropertyField(enhanceOnEnableProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.FieldEnhanceOnEnable, "Enhance On Enable"));
+                EditorGUILayout.PropertyField(duplicateClipProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.FieldDuplicateClip, "Duplicate Clip"));
 
                 var clip = clipReferenceProp.objectReferenceValue as AudioClip;
                 if (clip == null && audioSourceProp.objectReferenceValue == null)
                 {
                     EditorGUILayout.HelpBox(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechEnhancer.HelpAssignClip, "Assign a clip or an AudioSource to process."),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechEnhancer.HelpAssignClip, "Assign a clip or an AudioSource to process."),
                         MessageType.Info);
                 }
 
                 using (new EditorGUI.DisabledScope(!Application.isPlaying))
                 {
-                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechEnhancer.ButtonEnhanceNow, "Enhance Now")))
+                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechEnhancer.ButtonEnhanceNow, "Enhance Now")))
                     {
                         runtimeComponent.EnhanceAssignedClip();
                     }
@@ -124,14 +124,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onEnhancedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.EventClipEnhanced, "On Clip Enhanced"));
-                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechEnhancer.EventEnhancementFailed, "On Enhancement Failed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onEnhancedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.EventClipEnhanced, "On Clip Enhanced"));
+                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechEnhancer.EventEnhancementFailed, "On Enhancement Failed"));
 
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionLifecycleEvents, "Lifecycle Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onInitializedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.EventInitialized, "On Initialization State Changed"));
-                EditorGUILayout.PropertyField(onFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.EventFeedback, "On Feedback Message"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionLifecycleEvents, "Lifecycle Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onInitializedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.EventInitialized, "On Initialization State Changed"));
+                EditorGUILayout.PropertyField(onFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.EventFeedback, "On Feedback Message"));
             }
         }
     }

@@ -7,14 +7,14 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin;
 
-using Eitan.SherpaOnnxUnity.Runtime.Native;
+using Eitan.SherpaONNXUnity.Runtime.Native;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
 {
-    public sealed class KeywordSpotting : SherpaOnnxModule
+    public sealed class KeywordSpotting : SherpaONNXModule
     {
         private const float DefaultBoostingScore = 2.0f;
         private const float DefaultTriggerThreshold = 0.1f;
@@ -53,10 +53,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
         private string _keywordsPayload;
         private readonly KeywordRegistration[] _keywordConfigs;
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.KeywordSpotting;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.KeywordSpotting;
 
         //支持自定义唤醒词功能 具体要参考https://k2-fsa.github.io/sherpa/onnx/kws/index.html#what-is-open-vocabulary-keyword-spotting 用pinyin库将文字转为拼音，英文需要使用bpe模型进行分词，暂不支持
-        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, KeywordRegistration[] customKeywords = null, SherpaOnnxFeedbackReporter reporter = null)
+        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, KeywordRegistration[] customKeywords = null, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             _keywordsScore = keywordsScore;
@@ -64,7 +64,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
             _keywordConfigs = customKeywords;
         }
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -122,7 +122,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
             }
         }
 
-        private Task<KeywordSpotterConfig> CreateKeywordSpotterConfig(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private Task<KeywordSpotterConfig> CreateKeywordSpotterConfig(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             _sampleRate = sampleRate;
 

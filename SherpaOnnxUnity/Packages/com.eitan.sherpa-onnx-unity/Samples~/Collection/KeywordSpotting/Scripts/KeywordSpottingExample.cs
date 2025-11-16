@@ -1,15 +1,15 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
+    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
 
     public class KeywordSpottingExample : MonoBehaviour, ISherpaFeedbackHandler
     {
@@ -18,7 +18,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Dropdown _modelIDDropdown;
         [SerializeField] private Button _modelLoadOrUnloadButton;
         [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
+        [SerializeField] private Eitan.SherpaONNXUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _keywordText;
@@ -93,7 +93,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             if (keywordSpotting == null)
             {
-                var reporter = new SherpaOnnxFeedbackReporter(null, this);
+                var reporter = new SherpaONNXFeedbackReporter(null, this);
                 keywordSpotting = new KeywordSpotting(modelID, SampleRate, 2.0f, 0.25f, kwsKeywords, reporter);
                 keywordSpotting.OnKeywordDetected += HandleKeywordDetected;
 
@@ -192,7 +192,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.KeywordSpotting);
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.KeywordSpotting);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();

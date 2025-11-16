@@ -6,13 +6,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     /// <summary>
     /// Lightweight in-memory environment store for runtime configuration.
     /// Thread-safe, fast, and easy to extend via EnvKeys partial class.
     /// </summary>
-    public static partial class SherpaOnnxEnvironment
+    public static partial class SherpaONNXEnvironment
     {
         // Case-insensitive keys for developer convenience; adjust if you need strict case.
         private static readonly IEqualityComparer<string> _comparer = StringComparer.OrdinalIgnoreCase;
@@ -241,11 +241,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public static partial class BuiltinKeys
         {
             // Add your reusable keys here to promote consistency across plugins.
-            public const string GithubProxy = "SherpaOnnx.GithubProxy";        // e.g., "https://gh-proxy.com/"
-            public const string FetchLatestManifest = "SherpaOnnx.FetchLatestManifest"; // bool, default true
-            public const string AutoDownloadModels = "SherpaOnnx.AutoDownloadModels";   // bool, default true
-            public const string ChecksumCacheDirectory = "SherpaOnnx.ChecksumCacheDirectory"; // optional override path
-            public const string ChecksumCacheTtlSeconds = "SherpaOnnx.ChecksumCacheTtlSeconds"; // int, default 3600 (1h)
+            public const string GithubProxy = "SherpaONNX.GithubProxy";        // e.g., "https://gh-proxy.com/"
+            public const string FetchLatestManifest = "SherpaONNX.FetchLatestManifest"; // bool, default true
+            public const string AutoDownloadModels = "SherpaONNX.AutoDownloadModels";   // bool, default true
+            public const string ChecksumCacheDirectory = "SherpaONNX.ChecksumCacheDirectory"; // optional override path
+            public const string ChecksumCacheTtlSeconds = "SherpaONNX.ChecksumCacheTtlSeconds"; // int, default 3600 (1h)
         }
     }
 }

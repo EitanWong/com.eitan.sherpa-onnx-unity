@@ -2,10 +2,10 @@
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Exception;
-using static Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.PinyinFormat;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin.Exception;
+using static Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin.PinyinFormat;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin
 {
     /// <summary>
     /// 拼音工具类

@@ -2,7 +2,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct HomophoneReplacerConfig
@@ -16,9 +16,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                 return;
             }
 
-          DictDir = "";
-          Lexicon = "";
-          RuleFsts = "";
+            DictDir = "";
+            Lexicon = "";
+            RuleFsts = "";
         }
 
         [MarshalAs(UnmanagedType.LPStr)]

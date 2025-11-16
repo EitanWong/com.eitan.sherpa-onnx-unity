@@ -5,8 +5,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
 
     using UnityEngine;
     using UnityEngine.Events;
@@ -14,7 +14,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     /// <summary>
     /// User-friendly wrapper for <see cref="SpeechEnhancement"/> that denoises AudioClips in-place or as duplicates.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Speech Enhancement/Speech Enhancer")]
+    [AddComponentMenu("SherpaONNX/Speech Enhancement/Speech Enhancer")]
     [DisallowMultipleComponent]
     public sealed class SpeechEnhancerComponent : SherpaModuleComponent<SpeechEnhancement>
     {
@@ -42,6 +42,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onEnhancementFailed = new UnityEvent<string>();
 
+        /// <summary>
+        /// Event invoked when an AudioClip has been denoised successfully.
+        /// </summary>
+        public UnityEvent<AudioClip> ClipEnhancedEvent => onClipEnhanced;
+
+        /// <summary>
+        /// Event invoked when enhancement fails so UI can surface the message.
+        /// </summary>
+        public UnityEvent<string> EnhancementFailedEvent => onEnhancementFailed;
+
         private CancellationTokenSource enhancementCancellation;
 
         private void OnEnable()
@@ -60,7 +70,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             enhancementCancellation = null;
         }
 
-        protected override SpeechEnhancement CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        protected override SpeechEnhancement CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new SpeechEnhancement(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }
@@ -169,4 +179,3 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         }
     }
 }
-

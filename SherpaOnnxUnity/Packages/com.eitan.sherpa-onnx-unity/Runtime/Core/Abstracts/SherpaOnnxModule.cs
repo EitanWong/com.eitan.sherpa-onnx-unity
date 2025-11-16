@@ -1,15 +1,15 @@
-// SherpaOnnxModule.cs (Optimized)
+// SherpaONNXModule.cs (Optimized)
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
-    public abstract class SherpaOnnxModule : IDisposable
+    public abstract class SherpaONNXModule : IDisposable
     {
-        protected abstract SherpaOnnxModuleType ModuleType { get; }
+        protected abstract SherpaONNXModuleType ModuleType { get; }
 
         private readonly SynchronizationContext _rootThreadContext;
         private readonly object _lockObject = new object();
@@ -22,7 +22,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         public bool Initialized { get; private set; }
 
 
-        public SherpaOnnxModule(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public SherpaONNXModule(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
         {
             _rootThreadContext = SynchronizationContext.Current;
             // Pre-warm Unity download infrastructure on the main thread so background tasks can safely use UnityWebRequest.
@@ -41,7 +41,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 {
                     return;
                 }
-                var reporterAdapter = new SherpaOnnxFeedbackReporter(feedbackArgs =>
+                var reporterAdapter = new SherpaONNXFeedbackReporter(feedbackArgs =>
                 {
                     // 使用 _isDisposed 标志位进行更可靠的检查
                     if (IsDisposed || runner.IsDisposed) { return; }
@@ -60,7 +60,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     }, feedbackArgs);
                 });
 
-                var metadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync(modelID, ct);
+                var metadata = await SherpaONNXModelRegistry.Instance.GetMetadataAsync(modelID, ct);
 
                 try
                 {
@@ -116,7 +116,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
 
         // 析构函数，作为最后的安全网。它会在对象被GC回收时调用
-        ~SherpaOnnxModule()
+        ~SherpaONNXModule()
         {
             // 如果开发者忘记调用Dispose()，此方法会确保非托管资源被释放
             Dispose(false);
@@ -168,7 +168,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        protected Action<string> CreateFallbackReporter(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter)
+        protected Action<string> CreateFallbackReporter(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter)
         {
             return message =>
             {
@@ -207,7 +207,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// 子类必须实现的初始化逻辑。
         /// </summary>
-        protected abstract Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct);
+        protected abstract Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct);
 
         /// <summary>
         /// 子类必须实现的资源清理逻辑。

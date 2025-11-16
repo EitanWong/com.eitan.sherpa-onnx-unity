@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Collections.Generic;

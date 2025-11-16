@@ -6,16 +6,16 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
-namespace Eitan.SherpaOnnxUnity.Tests
+namespace Eitan.SherpaONNXUnity.Tests
 {
     public class SherpaMetadataExtensionsTests
     {
         private string _modelId;
         private string _modelRoot;
-        private SherpaOnnxModelMetadata _metadata;
+        private SherpaONNXModelMetadata _metadata;
 
         [SetUp]
         public void SetUp()
@@ -55,7 +55,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
             Touch("whisper-encoder-int8.onnx");
             Touch("whisper-decoder-int8.onnx");
 
-            _metadata = new SherpaOnnxModelMetadata { modelId = _modelId };
+            _metadata = new SherpaONNXModelMetadata { modelId = _modelId };
 
             Debug.Log($"[SetUp] ModelId: {_modelId}\nRoot: {_modelRoot}\nFiles:\n" +
                       string.Join("\n", Directory.GetFiles(_modelRoot).Select(Path.GetFileName)));

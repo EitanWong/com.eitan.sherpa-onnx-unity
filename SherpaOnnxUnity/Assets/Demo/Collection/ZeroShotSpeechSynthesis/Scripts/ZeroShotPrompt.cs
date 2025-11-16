@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
-    [CreateAssetMenu(fileName = "New ZeroShotPrompt", menuName = "SherpaOnnx/Create ZeroShotPrompt")]
+    [CreateAssetMenu(fileName = "New ZeroShotPrompt", menuName = "SherpaONNX/Create ZeroShotPrompt")]
     public class ZeroShotPrompt : ScriptableObject
     {
         [SerializeField] private Texture2D icon;

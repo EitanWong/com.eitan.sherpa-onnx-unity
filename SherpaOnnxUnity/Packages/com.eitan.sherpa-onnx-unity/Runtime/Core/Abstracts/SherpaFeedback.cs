@@ -1,17 +1,17 @@
 
 using System;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     // A base class for any feedback that involves a progress percentage.
     public abstract class SherpaFeedback : IFeedback
     {
         // public string ModelID { get; set; }
-        public readonly SherpaOnnxModelMetadata Metadata;
+        public readonly SherpaONNXModelMetadata Metadata;
         public string Message { get; protected set; }
         public Exception Exception { get; private set; }
 
-        public SherpaFeedback(SherpaOnnxModelMetadata metadata, string message, Exception exception = null)
+        public SherpaFeedback(SherpaONNXModelMetadata metadata, string message, Exception exception = null)
         {
             this.Metadata = metadata;
             this.Message = $"[{GetType().Name}]:{message}";

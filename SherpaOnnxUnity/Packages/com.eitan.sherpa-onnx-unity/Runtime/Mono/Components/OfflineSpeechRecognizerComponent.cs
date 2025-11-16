@@ -6,15 +6,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
     using UnityEngine;
     using UnityEngine.Events;
 
     /// <summary>
     /// Offline ASR wrapper that expects pre-segmented speech (e.g., from <see cref="VoiceActivityDetectionComponent"/>).
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Speech Recognition/Offline Speech Recognizer")]
+    [AddComponentMenu("SherpaONNX/Speech Recognition/Offline Speech Recognizer")]
     [DisallowMultipleComponent]
     public sealed class OfflineSpeechRecognizerComponent : SherpaModuleComponent<SpeechRecognition>
     {
@@ -34,6 +34,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onTranscriptionFailed = new UnityEvent<string>();
 
+        /// <summary>
+        /// Public hook for scripts that want to display offline transcripts without using the inspector.
+        /// </summary>
+        public UnityEvent<string> TranscriptReadyEvent => onTranscriptReady;
+
+        /// <summary>
+        /// Public hook for scripts to surface error messages.
+        /// </summary>
+        public UnityEvent<string> TranscriptionFailedEvent => onTranscriptionFailed;
+
         private readonly Queue<AudioChunk> pendingSegments = new Queue<AudioChunk>();
         private readonly object queueLock = new object();
 
@@ -41,7 +51,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private VoiceActivityDetectionComponent boundSource;
         private bool drainingQueue;
 
-        protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }

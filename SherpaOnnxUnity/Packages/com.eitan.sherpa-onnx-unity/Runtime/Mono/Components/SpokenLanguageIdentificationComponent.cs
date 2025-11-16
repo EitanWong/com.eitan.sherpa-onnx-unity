@@ -5,15 +5,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
     using UnityEngine;
     using UnityEngine.Events;
 
     /// <summary>
     /// High-level wrapper over <see cref="SpokenLanguageIdentification"/> for AudioClips or raw samples.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Language/Spoken Language Identification")]
+    [AddComponentMenu("SherpaONNX/Language/Spoken Language Identification")]
     [DisallowMultipleComponent]
     public sealed class SpokenLanguageIdentificationComponent : SherpaModuleComponent<SpokenLanguageIdentification>
     {
@@ -32,7 +32,17 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onIdentificationFailed = new UnityEvent<string>();
 
-        protected override SpokenLanguageIdentification CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        /// <summary>
+        /// Event invoked once the component identifies a language.
+        /// </summary>
+        public UnityEvent<string> LanguageIdentifiedEvent => onLanguageIdentified;
+
+        /// <summary>
+        /// Event invoked whenever identification fails.
+        /// </summary>
+        public UnityEvent<string> IdentificationFailedEvent => onIdentificationFailed;
+
+        protected override SpokenLanguageIdentification CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new SpokenLanguageIdentification(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }

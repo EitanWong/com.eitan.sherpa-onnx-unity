@@ -4,24 +4,24 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class OfflineRecognizer : IDisposable
     {
         public OfflineRecognizer(OfflineRecognizerConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOfflineRecognizer(ref config);
+            IntPtr h = SherpaONNXCreateOfflineRecognizer(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public void SetConfig(OfflineRecognizerConfig config)
         {
-            SherpaOnnxOfflineRecognizerSetConfig(_handle.Handle, ref config);
+            SherpaONNXOfflineRecognizerSetConfig(_handle.Handle, ref config);
         }
 
         public OfflineStream CreateStream()
         {
-            IntPtr p = SherpaOnnxCreateOfflineStream(_handle.Handle);
+            IntPtr p = SherpaONNXCreateOfflineStream(_handle.Handle);
             return new OfflineStream(p);
         }
 
@@ -38,7 +38,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             List<IntPtr> list = new List<IntPtr>();
             foreach (OfflineStream s in streams)
             {
-              list.Add(s.Handle);
+                list.Add(s.Handle);
             }
             IntPtr[] ptrs = list.ToArray();
             Decode(_handle.Handle, ptrs, ptrs.Length);
@@ -59,7 +59,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflineRecognizer(_handle.Handle);
+            SherpaONNXDestroyOfflineRecognizer(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -68,21 +68,21 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         private HandleRef _handle;
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflineRecognizer(ref OfflineRecognizerConfig config);
+        private static extern IntPtr SherpaONNXCreateOfflineRecognizer(ref OfflineRecognizerConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOfflineRecognizerSetConfig(IntPtr handle, ref OfflineRecognizerConfig config);
+        private static extern void SherpaONNXOfflineRecognizerSetConfig(IntPtr handle, ref OfflineRecognizerConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflineRecognizer(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflineRecognizer(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflineStream(IntPtr handle);
+        private static extern IntPtr SherpaONNXCreateOfflineStream(IntPtr handle);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeOfflineStream")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeOfflineStream")]
         private static extern void Decode(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeMultipleOfflineStreams")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeMultipleOfflineStreams")]
         private static extern void Decode(IntPtr handle, IntPtr[] streams, int n);
     }
 

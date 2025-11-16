@@ -1,4 +1,4 @@
-﻿namespace Eitan.SherpaOnnxUnity.Tests
+﻿namespace Eitan.SherpaONNXUnity.Tests
 {
     // Licensed under the MIT License. See LICENSE in the project root for license information.
     using NUnit.Framework;

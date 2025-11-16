@@ -1,13 +1,13 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
 
 
     using System;
     using System.Collections.Generic;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
@@ -16,32 +16,32 @@ namespace Eitan.SherpaOnnxUnity.Editor
     /// <summary>
     /// Project Settings UI: Edit ▸ Project Settings ▸ SHERPA ONNX
     /// </summary>
-    internal sealed class SherpaOnnxSettingsProvider : SettingsProvider
+    internal sealed class SherpaONNXSettingsProvider : SettingsProvider
     {
-        private const string kPath = "Project/Sherpa Onnx";
-        private static readonly SherpaOnnxEditorLanguage[] kLanguageOptions =
-            (SherpaOnnxEditorLanguage[])Enum.GetValues(typeof(SherpaOnnxEditorLanguage));
+        private const string kPath = "Project/SherpaONNX";
+        private static readonly SherpaONNXEditorLanguage[] kLanguageOptions =
+            (SherpaONNXEditorLanguage[])Enum.GetValues(typeof(SherpaONNXEditorLanguage));
 
         private SerializedObject _runtimeSettingsObject;
         private VisualElement _rootElement;
         private string _runtimeSettingsAssetPath = string.Empty;
 
-        public SherpaOnnxSettingsProvider() : base(kPath, SettingsScope.Project) { }
+        public SherpaONNXSettingsProvider() : base(kPath, SettingsScope.Project) { }
 
         [SettingsProvider]
-        public static SettingsProvider Create() => new SherpaOnnxSettingsProvider();
+        public static SettingsProvider Create() => new SherpaONNXSettingsProvider();
 
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             _rootElement = rootElement;
             EnsureRuntimeSettingsObject();
-            SherpaOnnxLocalization.LanguageChanged += OnLanguageChanged;
+            SherpaONNXLocalization.LanguageChanged += OnLanguageChanged;
             BuildUi();
         }
 
         public override void OnDeactivate()
         {
-            SherpaOnnxLocalization.LanguageChanged -= OnLanguageChanged;
+            SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged;
             _rootElement = null;
             _runtimeSettingsObject = null;
         }
@@ -54,11 +54,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
             }
 
             _rootElement.Clear();
-            var settings = SherpaOnnxBuildSettings.Instance;
+            var settings = SherpaONNXBuildSettings.Instance;
 
-            var title = new Label(SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.BuildTitle,
-                "Sherpa Onnx Build Settings"));
+            var title = new Label(SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.BuildTitle,
+                "SherpaONNX Build Settings"));
             title.style.unityFontStyleAndWeight = FontStyle.Bold;
             title.style.marginTop = 6;
             title.style.marginBottom = 6;
@@ -66,12 +66,12 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             _rootElement.Add(CreateLanguageField());
 
-            var toggle = new Toggle(SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.IncludeModelsLabel,
+            var toggle = new Toggle(SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.IncludeModelsLabel,
                 "Include downloaded models in desktop builds (Windows/macOS/Linux)"))
             {
-                tooltip = SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.IncludeModelsTooltip,
+                tooltip = SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.IncludeModelsTooltip,
                     "If enabled, StreamingAssets/sherpa-onnx will be bundled into desktop builds. Default: OFF."),
                 value = settings.IncludeModelsInDesktopBuild
             };
@@ -79,8 +79,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             _rootElement.Add(toggle);
 
             var includeHelp = new HelpBox(
-                SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.IncludeModelsHelp,
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.IncludeModelsHelp,
                     "OFF (default): Standalone builds skip StreamingAssets/sherpa-onnx for faster iterations.\n" +
                     "ON: include the folder for offline-ready builds.\n" +
                     "Mobile/WebGL/consoles remain excluded because StreamingAssets is read-only."),
@@ -88,8 +88,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             includeHelp.style.marginTop = 6;
             _rootElement.Add(includeHelp);
 
-            var runtimeTitle = new Label(SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.RuntimeDefaultsTitle,
+            var runtimeTitle = new Label(SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.RuntimeDefaultsTitle,
                 "Runtime Environment Defaults"));
             runtimeTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
             runtimeTitle.style.marginTop = 10;
@@ -97,40 +97,40 @@ namespace Eitan.SherpaOnnxUnity.Editor
             _rootElement.Add(runtimeTitle);
 
             _rootElement.Add(CreatePropertyField(
-                SherpaOnnxRuntimeSettings.FetchLatestManifestPropertyName,
-                SherpaOnnxL10n.Settings.FetchLatestLabel,
+                SherpaONNXRuntimeSettings.FetchLatestManifestPropertyName,
+                SherpaONNXL10n.Settings.FetchLatestLabel,
                 "Fetch latest manifest before loading models",
-                SherpaOnnxL10n.Settings.FetchLatestTooltip,
+                SherpaONNXL10n.Settings.FetchLatestTooltip,
                 "If disabled, registry lookups rely on cached checksum.txt content."));
 
             _rootElement.Add(CreatePropertyField(
-                SherpaOnnxRuntimeSettings.AutoDownloadModelsPropertyName,
-                SherpaOnnxL10n.Settings.AutoDownloadLabel,
+                SherpaONNXRuntimeSettings.AutoDownloadModelsPropertyName,
+                SherpaONNXL10n.Settings.AutoDownloadLabel,
                 "Automatically download missing models",
-                SherpaOnnxL10n.Settings.AutoDownloadTooltip,
+                SherpaONNXL10n.Settings.AutoDownloadTooltip,
                 "Disable to enforce offline/manual installations. Verification still runs."));
 
             _rootElement.Add(CreatePropertyField(
-                SherpaOnnxRuntimeSettings.ChecksumCacheDirectoryPropertyName,
-                SherpaOnnxL10n.Settings.CacheDirectoryLabel,
+                SherpaONNXRuntimeSettings.ChecksumCacheDirectoryPropertyName,
+                SherpaONNXL10n.Settings.CacheDirectoryLabel,
                 "Checksum cache directory (optional)",
-                SherpaOnnxL10n.Settings.CacheDirectoryTooltip,
+                SherpaONNXL10n.Settings.CacheDirectoryTooltip,
                 "Absolute directory for checksum.txt cache files. Leave blank to use the temporary cache path."));
 
             _rootElement.Add(CreatePropertyField(
-                SherpaOnnxRuntimeSettings.ChecksumCacheTtlSecondsPropertyName,
-                SherpaOnnxL10n.Settings.CacheTtlLabel,
+                SherpaONNXRuntimeSettings.ChecksumCacheTtlSecondsPropertyName,
+                SherpaONNXL10n.Settings.CacheTtlLabel,
                 "Checksum cache TTL (seconds)",
-                SherpaOnnxL10n.Settings.CacheTtlTooltip,
+                SherpaONNXL10n.Settings.CacheTtlTooltip,
                 "0 disables caching. Default: 3600 seconds (1 hour)."));
 
             var clearCacheButton = new Button(ClearChecksumCacheWithPrompt)
             {
-                text = SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.CacheClearButton,
+                text = SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CacheClearButton,
                     "Delete cached checksum.txt files"),
-                tooltip = SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.CacheClearTooltip,
+                tooltip = SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CacheClearTooltip,
                     "Removes downloaded checksum manifests so the next lookup fetches a fresh copy.")
             };
             clearCacheButton.style.marginTop = 4;
@@ -139,12 +139,12 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             var runtimeHelp = new HelpBox(
                 string.Format(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.RuntimeHelp,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.RuntimeHelp,
                         "Settings are stored under any Resources folder so they ship with builds.\nCurrent asset: {0}"),
                     string.IsNullOrEmpty(_runtimeSettingsAssetPath)
-                        ? SherpaOnnxLocalization.Tr(
-                            SherpaOnnxL10n.Settings.RuntimeHelpMissing,
+                        ? SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.RuntimeHelpMissing,
                             "Asset will be created automatically.")
                         : _runtimeSettingsAssetPath),
                 HelpBoxMessageType.None);
@@ -154,24 +154,24 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private VisualElement CreateLanguageField()
         {
-            var label = SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.LanguageLabel,
+            var label = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.LanguageLabel,
                 "Editor language");
-            var tooltip = SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.LanguageTooltip,
+            var tooltip = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.LanguageTooltip,
                 "Auto follows the Unity Editor language. Override to lock Sherpa windows to a specific language.");
 
             var choices = new List<string>(kLanguageOptions.Length);
-            var indexMap = new Dictionary<string, SherpaOnnxEditorLanguage>(kLanguageOptions.Length);
+            var indexMap = new Dictionary<string, SherpaONNXEditorLanguage>(kLanguageOptions.Length);
             foreach (var lang in kLanguageOptions)
             {
-                var display = SherpaOnnxLocalization.GetLanguageDisplayName(lang);
+                var display = SherpaONNXLocalization.GetLanguageDisplayName(lang);
                 choices.Add(display);
                 indexMap[display] = lang;
             }
 
-            var current = SherpaOnnxLocalization.PreferredLanguage;
-            var currentLabel = SherpaOnnxLocalization.GetLanguageDisplayName(current);
+            var current = SherpaONNXLocalization.PreferredLanguage;
+            var currentLabel = SherpaONNXLocalization.GetLanguageDisplayName(current);
             var initialIndex = Mathf.Max(0, choices.IndexOf(currentLabel));
 
             var popup = new PopupField<string>(label, choices, initialIndex)
@@ -188,7 +188,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
                 if (indexMap.TryGetValue(evt.newValue, out var selected))
                 {
-                    SherpaOnnxLocalization.SetLanguage(selected);
+                    SherpaONNXLocalization.SetLanguage(selected);
                 }
             });
 
@@ -199,15 +199,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
         public override void OnGUI(string searchContext)
         {
             // IMGUI fallback
-            var settings = SherpaOnnxBuildSettings.Instance;
+            var settings = SherpaONNXBuildSettings.Instance;
             DrawLanguagePopup();
 
             EditorGUI.BeginChangeCheck();
             var newVal = EditorGUILayout.ToggleLeft(
                 new GUIContent(
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.Settings.IncludeModelsLabel,
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.IncludeModelsLabel,
                         "Include downloaded models in desktop builds (Windows/macOS/Linux)"),
-                    SherpaOnnxLocalization.Tr(SherpaOnnxL10n.Settings.IncludeModelsTooltip,
+                    SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.IncludeModelsTooltip,
                         "If enabled, StreamingAssets/sherpa-onnx will be bundled into desktop builds.")),
                 settings.IncludeModelsInDesktopBuild);
             if (EditorGUI.EndChangeCheck())
@@ -217,51 +217,51 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
 
             EditorGUILayout.HelpBox(
-                SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.IncludeModelsHelp,
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.IncludeModelsHelp,
                     "OFF (default): desktop builds ignore StreamingAssets/sherpa-onnx.\nON: include that folder."),
                 MessageType.Info);
 
             EnsureRuntimeSettingsObject();
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.RuntimeDefaultsTitle,
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.RuntimeDefaultsTitle,
                     "Runtime Environment Defaults"),
                 EditorStyles.boldLabel);
 
             _runtimeSettingsObject.Update();
             DrawRuntimeProperty(
-                SherpaOnnxRuntimeSettings.FetchLatestManifestPropertyName,
-                SherpaOnnxL10n.Settings.FetchLatestLabel,
+                SherpaONNXRuntimeSettings.FetchLatestManifestPropertyName,
+                SherpaONNXL10n.Settings.FetchLatestLabel,
                 "Fetch latest manifest before loading models",
-                SherpaOnnxL10n.Settings.FetchLatestTooltip,
+                SherpaONNXL10n.Settings.FetchLatestTooltip,
                 "If disabled, registry lookups rely on cached checksum.txt content.");
             DrawRuntimeProperty(
-                SherpaOnnxRuntimeSettings.AutoDownloadModelsPropertyName,
-                SherpaOnnxL10n.Settings.AutoDownloadLabel,
+                SherpaONNXRuntimeSettings.AutoDownloadModelsPropertyName,
+                SherpaONNXL10n.Settings.AutoDownloadLabel,
                 "Automatically download missing models",
-                SherpaOnnxL10n.Settings.AutoDownloadTooltip,
+                SherpaONNXL10n.Settings.AutoDownloadTooltip,
                 "Disable this to keep manual/offline installations untouched.");
             DrawRuntimeProperty(
-                SherpaOnnxRuntimeSettings.ChecksumCacheDirectoryPropertyName,
-                SherpaOnnxL10n.Settings.CacheDirectoryLabel,
+                SherpaONNXRuntimeSettings.ChecksumCacheDirectoryPropertyName,
+                SherpaONNXL10n.Settings.CacheDirectoryLabel,
                 "Checksum cache directory (optional)",
-                SherpaOnnxL10n.Settings.CacheDirectoryTooltip,
+                SherpaONNXL10n.Settings.CacheDirectoryTooltip,
                 "Absolute directory path. Leave empty to use the system temp directory.");
             DrawRuntimeProperty(
-                SherpaOnnxRuntimeSettings.ChecksumCacheTtlSecondsPropertyName,
-                SherpaOnnxL10n.Settings.CacheTtlLabel,
+                SherpaONNXRuntimeSettings.ChecksumCacheTtlSecondsPropertyName,
+                SherpaONNXL10n.Settings.CacheTtlLabel,
                 "Checksum cache TTL (seconds)",
-                SherpaOnnxL10n.Settings.CacheTtlTooltip,
+                SherpaONNXL10n.Settings.CacheTtlTooltip,
                 "Use 0 to disable caching entirely.");
 
             if (GUILayout.Button(new GUIContent(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.CacheClearButton,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CacheClearButton,
                         "Delete cached checksum.txt files"),
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.CacheClearTooltip,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CacheClearTooltip,
                         "Removes downloaded checksum manifests so the next lookup fetches a fresh copy."))))
             {
                 ClearChecksumCacheWithPrompt();
@@ -271,12 +271,12 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             EditorGUILayout.HelpBox(
                 string.Format(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.RuntimeHelp,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.RuntimeHelp,
                         "Settings are stored under any Resources folder so they ship with builds.\nCurrent asset: {0}"),
                     string.IsNullOrEmpty(_runtimeSettingsAssetPath)
-                        ? SherpaOnnxLocalization.Tr(
-                            SherpaOnnxL10n.Settings.RuntimeHelpMissing,
+                        ? SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.RuntimeHelpMissing,
                             "Asset will be created automatically.")
                         : _runtimeSettingsAssetPath),
                 MessageType.None);
@@ -284,21 +284,21 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private void ClearChecksumCacheWithPrompt()
         {
-            var result = SherpaOnnxUnityAPI.ClearChecksumCache();
+            var result = SherpaONNXUnityAPI.ClearChecksumCache();
             var cachePath = string.IsNullOrWhiteSpace(result.CacheDirectory)
-                ? SherpaOnnxLocalization.Tr(SherpaOnnxL10n.Models.StatusUnknown, "unknown")
+                ? SherpaONNXLocalization.Tr(SherpaONNXL10n.Models.StatusUnknown, "unknown")
                 : result.CacheDirectory;
-            const string dialogTitle = "Sherpa ONNX";
+            const string dialogTitle = "SherpaONNX";
             const string ok = "OK";
 
             if (result.HasErrors)
             {
                 var errorDetails = (result.Errors != null && result.Errors.Count > 0)
                     ? string.Join("\n", result.Errors)
-                    : SherpaOnnxLocalization.Tr(SherpaOnnxL10n.Models.StatusUnknown, "unknown");
+                    : SherpaONNXLocalization.Tr(SherpaONNXL10n.Models.StatusUnknown, "unknown");
                 var message = string.Format(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.CacheClearError,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CacheClearError,
                         "Deleted {0} file(s), but {1} failed:\n{2}"),
                     result.DeletedFiles,
                     result.FailedFiles,
@@ -310,8 +310,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             if (!result.DirectoryFound || !result.AnyDeleted)
             {
                 var emptyMessage = string.Format(
-                    SherpaOnnxLocalization.Tr(
-                        SherpaOnnxL10n.Settings.CacheClearEmpty,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CacheClearEmpty,
                         "No cached checksum.txt files were found under:\n{0}"),
                     cachePath);
                 EditorUtility.DisplayDialog(dialogTitle, emptyMessage, ok);
@@ -319,8 +319,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             }
 
             var successMessage = string.Format(
-                SherpaOnnxLocalization.Tr(
-                    SherpaOnnxL10n.Settings.CacheClearSuccess,
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CacheClearSuccess,
                     "Deleted {0} cached checksum file(s) from:\n{1}"),
                 result.DeletedFiles,
                 cachePath);
@@ -329,11 +329,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private void DrawLanguagePopup()
         {
-            var label = SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.LanguageLabel,
+            var label = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.LanguageLabel,
                 "Editor language");
-            var tooltip = SherpaOnnxLocalization.Tr(
-                SherpaOnnxL10n.Settings.LanguageTooltip,
+            var tooltip = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.LanguageTooltip,
                 "Auto follows the Unity Editor language.");
 
             var displayNames = new string[kLanguageOptions.Length];
@@ -341,8 +341,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
             for (var i = 0; i < kLanguageOptions.Length; i++)
             {
                 var lang = kLanguageOptions[i];
-                displayNames[i] = SherpaOnnxLocalization.GetLanguageDisplayName(lang);
-                if (lang == SherpaOnnxLocalization.PreferredLanguage)
+                displayNames[i] = SherpaONNXLocalization.GetLanguageDisplayName(lang);
+                if (lang == SherpaONNXLocalization.PreferredLanguage)
                 {
                     selectedIndex = i;
                 }
@@ -352,7 +352,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var newIndex = EditorGUILayout.Popup(new GUIContent(label, tooltip), selectedIndex, displayNames);
             if (EditorGUI.EndChangeCheck() && newIndex >= 0 && newIndex < kLanguageOptions.Length)
             {
-                SherpaOnnxLocalization.SetLanguage(kLanguageOptions[newIndex]);
+                SherpaONNXLocalization.SetLanguage(kLanguageOptions[newIndex]);
             }
         }
 
@@ -363,7 +363,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 return;
             }
 
-            var runtimeSettings = SherpaOnnxRuntimeSettingsUtility.LoadOrCreateSettingsAsset();
+            var runtimeSettings = SherpaONNXRuntimeSettingsUtility.LoadOrCreateSettingsAsset();
             _runtimeSettingsObject = new SerializedObject(runtimeSettings);
             _runtimeSettingsAssetPath = AssetDatabase.GetAssetPath(runtimeSettings);
         }
@@ -376,8 +376,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
         private void DrawRuntimeProperty(string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
         {
             var content = new GUIContent(
-                SherpaOnnxLocalization.Tr(labelKey, labelFallback),
-                SherpaOnnxLocalization.Tr(tooltipKey, tooltipFallback));
+                SherpaONNXLocalization.Tr(labelKey, labelFallback),
+                SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback));
             EditorGUILayout.PropertyField(_runtimeSettingsObject.FindProperty(propertyName), content);
         }
 
@@ -386,9 +386,9 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var prop = _runtimeSettingsObject.FindProperty(propertyName);
             var field = new PropertyField(
                 prop,
-                SherpaOnnxLocalization.Tr(labelKey, labelFallback))
+                SherpaONNXLocalization.Tr(labelKey, labelFallback))
             {
-                tooltip = SherpaOnnxLocalization.Tr(tooltipKey, tooltipFallback)
+                tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback)
             };
             field.Bind(_runtimeSettingsObject);
             field.style.marginBottom = 4;

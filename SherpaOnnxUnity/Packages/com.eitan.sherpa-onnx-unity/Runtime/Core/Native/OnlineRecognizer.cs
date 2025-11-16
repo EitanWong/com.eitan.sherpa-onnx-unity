@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     // please see
     // https://www.mono-project.com/docs/advanced/pinvoke/#gc-safe-pinvoke-code
@@ -14,13 +14,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
     {
         public OnlineRecognizer(OnlineRecognizerConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOnlineRecognizer(ref config);
+            IntPtr h = SherpaONNXCreateOnlineRecognizer(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public OnlineStream CreateStream()
         {
-            IntPtr p = SherpaOnnxCreateOnlineStream(_handle.Handle);
+            IntPtr p = SherpaONNXCreateOnlineStream(_handle.Handle);
             return new OnlineStream(p);
         }
 
@@ -35,7 +35,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         /// true.
         public bool IsEndpoint(OnlineStream stream)
         {
-            return SherpaOnnxOnlineStreamIsEndpoint(_handle.Handle, stream.Handle) != 0;
+            return SherpaONNXOnlineStreamIsEndpoint(_handle.Handle, stream.Handle) != 0;
         }
 
         /// You have to ensure that IsReady(stream) returns true before
@@ -53,7 +53,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             List<IntPtr> list = new List<IntPtr>();
             foreach (OnlineStream s in streams)
             {
-              list.Add(s.Handle);
+                list.Add(s.Handle);
             }
 
             IntPtr[] ptrs = list.ToArray();
@@ -71,7 +71,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         /// When this method returns, IsEndpoint(stream) will return false.
         public void Reset(OnlineStream stream)
         {
-            SherpaOnnxOnlineStreamReset(_handle.Handle, stream.Handle);
+            SherpaONNXOnlineStreamReset(_handle.Handle, stream.Handle);
         }
 
         public void Dispose()
@@ -89,7 +89,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOnlineRecognizer(_handle.Handle);
+            SherpaONNXDestroyOnlineRecognizer(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -98,33 +98,33 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         private HandleRef _handle;
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOnlineRecognizer(ref OnlineRecognizerConfig config);
+        private static extern IntPtr SherpaONNXCreateOnlineRecognizer(ref OnlineRecognizerConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOnlineRecognizer(IntPtr handle);
+        private static extern void SherpaONNXDestroyOnlineRecognizer(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOnlineStream(IntPtr handle);
+        private static extern IntPtr SherpaONNXCreateOnlineStream(IntPtr handle);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxIsOnlineStreamReady")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXIsOnlineStreamReady")]
         private static extern int IsReady(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeOnlineStream")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeOnlineStream")]
         private static extern void Decode(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeMultipleOnlineStreams")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDecodeMultipleOnlineStreams")]
         private static extern void Decode(IntPtr handle, IntPtr[] streams, int n);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxGetOnlineStreamResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXGetOnlineStreamResult")]
         private static extern IntPtr GetResult(IntPtr handle, IntPtr stream);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDestroyOnlineRecognizerResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDestroyOnlineRecognizerResult")]
         private static extern void DestroyResult(IntPtr result);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOnlineStreamReset(IntPtr handle, IntPtr stream);
+        private static extern void SherpaONNXOnlineStreamReset(IntPtr handle, IntPtr stream);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOnlineStreamIsEndpoint(IntPtr handle, IntPtr stream);
+        private static extern int SherpaONNXOnlineStreamIsEndpoint(IntPtr handle, IntPtr stream);
     }
 }

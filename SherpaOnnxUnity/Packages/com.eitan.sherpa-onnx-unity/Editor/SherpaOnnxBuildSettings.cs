@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
 
     using System;
@@ -8,10 +8,10 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
 
     /// <summary>
-    /// ProjectSettings-backed settings for Sherpa ONNX build behavior.
-    /// Saved as JSON in ProjectSettings/SherpaOnnxSettings.json
+    /// ProjectSettings-backed settings for SherpaONNX build behavior.
+    /// Saved as JSON in ProjectSettings/SherpaONNXSettings.json
     /// </summary>
-    internal sealed class SherpaOnnxBuildSettings
+    internal sealed class SherpaONNXBuildSettings
     {
         [Serializable]
         private class Data
@@ -21,11 +21,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
             public int version = 1;
         }
 
-        private const string kSettingsPath = "ProjectSettings/SherpaOnnxSettings.json";
-        private static SherpaOnnxBuildSettings _instance;
+        private const string kSettingsPath = "ProjectSettings/SherpaONNXSettings.json";
+        private static SherpaONNXBuildSettings _instance;
         private Data _data;
 
-        public static SherpaOnnxBuildSettings Instance => _instance ??= Load();
+        public static SherpaONNXBuildSettings Instance => _instance ??= Load();
 
         public bool IncludeModelsInDesktopBuild
         {
@@ -33,9 +33,9 @@ namespace Eitan.SherpaOnnxUnity.Editor
             set { if (_data.includeModelsInDesktopBuild != value) { _data.includeModelsInDesktopBuild = value; Save(); } }
         }
 
-        private static SherpaOnnxBuildSettings Load()
+        private static SherpaONNXBuildSettings Load()
         {
-            var inst = new SherpaOnnxBuildSettings { _data = new Data() };
+            var inst = new SherpaONNXBuildSettings { _data = new Data() };
             try
             {
                 if (File.Exists(kSettingsPath))

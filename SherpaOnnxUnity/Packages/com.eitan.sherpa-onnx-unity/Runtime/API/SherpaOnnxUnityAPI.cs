@@ -1,20 +1,20 @@
 
 
-// File: Packages/com.eitan.sherpa-onnx-unity/Runtime/API/SherpaOnnxUnityAPI.cs
+// File: Packages/com.eitan.sherpa-onnx-unity/Runtime/API/SherpaONNXUnityAPI.cs
 #nullable enable
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime;
-using Eitan.SherpaOnnxUnity.Runtime.Constants;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime;
+using Eitan.SherpaONNXUnity.Runtime.Constants;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
 
 /// <summary>
-/// Thin, user-friendly facade for common Sherpa ONNX settings.
+/// Thin, user-friendly facade for common SherpaONNX settings.
 /// Keep this API tiny and stable so developers have a simple entrypoint.
 /// </summary>
-public static class SherpaOnnxUnityAPI
+public static class SherpaONNXUnityAPI
 {
     /// <summary>
     /// Set a GitHub download acceleration proxy. Examples:
@@ -34,18 +34,18 @@ public static class SherpaOnnxUnityAPI
         if (!proxy.EndsWith("/", StringComparison.Ordinal))
         { proxy += "/"; }
 
-        SherpaOnnxEnvironment.Set(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy, proxy);
+        SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.GithubProxy, proxy);
     }
 
     /// <summary>Remove the configured GitHub proxy, if any.</summary>
     public static void ClearGithubProxy()
     {
-        SherpaOnnxEnvironment.Remove(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy);
+        SherpaONNXEnvironment.Remove(SherpaONNXEnvironment.BuiltinKeys.GithubProxy);
     }
 
-    public static async Task<string[]> GetModelIDByTypeAsync(SherpaOnnxModuleType type)
+    public static async Task<string[]> GetModelIDByTypeAsync(SherpaONNXModuleType type)
     {
-        var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync();
+        var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync();
         return manifest.Filter(m => m.moduleType == type).Select(m => m.modelId).ToArray();
     }
 
@@ -59,6 +59,6 @@ public static class SherpaOnnxUnityAPI
     /// </summary>
     public static SherpaChecksumCacheClearResult ClearChecksumCache()
     {
-        return SherpaOnnxConstants.ClearChecksumCache();
+        return SherpaONNXConstants.ClearChecksumCache();
     }
 }

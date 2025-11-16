@@ -4,19 +4,19 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class AudioTagging : IDisposable
     {
         public AudioTagging(AudioTaggingConfig config)
         {
-            IntPtr h = SherpaOnnxCreateAudioTagging(ref config);
+            IntPtr h = SherpaONNXCreateAudioTagging(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public OfflineStream CreateStream()
         {
-            IntPtr p = SherpaOnnxAudioTaggingCreateOfflineStream(_handle.Handle);
+            IntPtr p = SherpaONNXAudioTaggingCreateOfflineStream(_handle.Handle);
             return new OfflineStream(p);
         }
 
@@ -24,31 +24,31 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         // if topK > 0, then config.TopK is ignored
         public AudioEvent[] Compute(OfflineStream stream, int topK = -1)
         {
-            IntPtr p = SherpaOnnxAudioTaggingCompute(_handle.Handle, stream.Handle, topK);
+            IntPtr p = SherpaONNXAudioTaggingCompute(_handle.Handle, stream.Handle, topK);
 
             var result = new List<AudioEvent>();
 
             if (p == IntPtr.Zero)
             {
-              return result.ToArray();
+                return result.ToArray();
             }
 
             int index = 0;
             while (true)
             {
-              IntPtr e = Marshal.ReadIntPtr(p, index * IntPtr.Size);
-              if (e == IntPtr.Zero)
-              {
-                break;
-              }
+                IntPtr e = Marshal.ReadIntPtr(p, index * IntPtr.Size);
+                if (e == IntPtr.Zero)
+                {
+                    break;
+                }
 
-              AudioEvent ae = new AudioEvent(e);
-              result.Add(ae);
+                AudioEvent ae = new AudioEvent(e);
+                result.Add(ae);
 
-              ++index;
+                ++index;
             }
 
-            SherpaOnnxAudioTaggingFreeResults(p);
+            SherpaONNXAudioTaggingFreeResults(p);
 
             return result.ToArray();
         }
@@ -68,7 +68,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyAudioTagging(_handle.Handle);
+            SherpaONNXDestroyAudioTagging(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -78,19 +78,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateAudioTagging(ref AudioTaggingConfig config);
+        private static extern IntPtr SherpaONNXCreateAudioTagging(ref AudioTaggingConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyAudioTagging(IntPtr handle);
+        private static extern void SherpaONNXDestroyAudioTagging(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxAudioTaggingCreateOfflineStream(IntPtr handle);
+        private static extern IntPtr SherpaONNXAudioTaggingCreateOfflineStream(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxAudioTaggingCompute(IntPtr handle, IntPtr stream, int topK);
+        private static extern IntPtr SherpaONNXAudioTaggingCompute(IntPtr handle, IntPtr stream, int topK);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxAudioTaggingFreeResults(IntPtr p);
+        private static extern void SherpaONNXAudioTaggingFreeResults(IntPtr p);
     }
 }
 

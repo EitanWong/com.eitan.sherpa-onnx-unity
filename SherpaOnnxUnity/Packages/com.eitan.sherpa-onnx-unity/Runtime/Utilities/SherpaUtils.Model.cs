@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     public partial class SherpaUtils
     {
@@ -82,44 +82,44 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 
             #region Methods
 
-            internal static SherpaOnnxModuleType GetModuleTypeByModelId(string modelID)
+            internal static SherpaONNXModuleType GetModuleTypeByModelId(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))
-                { return SherpaOnnxModuleType.Undefined; }
+                { return SherpaONNXModuleType.Undefined; }
 
                 // Order matters: avoid collisions (e.g., Whisper ASR vs LID)
                 if (IsKeywordSpottingModel(modelID))
-                { return SherpaOnnxModuleType.KeywordSpotting; }
+                { return SherpaONNXModuleType.KeywordSpotting; }
 
                 // Order matters: avoid collisions (e.g., Zipformer ASR vs ATG)
                 var atgType = GetAudioTaggingModelType(modelID);
                 if (atgType != AudioTaggingModelType.None)
-                { return SherpaOnnxModuleType.AudioTagging; }
+                { return SherpaONNXModuleType.AudioTagging; }
 
                 var asrType = GetSpeechRecognitionModelType(modelID);
                 if (asrType != SpeechRecognitionModelType.None)
-                { return SherpaOnnxModuleType.SpeechRecognition; }
+                { return SherpaONNXModuleType.SpeechRecognition; }
 
                 var ttsType = GetSpeechSynthesisModelType(modelID);
                 if (ttsType != SpeechSynthesisModelType.None)
-                { return SherpaOnnxModuleType.SpeechSynthesis; }
+                { return SherpaONNXModuleType.SpeechSynthesis; }
 
                 var vadType = GetVoiceActivityDetectionModelType(modelID);
                 if (vadType != VoiceActivityDetectionModelType.None)
-                { return SherpaOnnxModuleType.VoiceActivityDetection; }
+                { return SherpaONNXModuleType.VoiceActivityDetection; }
 
                 if (IsSpeechEnhancementModel(modelID))
-                { return SherpaOnnxModuleType.SpeechEnhancement; }
+                { return SherpaONNXModuleType.SpeechEnhancement; }
 
                 var lidType = GetSpokenLanguageIdentificationModelType(modelID);
                 if (lidType != SpokenLanguageIdentificationModelType.None)
-                { return SherpaOnnxModuleType.SpokenLanguageIdentification; }
+                { return SherpaONNXModuleType.SpokenLanguageIdentification; }
 
 
                 if (IsPunctuationModel(modelID))
-                { return SherpaOnnxModuleType.AddPunctuation; }
+                { return SherpaONNXModuleType.AddPunctuation; }
 
-                return SherpaOnnxModuleType.Undefined;
+                return SherpaONNXModuleType.Undefined;
             }
 
             internal static SpeechRecognitionModelType GetSpeechRecognitionModelType(string modelID)

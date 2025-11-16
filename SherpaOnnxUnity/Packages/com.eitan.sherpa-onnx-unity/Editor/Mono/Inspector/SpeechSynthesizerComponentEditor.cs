@@ -3,8 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -60,12 +60,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onFeedbackProp = serializedObject.FindProperty("onFeedbackMessage");
             onInitializedProp = serializedObject.FindProperty("onInitializationStateChanged");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.SpeechSynthesis, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.SpeechSynthesis, Repaint);
             modelSelector.Refresh();
 
             if (string.IsNullOrEmpty(previewText))
             {
-                previewText = SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.PreviewDefaultText, "Hello from sherpa-onnx!");
+                previewText = SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechSynthesizer.PreviewDefaultText, "Hello from sherpa-onnx!");
             }
         }
 
@@ -91,19 +91,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
 
                 EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"), true);
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"), true);
                 EditorGUI.EndDisabledGroup();
                 EditorGUILayout.HelpBox(
-                    SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.HelpSampleRateIgnored, "Speech synthesis modules ignore the sample rate field (fixed at -1) and derive the correct value from the model metadata."),
+                    SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.HelpSampleRateIgnored, "Speech synthesis modules ignore the sample rate field (fixed at -1) and derive the correct value from the model metadata."),
                     MessageType.Info);
 
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -111,19 +111,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.SectionSynthesis, "Synthesis"), Styles.Header);
-                EditorGUILayout.PropertyField(audioSourceProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.FieldOutputAudioSource, "Output AudioSource"));
-                EditorGUILayout.PropertyField(autoplayProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.FieldAutoplay, "Autoplay Result"));
-                EditorGUILayout.PropertyField(voiceIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.FieldVoiceId, "Voice ID"));
-                EditorGUILayout.Slider(speechRateProp, 0.5f, 2.5f, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.FieldSpeechRate, "Speech Rate"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechSynthesizer.SectionSynthesis, "Synthesis"), Styles.Header);
+                EditorGUILayout.PropertyField(audioSourceProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.FieldOutputAudioSource, "Output AudioSource"));
+                EditorGUILayout.PropertyField(autoplayProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.FieldAutoplay, "Autoplay Result"));
+                EditorGUILayout.PropertyField(voiceIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.FieldVoiceId, "Voice ID"));
+                EditorGUILayout.Slider(speechRateProp, 0.5f, 2.5f, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.FieldSpeechRate, "Speech Rate"));
 
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.SectionPreview, "Preview"), Styles.Header);
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechSynthesizer.SectionPreview, "Preview"), Styles.Header);
                 previewText = EditorGUILayout.TextArea(previewText, GUILayout.MinHeight(40));
 
                 using (new EditorGUI.DisabledScope(!Application.isPlaying))
                 {
-                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.ButtonSynthesizePreview, "Synthesize Preview")))
+                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpeechSynthesizer.ButtonSynthesizePreview, "Synthesize Preview")))
                     {
                         runtimeComponent.SynthesizeText(previewText);
                     }
@@ -135,15 +135,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onStartedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.EventStarted, "On Synthesis Started"));
-                EditorGUILayout.PropertyField(onClipProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.EventClipReady, "On Clip Ready"));
-                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpeechSynthesizer.EventFailed, "On Synthesis Failed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onStartedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.EventStarted, "On Synthesis Started"));
+                EditorGUILayout.PropertyField(onClipProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.EventClipReady, "On Clip Ready"));
+                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpeechSynthesizer.EventFailed, "On Synthesis Failed"));
 
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionLifecycleEvents, "Lifecycle Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onInitializedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.EventInitialized, "On Initialization State Changed"));
-                EditorGUILayout.PropertyField(onFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.EventFeedback, "On Feedback Message"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionLifecycleEvents, "Lifecycle Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onInitializedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.EventInitialized, "On Initialization State Changed"));
+                EditorGUILayout.PropertyField(onFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.EventFeedback, "On Feedback Message"));
             }
         }
     }

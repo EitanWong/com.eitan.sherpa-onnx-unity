@@ -1,6 +1,6 @@
 {
   "name": "com.eitan.sherpa-onnx-unity",
-  "displayName": "SherpaOnnxUnity",
+  "displayName": "SherpaONNXUnity",
   "description": "Offline ASR/TTS for Unity via sherpa-onnx. Supports diarization, enhancement, and VAD.",
   "keywords": [
     "sherpa",
@@ -32,13 +32,13 @@
   ],
   "version": "0.1.2-exp.1",
   "unity": "2021.3",
-  "documentationUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/README.md",
-  "changelogUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md",
+  "documentationUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/README.md",
+  "changelogUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md",
   "license": "MIT",
   "samples": [
     {
-      "displayName": "SherpaOnnxUnity Sample",
-      "description": "A collection of samples demonstrating how to use SherpaOnnxUnity for various ASR/TTS tasks.",
+      "displayName": "SherpaONNXUnity Sample",
+      "description": "A collection of samples demonstrating how to use SherpaONNXUnity for various ASR/TTS tasks.",
       "path": "Samples~/Collection"
     }
   ],

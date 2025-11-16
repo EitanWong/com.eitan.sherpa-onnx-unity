@@ -45,7 +45,7 @@
     { "key": "common.language.persian", "value": "Persian" },
     { "key": "common.language.hebrew", "value": "Hebrew" },
 
-    { "key": "settings.build.title", "value": "Sherpa Onnx Build Settings" },
+    { "key": "settings.build.title", "value": "SherpaONNX Build Settings" },
     { "key": "settings.includeModels.label", "value": "Include downloaded models in desktop builds (Windows/macOS/Linux)" },
     { "key": "settings.includeModels.tooltip", "value": "If enabled, StreamingAssets/sherpa-onnx will be bundled into desktop builds. Default: OFF." },
     { "key": "settings.includeModels.help", "value": "OFF (default): Standalone builds skip StreamingAssets/sherpa-onnx for faster iterations.\nON: include the folder for offline-ready builds.\nMobile/WebGL/consoles remain excluded because StreamingAssets is read-only." },
@@ -74,8 +74,8 @@
     { "key": "keyword.threshold.tooltip", "value": "Minimum acoustic score (0-1). Lower values make the keyword easier to trigger." },
     { "key": "keyword.error.missingFields", "value": "KeywordRegistration fields not found." },
 
-    { "key": "models.window.title", "value": "Sherpa ONNX Models" },
-    { "key": "models.header", "value": "Sherpa ONNX Model Manager" },
+    { "key": "models.window.title", "value": "SherpaONNX Models" },
+    { "key": "models.header", "value": "SherpaONNX Model Manager" },
     { "key": "models.loading.remote", "value": "Fetching model manifest from GitHub…" },
     { "key": "models.loading.generic", "value": "Fetching model manifest…" },
     { "key": "models.notification.manifestLoadFailed", "value": "Manifest load failed: {0}" },

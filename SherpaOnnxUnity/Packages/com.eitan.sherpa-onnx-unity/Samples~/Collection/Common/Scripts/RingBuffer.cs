@@ -1,8 +1,8 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
- using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Threading;
+    using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
+    using System.Threading;
 
     /// <summary>
     /// Implementation of the Disruptor pattern
@@ -84,7 +84,7 @@ using System.Threading;
             var next = _producerCursor.ReadAcquireFence() + 1;
 
             long wrapPoint = next - _entries.Length;
-            long min = _consumerCursor.ReadAcquireFence(); 
+            long min = _consumerCursor.ReadAcquireFence();
 
             while (wrapPoint > min)
             {

@@ -1,468 +1,224 @@
-
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
+    using System;
+    using System.Collections.Generic;
     using System.Linq;
-
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
-
+    using Eitan.Sherpa.Onnx.Unity.Mono.Components;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
-    using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
+    /// <summary>
+    /// Simple UI bridge for <see cref="SpeechSynthesizerComponent"/>.
+    /// Type a sentence, optionally tweak voice/speed, then generate speech.
+    /// </summary>
     [RequireComponent(typeof(AudioSource))]
-    public class SpeechSynthesisExample : MonoBehaviour, ISherpaFeedbackHandler
+    public sealed class SpeechSynthesisExample : MonoBehaviour
     {
-        // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
-        [Header("UI Components")]
-        [SerializeField] private Dropdown _modelIDDropdown;
-        [SerializeField] private Button _modelLoadOrUnloadButton;
-        [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
-        [SerializeField] private Text _totalInitBarText;
-        [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _speechSynthesisStatusText;
+        [Header("Sherpa Component")]
+        [SerializeField] private SpeechSynthesizerComponent synthesizer;
 
-        // here is the components for TTS demo needed
-        [Header("TTS Components")]
-        [SerializeField] private RectTransform _containerRectTransform;
-        [SerializeField] private InputField _voiceInputField;
-        [SerializeField] private Slider _speedSlider;
-        [SerializeField] private Text _speedValueText;
-        [SerializeField] private InputField _contentInputField;
-        [SerializeField] private Button _generateButton;
-        private SpeechSynthesis TTS;
+        [Header("UI")]
+        [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Button loadOrUnloadButton;
+        [SerializeField] private InputField voiceIdInput;
+        [SerializeField] private Slider speedSlider;
+        [SerializeField] private Text speedLabel;
+        [SerializeField] private InputField textInput;
+        [SerializeField] private Button synthesizeButton;
+        [SerializeField] private Text statusText;
 
-        private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "vits-melo-tts-zh_en";
+        [SerializeField]
+        [Tooltip("Placeholder text that can be inserted into the text field on Enable.")]
+        private string defaultUtterance = "SherpaONNX makes neural speech easy.";
 
-        private AudioSource audioSource;
-        private bool _isGenerating = false;
-        private AudioClip _lastGeneratedClip;
-        private ModelLoadProgressTracker _progressTracker;
+        private bool modelRequested;
 
-        /// <summary>
-        /// True if the TTS model is loaded.
-        /// </summary>
-        private bool IsModelLoaded => TTS != null;
-
-        #region Unity Lifecycle Methods
-        private void Start()
+        private void Awake()
         {
-            audioSource = GetComponent<AudioSource>();
-            Application.runInBackground = true;
-            Application.targetFrameRate = 30;
-            _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            _generateButton.onClick.AddListener(HandleGenerateButtonClick);
-            _speedSlider.onValueChanged.AddListener(OnSpeedSliderChanged);
-            _totalInitProgressBar.gameObject.SetActive(false);
-            _initMessageText.gameObject.SetActive(false);
-            _tipsText.text = "Load a model to begin.";
-            _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
-            _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
-            _ = InitDropdownAsync();
-            UpdateLoadButtonUI();
-            SetOperationContainerDisplay(false);
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.onClick.AddListener(ToggleModel);
+            }
+
+            if (synthesizeButton != null)
+            {
+                synthesizeButton.onClick.AddListener(StartSynthesis);
+            }
+
+            if (speedSlider != null)
+            {
+                speedSlider.onValueChanged.AddListener(value => speedLabel.text = $"Speed: {value:F1}x");
+            }
+
+            if (synthesizer != null)
+            {
+                synthesizer.SynthesisStartedEvent.AddListener(() => statusText.text = "Generating audio…");
+                synthesizer.ClipReadyEvent.AddListener(clip => statusText.text = clip != null ? $"Generated {clip.length:F1}s clip." : "Empty clip returned.");
+                synthesizer.SynthesisFailedEvent.AddListener(message => statusText.text = message);
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (textInput != null && string.IsNullOrWhiteSpace(textInput.text))
+            {
+                textInput.text = defaultUtterance;
+            }
+
+            if (speedSlider != null)
+            {
+                speedLabel.text = $"Speed: {speedSlider.value:F1}x";
+            }
+
+            _ = PopulateDropdownAsync();
+            UpdateButtonLabel();
+            synthesizeButton.interactable = false;
+            statusText.text = "Load a TTS model to begin.";
         }
 
         private void OnDestroy()
         {
-            // Ensure all resources are properly released when the object is destroyed.
-            Cleanup();
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.onClick.RemoveListener(ToggleModel);
+            }
 
-            // Clean up UI event listeners to prevent memory leaks.
-            if (_modelLoadOrUnloadButton != null)
+            if (synthesizeButton != null)
             {
-                _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
+                synthesizeButton.onClick.RemoveListener(StartSynthesis);
             }
-            if (_generateButton != null)
+
+            if (speedSlider != null)
             {
-                _generateButton.onClick.RemoveListener(HandleGenerateButtonClick);
+                speedSlider.onValueChanged.RemoveAllListeners();
             }
-            if (_speedSlider != null)
+
+            if (synthesizer != null)
             {
-                _speedSlider.onValueChanged.RemoveListener(OnSpeedSliderChanged);
+                synthesizer.SynthesisStartedEvent.RemoveAllListeners();
+                synthesizer.ClipReadyEvent.RemoveAllListeners();
+                synthesizer.SynthesisFailedEvent.RemoveAllListeners();
             }
         }
-        #endregion
 
-        #region Model and Recording Control
-        /// <summary>
-        /// Loads the TTS model with the specified ID and prepares for recording.
-        /// </summary>
-        /// <param name="modelID">The ID of the model to load.</param>
-        private void Load(string modelID)
+        private async Task PopulateDropdownAsync()
         {
-            if (IsModelLoaded)
+            if (modelDropdown == null)
             {
-                Debug.LogError("Please unload the current model first.");
                 return;
             }
 
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
-            TTS = new SpeechSynthesis(modelID, reporter: reporter);
+            modelDropdown.options.Clear();
+            modelDropdown.captionText.text = "Loading TTS models…";
+            modelDropdown.interactable = false;
 
-            UpdateLoadButtonUI();
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis).ConfigureAwait(true);
 
-        }
-
-        /// <summary>
-        /// Unloads the current TTS model and releases all related resources.
-        /// </summary>
-        private void Unload()
-        {
-            if (!IsModelLoaded)
+            if (manifest.models == null || manifest.models.Count == 0)
             {
-                Debug.LogWarning("No model is loaded, no need to unload.");
+                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
                 return;
             }
 
-            Cleanup();
-            _progressTracker?.Reset();
-            _progressTracker?.SetVisible(false);
-            _speechSynthesisStatusText.text = "TTS Status: Model not loaded\nPlease select a model to load.";
-            _tipsText.text = "Load a model to begin.";
-            UpdateLoadButtonUI();
-            SetOperationContainerDisplay(false);
+            List<Dropdown.OptionData> options = manifest.models
+                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                .Select(m => new Dropdown.OptionData(m.modelId))
+                .ToList();
+
+            modelDropdown.AddOptions(options);
+            modelDropdown.interactable = true;
         }
 
-        /// <summary>
-        /// A unified resource cleanup method to release all occupied resources.
-        /// </summary>
-        private void Cleanup()
+        private string SelectedModelId =>
+            modelDropdown != null && modelDropdown.options.Count > 0
+                ? modelDropdown.options[modelDropdown.value].text
+                : string.Empty;
+
+        private void ToggleModel()
         {
-            // Reset playback state
-            if (audioSource != null && audioSource.isPlaying)
+            if (synthesizer == null)
             {
-                audioSource.Stop();
-            }
-            // accumulatedSpeech.Clear();
-            if (TTS != null)
-            {
-                TTS?.Dispose();
-                TTS = null;
-            }
-
-            _progressTracker?.Reset();
-            _progressTracker?.SetVisible(false);
-        }
-        #endregion
-
-        #region UI and Initialization
-
-        private async Task InitDropdownAsync()
-        {
-            _modelIDDropdown.options.Clear();
-            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
-            _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechSynthesis);
-            _modelLoadOrUnloadButton.gameObject.SetActive(true);
-            _modelIDDropdown.options.Clear();
-            if (manifest.models != null)
-            {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.Filter(m => !m.modelId.StartsWith("sherpa-onnx-zipvoice")).Select(m => new OptionData(m.modelId)).ToList();
-                _modelIDDropdown.AddOptions(modelOptions);
-
-                var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);
-                _modelIDDropdown.value = defaultIndex;
-                _modelIDDropdown.interactable = true;
-            }
-            else
-            {
-                _modelIDDropdown.interactable = false;
-            }
-        }
-
-        private void UpdateLoadButtonUI()
-        {
-
-            if (IsModelLoaded)// Model is already loaded
-            {
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Unload Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = Color.red;
-                _modelIDDropdown.interactable = false;
-
-                _totalInitProgressBar.gameObject.SetActive(true);
-                _initMessageText.gameObject.SetActive(true);
-            }
-            else // No model loaded, preparing to initialize a new one
-            {
-
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Load Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = _originLoadBtnColor;
-                _modelIDDropdown.interactable = true;
-
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-                _tipsText.text = "Load a model to begin.";
-
-            }
-        }
-
-        private void HandleModelLoadOrUnloadButtonClick()
-        {
-            if (IsModelLoaded)// Model is already loaded
-            {
-                Unload();
-            }
-            else // No model loaded, initialize a new one
-            {
-                Load(_modelIDDropdown.captionText.text);
-            }
-
-        }
-
-        private void SetOperationContainerDisplay(bool isVisible)
-        {
-            _containerRectTransform.gameObject.SetActive(isVisible);
-            if (isVisible)
-            {
-                _tipsText.text = "Model loaded. Enter text and click Generate.";
-            }
-            else
-            {
-                _tipsText.text = "Load a model to begin.";
-            }
-        }
-
-        private async void HandleGenerateButtonClick()
-        {
-            await GenerateSpeechAsync(_contentInputField.text, int.Parse(_voiceInputField.text), _speedSlider.value);
-        }
-
-
-        #endregion
-
-        #region TTS Core Logic
-        private async Task PlayAndResumeAsync(AudioClip clip)
-        {
-
-            audioSource.clip = clip;
-            audioSource.Play();
-            _speechSynthesisStatusText.text = $"Playing: <color=blue>{clip.length:F2}s</color>";
-            _tipsText.text = "Playing generated speech.";
-            // Debug.Log($"Playing back {clip.length:F2} seconds of audio.");
-
-            // Wait for playback to complete.
-            while (audioSource && audioSource.isPlaying)
-            {
-                await Task.Yield();
-            }
-
-
-            // Reset the flag to allow audio processing to resume.
-            if (IsModelLoaded)
-            {
-                _speechSynthesisStatusText.text = "TTS Status: <color=green>Ready</color>";
-                _tipsText.text = "Playback finished. Enter text and click Generate.";
-            }
-        }
-
-        private async Task GenerateSpeechAsync(string text, int voiceID, float speed)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                _tipsText.text = "Please enter text to generate speech.";
+                statusText.text = "Assign the SpeechSynthesizerComponent.";
                 return;
             }
 
-            if (voiceID < 0)
+            if (!modelRequested)
             {
-                _tipsText.text = "Please enter a valid number of voiceID.";
-                return;
-            }
-
-            if (!IsModelLoaded)
-            {
-                _tipsText.text = "No model loaded. Please load a model first.";
-                return;
-            }
-
-            _speechSynthesisStatusText.text = "TTS Status: <color=yellow>Generating...</color>";
-            _tipsText.text = "Generating speech, please wait...";
-
-            var generatedAudio = await TTS.GenerateAsync(text, voiceID, speed);
-            // UnityEngine.Debug.Log(generatedAudio);
-            if (generatedAudio == null)
-            {
-                _tipsText.text = "Failed to generate speech. Please check the input text and model.";
-                _speechSynthesisStatusText.text = "TTS Status: <color=red>Generated Failed</color>";
-                return;
-            }
-            await PlayAndResumeAsync(generatedAudio);
-        }
-        #endregion
-
-        #region ISherpaFeedbackHandler Implementation
-
-        public void OnFeedback(PrepareFeedback feedback)
-        {
-            _progressTracker.Reset();
-            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
-            _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
-        }
-
-        public void OnFeedback(DownloadFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(CleanFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
-        }
-
-        public void OnFeedback(VerifyFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(DecompressFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(LoadFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
-            _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            Unload();
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-        }
-
-        public void OnFeedback(SuccessFeedback feedback)
-        {
-            _progressTracker.Complete("Success");
-            _progressTracker.SetVisible(false);
-            _contentInputField.text = string.Empty;
-            _initMessageText.text = string.Empty;
-            _speechSynthesisStatusText.text = "TTS Status: <color=green>Ready</color>";
-            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded. Enter text and click Generate.";
-            SetOperationContainerDisplay(true);
-            InitializeDefaultValues();
-
-        }
-
-        public void OnFeedback(FailedFeedback feedback)
-        {
-            Debug.LogError($"[Failed] :{feedback.Message}");
-            Cleanup();
-            _initMessageText.text = feedback.Message;
-            _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model failed to load.";
-            _speechSynthesisStatusText.text = "TTS Status: <color=red>Load failed</color>";
-            UpdateLoadButtonUI();
-            SetOperationContainerDisplay(false);
-
-        }
-        #endregion
-
-        #region Enhanced UX Methods
-
-        private void InitializeDefaultValues()
-        {
-            // Set helpful defaults
-            if (_voiceInputField != null)
-            {
-                _voiceInputField.text = "0";
-                _voiceInputField.placeholder.GetComponent<Text>().text = "Voice ID (0, 1, 2...)";
-            }
-
-            if (_speedSlider != null)
-            {
-                _speedSlider.value = 1f;
-                _speedSlider.minValue = 0.5f;
-                _speedSlider.maxValue = 2.0f;
-            }
-
-            if (_contentInputField != null)
-            {
-                _contentInputField.placeholder.GetComponent<Text>().text = "Enter text to synthesize speech...";
-            }
-        }
-
-
-
-        private void OnSpeedSliderChanged(float value)
-        {
-            // Show speed value in tips when changing
-            if (!_isGenerating && IsModelLoaded)
-            {
-                // _tipsText.text = $"<b>🎛 Speed Adjusted:</b> {value:F1}x\n• 0.5x = Slower speech\n• 1.0x = Normal speed\n• 2.0x = Faster speech";
-                _speedValueText.text = $"Speed {value:F2}x：";
-            }
-        }
-
-        private bool ValidateInputs()
-        {
-            if (string.IsNullOrWhiteSpace(_contentInputField.text))
-            {
-                _tipsText.text = "<b><color=orange>⚠ Missing Text</color></b>\nPlease enter text to generate speech.";
-                _speechSynthesisStatusText.text = "<color=orange>⚠ Input Required</color>";
-                return false;
-            }
-
-            if (!int.TryParse(_voiceInputField.text, out int voiceID) || voiceID < 0)
-            {
-                _tipsText.text = "<b><color=orange>⚠ Invalid Voice ID</color></b>\nPlease enter a valid voice ID number.\n\n<b>Common Values:</b> 0, 1, 2, 3...";
-                _speechSynthesisStatusText.text = "<color=orange>⚠ Invalid Voice ID</color>";
-                return false;
-            }
-
-            if (!IsModelLoaded)
-            {
-                _tipsText.text = "<b><color=red>❌ No Model Loaded</color></b>\nPlease load a TTS model first.\n\n<b>Steps:</b>\n1. Select model from dropdown\n2. Click 'Load Model'\n3. Wait for loading to complete";
-                _speechSynthesisStatusText.text = "<color=red>❌ Model Required</color>";
-                return false;
-            }
-
-            if (_isGenerating)
-            {
-                _tipsText.text = "<b><color=yellow>⏳ Generation in Progress</color></b>\nPlease wait for current generation to complete.";
-                return false;
-            }
-
-            return true;
-        }
-
-        private void UpdateGenerateButtonState()
-        {
-            if (_generateButton != null)
-            {
-                bool canGenerate = IsModelLoaded && !_isGenerating;
-                _generateButton.interactable = canGenerate;
-
-                var buttonText = _generateButton.GetComponentInChildren<Text>();
-                if (buttonText != null)
+                var modelId = SelectedModelId;
+                if (string.IsNullOrWhiteSpace(modelId))
                 {
-                    if (_isGenerating)
-                    {
-                        buttonText.text = "Generating...";
-                    }
-                    else if (!IsModelLoaded)
-                    {
-                        buttonText.text = "Load Model First";
-                    }
-                    else
-                    {
-                        buttonText.text = "Generate Speech";
-                    }
+                    statusText.text = "Select a model first.";
+                    return;
+                }
+
+                synthesizer.ModelId = modelId.Trim();
+                if (synthesizer.TryLoadModule())
+                {
+                    modelRequested = true;
+                    statusText.text = $"Loaded {synthesizer.ModelId}.";
                 }
             }
+            else
+            {
+                synthesizer.DisposeModule();
+                modelRequested = false;
+                statusText.text = "Model disposed.";
+            }
+
+            UpdateButtonLabel();
+            synthesizeButton.interactable = modelRequested;
         }
-        #endregion
+
+        private void UpdateButtonLabel()
+        {
+            if (loadOrUnloadButton == null)
+            {
+                return;
+            }
+
+            var label = loadOrUnloadButton.GetComponentInChildren<Text>();
+            if (label != null)
+            {
+                label.text = modelRequested ? "Unload Model" : "Load Model";
+            }
+        }
+
+        private async void StartSynthesis()
+        {
+            if (!modelRequested || synthesizer == null)
+            {
+                statusText.text = "Load a model first.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(textInput?.text))
+            {
+                statusText.text = "Enter some text to synthesize.";
+                return;
+            }
+
+            int? voiceId = null;
+            if (!string.IsNullOrWhiteSpace(voiceIdInput?.text) && int.TryParse(voiceIdInput.text, out var parsedVoice))
+            {
+                voiceId = parsedVoice;
+            }
+
+            var clip = await synthesizer.GenerateClipAsync(
+                textInput.text.Trim(),
+                voiceId,
+                speedSlider != null ? speedSlider.value : (float?)null).ConfigureAwait(true);
+
+            if (clip == null)
+            {
+                statusText.text = "Generation cancelled or failed.";
+            }
+        }
 
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
-            _tipsText.text = "<b>🔗 Opening GitHub Repository</b>\nOpening project page in your default browser...";
         }
     }
-
 }

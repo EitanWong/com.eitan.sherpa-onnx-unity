@@ -11,7 +11,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
     /// Standalone microphone capture component that emits mono PCM chunks at a fixed cadence.
     /// Other sherpa components can subscribe to <see cref="ChunkReady"/> without duplicating capture logic.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Audio Inputs/Microphone Capture")]
+    [AddComponentMenu("SherpaONNX/Audio Inputs/Microphone Capture")]
     [DisallowMultipleComponent]
     public sealed class SherpaMicrophoneInput : SherpaAudioInputSource
     {

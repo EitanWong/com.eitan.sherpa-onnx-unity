@@ -2,7 +2,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineMoonshineModelConfig

@@ -7,8 +7,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -20,15 +20,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
     {
         private static readonly GUIContent RefreshIcon = EditorGUIUtility.IconContent("Refresh");
 
-        private readonly SherpaOnnxModuleType moduleType;
+        private readonly SherpaONNXModuleType moduleType;
         private readonly Action repaintRequest;
-        private readonly List<SherpaOnnxModelMetadata> models = new List<SherpaOnnxModelMetadata>();
+        private readonly List<SherpaONNXModelMetadata> models = new List<SherpaONNXModelMetadata>();
 
         private CancellationTokenSource loadCts;
         private bool isLoading;
         private string loadError;
 
-        public SherpaModelSelectorUI(SherpaOnnxModuleType moduleType, Action repaintRequest)
+        public SherpaModelSelectorUI(SherpaONNXModuleType moduleType, Action repaintRequest)
         {
             this.moduleType = moduleType;
             this.repaintRequest = repaintRequest;
@@ -66,7 +66,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 
             try
             {
-                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(moduleType, token).ConfigureAwait(true);
+                var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(moduleType, token).ConfigureAwait(true);
 
                 models.Clear();
                 if (manifest?.models != null)
@@ -99,7 +99,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                 return;
             }
 
-            label ??= SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID");
+            label ??= SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID");
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -118,13 +118,13 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                 if (models.Count == 0)
                 {
                     dropdownLabel = isLoading
-                        ? SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.ButtonFetching, "Fetching…")
-                        : SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.ButtonPick, "Pick");
+                        ? SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.ButtonFetching, "Fetching…")
+                        : SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.ButtonPick, "Pick");
                 }
                 else
                 {
                     dropdownLabel = string.Format(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.ButtonPickCount, "Pick ({0})"),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.ButtonPickCount, "Pick ({0})"),
                         models.Count);
                 }
 
@@ -142,7 +142,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             }
 
             var refreshContent = RefreshIcon ?? new GUIContent("↻");
-            refreshContent.tooltip = SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.TooltipRefresh, "Refresh model list");
+            refreshContent.tooltip = SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.TooltipRefresh, "Refresh model list");
             if (GUILayout.Button(refreshContent, EditorStyles.miniButton, GUILayout.Width(28f)))
             {
                 Refresh();
@@ -154,7 +154,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             if (isLoading)
             {
                 EditorGUILayout.HelpBox(
-                    SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.StatusLoading, "Loading model manifest…"),
+                    SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.StatusLoading, "Loading model manifest…"),
                     MessageType.None);
                 return;
             }
@@ -162,7 +162,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             if (!string.IsNullOrEmpty(loadError))
             {
                 var message = string.Format(
-                    SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.StatusError, "Failed to fetch models: {0}"),
+                    SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.StatusError, "Failed to fetch models: {0}"),
                     loadError);
                 EditorGUILayout.HelpBox(message, MessageType.Warning);
                 return;
@@ -171,7 +171,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             if (models.Count == 0)
             {
                 EditorGUILayout.HelpBox(
-                    SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.StatusEmpty, "No models found for this module type yet. Try refreshing."),
+                    SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.StatusEmpty, "No models found for this module type yet. Try refreshing."),
                     MessageType.Info);
             }
         }
@@ -179,7 +179,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         private void ShowMenu(SerializedProperty modelIdProperty)
         {
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.ModelSelector.MenuClear, "Clear")), string.IsNullOrWhiteSpace(modelIdProperty.stringValue), () =>
+            menu.AddItem(new GUIContent(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.ModelSelector.MenuClear, "Clear")), string.IsNullOrWhiteSpace(modelIdProperty.stringValue), () =>
             {
                 modelIdProperty.stringValue = string.Empty;
                 modelIdProperty.serializedObject.ApplyModifiedProperties();
@@ -200,7 +200,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             menu.ShowAsContext();
         }
 
-        private static string BuildDisplayLabel(SherpaOnnxModelMetadata metadata)
+        private static string BuildDisplayLabel(SherpaONNXModelMetadata metadata)
         {
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {

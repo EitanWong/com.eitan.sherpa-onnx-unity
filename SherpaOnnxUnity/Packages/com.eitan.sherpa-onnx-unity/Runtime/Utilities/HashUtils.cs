@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     using System;
     using System.Buffers;

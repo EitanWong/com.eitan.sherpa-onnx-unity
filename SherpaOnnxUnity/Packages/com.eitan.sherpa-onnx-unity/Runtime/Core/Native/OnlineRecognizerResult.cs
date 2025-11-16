@@ -5,7 +5,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
     public class OnlineRecognizerResult
@@ -77,7 +77,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                 }
                 else
                 {
-                    _timestamps = new float[] {};
+                    _timestamps = new float[] { };
                 }
             }
         }

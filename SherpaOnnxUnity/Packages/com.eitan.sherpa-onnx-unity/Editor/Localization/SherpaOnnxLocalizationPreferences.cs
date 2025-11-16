@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor.Localization
+namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     using UnityEditor;
     using UnityEngine;
@@ -9,13 +9,13 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
     /// Persisted preference that stores the desired editor language selection.
     /// Saved under ProjectSettings so it travels with the project.
     /// </summary>
-    [FilePath("ProjectSettings/SherpaOnnxLocalization.asset", FilePathAttribute.Location.ProjectFolder)]
-    internal sealed class SherpaOnnxLocalizationPreferences : ScriptableSingleton<SherpaOnnxLocalizationPreferences>
+    [FilePath("ProjectSettings/SherpaONNXLocalization.asset", FilePathAttribute.Location.ProjectFolder)]
+    internal sealed class SherpaONNXLocalizationPreferences : ScriptableSingleton<SherpaONNXLocalizationPreferences>
     {
         [SerializeField]
-        private SherpaOnnxEditorLanguage _language = SherpaOnnxEditorLanguage.Auto;
+        private SherpaONNXEditorLanguage _language = SherpaONNXEditorLanguage.Auto;
 
-        internal SherpaOnnxEditorLanguage Language
+        internal SherpaONNXEditorLanguage Language
         {
             get => _language;
             set

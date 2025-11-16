@@ -45,7 +45,7 @@
     { "key": "common.language.persian", "value": "波斯语" },
     { "key": "common.language.hebrew", "value": "希伯来语" },
 
-    { "key": "settings.build.title", "value": "Sherpa Onnx 构建设置" },
+    { "key": "settings.build.title", "value": "SherpaONNX 构建设置" },
     { "key": "settings.includeModels.label", "value": "在桌面平台构建中包含已下载的模型（Windows/macOS/Linux）" },
     { "key": "settings.includeModels.tooltip", "value": "启用后会将 StreamingAssets/sherpa-onnx 打包进桌面构建，默认关闭。" },
     { "key": "settings.includeModels.help", "value": "关闭（默认）：桌面构建忽略 StreamingAssets/sherpa-onnx，构建更快。\n开启：包含该文件夹以便离线运行。\n移动端/WebGL/主机始终排除，因为 StreamingAssets 运行时只读。" },
@@ -74,8 +74,8 @@
     { "key": "keyword.threshold.tooltip", "value": "最小声学得分（0-1），越低越容易触发。" },
     { "key": "keyword.error.missingFields", "value": "未找到 KeywordRegistration 字段。" },
 
-    { "key": "models.window.title", "value": "Sherpa ONNX 模型" },
-    { "key": "models.header", "value": "Sherpa ONNX 模型管理器" },
+    { "key": "models.window.title", "value": "SherpaONNX 模型" },
+    { "key": "models.header", "value": "SherpaONNX 模型管理器" },
     { "key": "models.loading.remote", "value": "正在从 GitHub 获取模型清单…" },
     { "key": "models.loading.generic", "value": "正在获取模型清单…" },
     { "key": "models.notification.manifestLoadFailed", "value": "清单加载失败：{0}" },
@@ -205,7 +205,7 @@
     { "key": "inspectors.speechSynth.event.started", "value": "开始合成事件" },
     { "key": "inspectors.speechSynth.event.clipReady", "value": "生成剪辑事件" },
     { "key": "inspectors.speechSynth.event.failed", "value": "合成失败事件" },
-    { "key": "inspectors.speechSynth.preview.defaultText", "value": "你好，Sherpa ONNX！" },
+    { "key": "inspectors.speechSynth.preview.defaultText", "value": "你好，SherpaONNX！" },
 
     { "key": "inspectors.microphone.section.capture", "value": "采集" },
     { "key": "inspectors.microphone.field.autoStart", "value": "启用时自动开始" },

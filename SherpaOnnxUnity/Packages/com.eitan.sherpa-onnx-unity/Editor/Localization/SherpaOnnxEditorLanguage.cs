@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor.Localization
+namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     /// <summary>
-    /// Supported languages for Sherpa ONNX editor tooling.
+    /// Supported languages for SherpaONNX editor tooling.
     /// </summary>
-    internal enum SherpaOnnxEditorLanguage
+    internal enum SherpaONNXEditorLanguage
     {
         Auto = 0,
         English = 1,

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     /// <summary>
-    /// Base class for SherpaOnnx models with improved error handling and resource management.
+    /// Base class for SherpaONNX models with improved error handling and resource management.
     /// Implements IDisposable pattern for proper resource cleanup.
     /// </summary>
     public partial class SherpaUtils
@@ -23,8 +23,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             private const double RETRY_MULTIPLIER = 2.0;
             private const long MIN_DISK_SPACE_GB = 2;
             private const long BYTES_PER_MB = 1024 * 1024;
-            private const string ALLOW_INSECURE_DOWNLOAD_KEY = "SherpaOnnx.AllowInsecureModelDownload";
-            private const string FORCE_HASH_VALIDATION_KEY = "SherpaOnnx.ForceModelHashValidation";
+            private const string ALLOW_INSECURE_DOWNLOAD_KEY = "SherpaONNX.AllowInsecureModelDownload";
+            private const string FORCE_HASH_VALIDATION_KEY = "SherpaONNX.ForceModelHashValidation";
 
             private static readonly string[] COMPRESSED_EXTENSIONS = {
             ".zip", ".tar", ".tar.gz", ".tar.bz2", ".rar", ".7z",
@@ -63,7 +63,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             /// </summary>
             /// <returns>Absolute file path for the download archive</returns>
             public static string ResolveDownloadFilePath(
-                SherpaOnnxModelMetadata metadata,
+                SherpaONNXModelMetadata metadata,
                 out string moduleDirectory,
                 out string modelDirectory,
                 out string downloadFileName,
@@ -110,7 +110,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             /// <returns>True if the model was successfully prepared, false otherwise.</returns>
             /// <exception cref="ObjectDisposedException">Thrown when the object has been disposed.</exception>
             /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-            public static async Task<bool> PrepareAndLoadModelAsync(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken = default)
+            public static async Task<bool> PrepareAndLoadModelAsync(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
@@ -205,7 +205,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             }
             #endregion
 
-            public static async Task<bool> CheckIsModelDownloadedAsync(SherpaOnnxModelMetadata metadata, CancellationToken cancellationToken = default)
+            public static async Task<bool> CheckIsModelDownloadedAsync(SherpaONNXModelMetadata metadata, CancellationToken cancellationToken = default)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
@@ -230,7 +230,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
 
             #region Private Methods
 
-            private static bool ValidateMetadata(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter)
+            private static bool ValidateMetadata(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter)
             {
                 var forceHashValidation = IsHashValidationForced();
 
@@ -277,7 +277,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 return true;
             }
 
-            private static ModelPaths GetModelPaths(SherpaOnnxModelMetadata metadata)
+            private static ModelPaths GetModelPaths(SherpaONNXModelMetadata metadata)
             {
                 var moduleDirectoryPath = SanitizePath(SherpaPathResolver.GetModuleRootPath(metadata.moduleType));
                 var modelDirectoryPath = SanitizePath(Path.Combine(moduleDirectoryPath, metadata.modelId));
@@ -327,7 +327,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             }
 
 
-            private static bool CheckDiskSpace(SherpaOnnxModelMetadata metadata, string directoryPath, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
+            private static bool CheckDiskSpace(SherpaONNXModelMetadata metadata, string directoryPath, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 try
                 {
@@ -400,9 +400,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             }
 
 
-            private static async Task<bool> VerifyExistingModelAsync(SherpaOnnxModelMetadata metadata,
+            private static async Task<bool> VerifyExistingModelAsync(SherpaONNXModelMetadata metadata,
                 ModelPaths paths,
-                SherpaOnnxFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
+                SherpaONNXFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
             {
                 ReportSafe(reporter, new VerifyFeedback(
                     metadata,
@@ -480,9 +480,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 }
             }
 
-            // TODO: 重构VerifyFileWithIndexAsync 使其作为SherpaOnnxModel层的通用文件验证方法，可以批量传入filePaths 以及expiatedSha256Array,进行批量验证，等待全部验证完毕后再返回结果。
-            private static async Task<(int Index, FileVerificationEventArgs Result)> VerifyFileWithIndexAsync(SherpaOnnxModelMetadata metadata,
-                int index, string filePath, string expectedSha256, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
+            // TODO: 重构VerifyFileWithIndexAsync 使其作为SherpaONNXModel层的通用文件验证方法，可以批量传入filePaths 以及expiatedSha256Array,进行批量验证，等待全部验证完毕后再返回结果。
+            private static async Task<(int Index, FileVerificationEventArgs Result)> VerifyFileWithIndexAsync(SherpaONNXModelMetadata metadata,
+                int index, string filePath, string expectedSha256, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 Progress<FileVerificationEventArgs> progressAdapter = new Progress<FileVerificationEventArgs>(args =>
                 {
@@ -495,8 +495,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 return (index, result);
             }
 
-            private static async Task<bool> DownloadModelAsync(SherpaOnnxModelMetadata metadata, string downloadFilePath,
-                SherpaOnnxFeedbackReporter reporter, int retryCount, CancellationToken cancellationToken)
+            private static async Task<bool> DownloadModelAsync(SherpaONNXModelMetadata metadata, string downloadFilePath,
+                SherpaONNXFeedbackReporter reporter, int retryCount, CancellationToken cancellationToken)
             {
                 try
                 {
@@ -559,8 +559,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 }
             }
 
-            private static async Task<bool> ExtractModelAsync(SherpaOnnxModelMetadata metadata, string zipFilePath, string zipFileHash,
-                string moduleDirectoryPath, string zipFileName, SherpaOnnxFeedbackReporter reporter,
+            private static async Task<bool> ExtractModelAsync(SherpaONNXModelMetadata metadata, string zipFilePath, string zipFileHash,
+                string moduleDirectoryPath, string zipFileName, SherpaONNXFeedbackReporter reporter,
                 int retryCount, CancellationToken cancellationToken)
             {
                 try
@@ -602,7 +602,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 }
             }
 
-            private static async Task CleanPathAsync(SherpaOnnxModelMetadata metadata, string[] filePaths, SherpaOnnxFeedbackReporter reporter, CancellationToken cancellationToken)
+            private static async Task CleanPathAsync(SherpaONNXModelMetadata metadata, string[] filePaths, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken)
             {
                 if (filePaths == null || filePaths.Length == 0)
                 { return; }
@@ -653,7 +653,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 }
             }
 
-            private static bool TryResolveDownloadUri(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter, out Uri downloadUri)
+            private static bool TryResolveDownloadUri(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, out Uri downloadUri)
             {
                 downloadUri = null;
 
@@ -703,17 +703,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             }
 
             private static bool IsInsecureDownloadAllowed() =>
-                SherpaOnnxEnvironment.GetBool(ALLOW_INSECURE_DOWNLOAD_KEY, @default: false);
+                SherpaONNXEnvironment.GetBool(ALLOW_INSECURE_DOWNLOAD_KEY, @default: false);
 
             private static bool IsHashValidationForced() =>
-                SherpaOnnxEnvironment.GetBool(FORCE_HASH_VALIDATION_KEY, @default: false);
+                SherpaONNXEnvironment.GetBool(FORCE_HASH_VALIDATION_KEY, @default: false);
 
             private static bool IsAutoDownloadEnabled() =>
-                SherpaOnnxEnvironment.GetBool(SherpaOnnxEnvironment.BuiltinKeys.AutoDownloadModels, @default: true);
+                SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, @default: true);
 
-            private static void ReportAutoDownloadDisabled(SherpaOnnxModelMetadata metadata, SherpaOnnxFeedbackReporter reporter, string targetDirectory)
+            private static void ReportAutoDownloadDisabled(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, string targetDirectory)
             {
-                var key = SherpaOnnxEnvironment.BuiltinKeys.AutoDownloadModels;
+                var key = SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels;
                 var message = $"Automatic download skipped because {key}=false. Ensure the model files exist under {targetDirectory}.";
                 ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: targetDirectory));
             }
@@ -734,7 +734,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
                 }
             }
 
-            private static void ReportSafe(SherpaOnnxFeedbackReporter reporter, IFeedback feedback)
+            private static void ReportSafe(SherpaONNXFeedbackReporter reporter, IFeedback feedback)
             {
                 if (reporter == null || feedback == null)
                 {

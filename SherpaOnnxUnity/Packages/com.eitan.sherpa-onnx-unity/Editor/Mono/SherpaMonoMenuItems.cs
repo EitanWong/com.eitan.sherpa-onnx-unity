@@ -9,7 +9,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
 
     internal static class SherpaMonoMenuItems
     {
-        private const string Root = "GameObject/Sherpa ONNX/";
+        private const string Root = "GameObject/SherpaONNX/";
         private const int MenuPriority = 10;
 
         [MenuItem(Root + "Audio/Microphone Input", false, MenuPriority)]

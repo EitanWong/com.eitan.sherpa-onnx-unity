@@ -3,18 +3,18 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
     public class OfflineSpeakerDiarizationSegment
     {
         public OfflineSpeakerDiarizationSegment(IntPtr handle)
         {
-          Impl impl = (Impl)Marshal.PtrToStructure(handle, typeof(Impl));
+            Impl impl = (Impl)Marshal.PtrToStructure(handle, typeof(Impl));
 
-          Start = impl.Start;
-          End = impl.End;
-          Speaker = impl.Speaker;
+            Start = impl.Start;
+            End = impl.End;
+            Speaker = impl.Speaker;
         }
 
         [StructLayout(LayoutKind.Sequential)]

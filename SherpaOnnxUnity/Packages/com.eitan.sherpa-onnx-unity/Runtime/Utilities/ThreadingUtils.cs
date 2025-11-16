@@ -1,9 +1,9 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     using UnityEngine;
 
     /// <summary>
-    /// Provides a conservative, environment-aware thread budget for Sherpa ONNX models.
+    /// Provides a conservative, environment-aware thread budget for SherpaONNX models.
     /// Keeps headroom for Unity, the OS, and thermal constraints on mobile hardware.
     /// </summary>
     public static class ThreadingUtils

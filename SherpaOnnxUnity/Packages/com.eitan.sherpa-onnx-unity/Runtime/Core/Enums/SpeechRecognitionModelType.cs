@@ -1,5 +1,5 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     public enum SpeechRecognitionModelType
     {

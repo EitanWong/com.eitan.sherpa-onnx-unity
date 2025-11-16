@@ -5,8 +5,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
 
     using UnityEngine;
     using UnityEngine.Events;
@@ -14,7 +14,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     /// <summary>
     /// MonoBehaviour wrapper for <see cref="SpeechSynthesis"/> that exposes a simple text-to-speech workflow.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Speech Synthesis/Speech Synthesizer")]
+    [AddComponentMenu("SherpaONNX/Speech Synthesis/Speech Synthesizer")]
     [DisallowMultipleComponent]
     public sealed class SpeechSynthesizerComponent : SherpaModuleComponent<SpeechSynthesis>
     {
@@ -47,6 +47,21 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onSynthesisFailed = new UnityEvent<string>();
 
+        /// <summary>
+        /// Invoked whenever a synthesis request begins.
+        /// </summary>
+        public UnityEvent SynthesisStartedEvent => onSynthesisStarted;
+
+        /// <summary>
+        /// Exposes synthesized clips to caller scripts.
+        /// </summary>
+        public UnityEvent<AudioClip> ClipReadyEvent => onClipReady;
+
+        /// <summary>
+        /// Exposes synthesis failure messages.
+        /// </summary>
+        public UnityEvent<string> SynthesisFailedEvent => onSynthesisFailed;
+
         private CancellationTokenSource sharedCancellation;
         private CancellationTokenSource activeGenerationCts;
 
@@ -73,7 +88,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             SetSampleRateForInspector(-1);
         }
 
-        protected override SpeechSynthesis CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        protected override SpeechSynthesis CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new SpeechSynthesis(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }

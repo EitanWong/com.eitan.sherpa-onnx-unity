@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Runtime.CompilerServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     /// <summary>
     /// High-performance circular buffer with SPSC (single-producer/single-consumer) semantics.

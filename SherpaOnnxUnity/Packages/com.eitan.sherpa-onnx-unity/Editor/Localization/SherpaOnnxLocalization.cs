@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor.Localization
+namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     using System;
     using System.Collections.Generic;
@@ -9,17 +9,17 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
     using UnityEngine;
 
     /// <summary>
-    /// Localization entry point for all Sherpa ONNX editor tooling.
+    /// Localization entry point for all SherpaONNX editor tooling.
     /// Resolves strings from JSON tables stored under Editor/Resources.
     /// </summary>
-    internal static class SherpaOnnxLocalization
+    internal static class SherpaONNXLocalization
     {
-        private const string ResourceFolder = "SherpaOnnxLocalization";
+        private const string ResourceFolder = "SherpaONNXLocalization";
 
-        private static readonly Dictionary<SherpaOnnxEditorLanguage, Dictionary<string, string>> Cache = new();
-        private static SherpaOnnxEditorLanguage _lastBroadcastLanguage;
+        private static readonly Dictionary<SherpaONNXEditorLanguage, Dictionary<string, string>> Cache = new();
+        private static SherpaONNXEditorLanguage _lastBroadcastLanguage;
 
-        static SherpaOnnxLocalization()
+        static SherpaONNXLocalization()
         {
             _lastBroadcastLanguage = ResolveEffectiveLanguage();
             EditorApplication.update += PollAutoLanguage;
@@ -28,11 +28,11 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
 
         public static event Action LanguageChanged;
 
-        internal static SherpaOnnxEditorLanguage PreferredLanguage => Preferences.Language;
+        internal static SherpaONNXEditorLanguage PreferredLanguage => Preferences.Language;
 
-        internal static SherpaOnnxEditorLanguage EffectiveLanguage => ResolveEffectiveLanguage();
+        internal static SherpaONNXEditorLanguage EffectiveLanguage => ResolveEffectiveLanguage();
 
-        internal static void SetLanguage(SherpaOnnxEditorLanguage language)
+        internal static void SetLanguage(SherpaONNXEditorLanguage language)
         {
             if (Preferences.Language == language)
             {
@@ -56,8 +56,8 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
                 return value;
             }
 
-            if (language != SherpaOnnxEditorLanguage.English &&
-                TryGetEntry(SherpaOnnxEditorLanguage.English, key, out value))
+            if (language != SherpaONNXEditorLanguage.English &&
+                TryGetEntry(SherpaONNXEditorLanguage.English, key, out value))
             {
                 return value;
             }
@@ -65,21 +65,21 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
             return fallback ?? key;
         }
 
-        internal static string GetLanguageDisplayName(SherpaOnnxEditorLanguage language)
+        internal static string GetLanguageDisplayName(SherpaONNXEditorLanguage language)
         {
             return language switch
             {
-                SherpaOnnxEditorLanguage.Auto => Tr("editor.language.auto", "Auto"),
-                SherpaOnnxEditorLanguage.ChineseSimplified => Tr("editor.language.zhHans", "简体中文"),
+                SherpaONNXEditorLanguage.Auto => Tr("editor.language.auto", "Auto"),
+                SherpaONNXEditorLanguage.ChineseSimplified => Tr("editor.language.zhHans", "简体中文"),
                 _ => Tr("editor.language.en", "English"),
             };
         }
 
-        private static SherpaOnnxLocalizationPreferences Preferences => SherpaOnnxLocalizationPreferences.instance;
+        private static SherpaONNXLocalizationPreferences Preferences => SherpaONNXLocalizationPreferences.instance;
 
         private static void PollAutoLanguage()
         {
-            if (Preferences.Language != SherpaOnnxEditorLanguage.Auto)
+            if (Preferences.Language != SherpaONNXEditorLanguage.Auto)
             {
                 return;
             }
@@ -107,9 +107,9 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
             LanguageChanged?.Invoke();
         }
 
-        private static SherpaOnnxEditorLanguage ResolveEffectiveLanguage()
+        private static SherpaONNXEditorLanguage ResolveEffectiveLanguage()
         {
-            if (Preferences.Language != SherpaOnnxEditorLanguage.Auto)
+            if (Preferences.Language != SherpaONNXEditorLanguage.Auto)
             {
                 return Preferences.Language;
             }
@@ -119,7 +119,7 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
                 : _lastBroadcastLanguage;
         }
 
-        private static bool TryGetEntry(SherpaOnnxEditorLanguage language, string key, out string value)
+        private static bool TryGetEntry(SherpaONNXEditorLanguage language, string key, out string value)
         {
             var table = GetTable(language);
             if (table != null && table.TryGetValue(key, out value) && !string.IsNullOrEmpty(value))
@@ -131,7 +131,7 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
             return false;
         }
 
-        private static Dictionary<string, string> GetTable(SherpaOnnxEditorLanguage language)
+        private static Dictionary<string, string> GetTable(SherpaONNXEditorLanguage language)
         {
             if (Cache.TryGetValue(language, out var cached))
             {
@@ -143,35 +143,35 @@ namespace Eitan.SherpaOnnxUnity.Editor.Localization
             return loaded;
         }
 
-        private static Dictionary<string, string> LoadTable(SherpaOnnxEditorLanguage language)
+        private static Dictionary<string, string> LoadTable(SherpaONNXEditorLanguage language)
         {
             var resourceId = $"{ResourceFolder}/{GetLanguageCode(language)}";
             var asset = Resources.Load<TextAsset>(resourceId);
             if (asset == null)
             {
-                Debug.LogWarning($"SherpaOnnx localization resource '{resourceId}.json' could not be found. Falling back to English.");
+                Debug.LogWarning($"SherpaONNX localization resource '{resourceId}.json' could not be found. Falling back to English.");
                 return null;
             }
 
-            return SherpaOnnxLocalizationTable.Parse(asset.text);
+            return SherpaONNXLocalizationTable.Parse(asset.text);
         }
 
-        private static string GetLanguageCode(SherpaOnnxEditorLanguage language) =>
+        private static string GetLanguageCode(SherpaONNXEditorLanguage language) =>
             language switch
             {
-                SherpaOnnxEditorLanguage.ChineseSimplified => "zh-Hans",
+                SherpaONNXEditorLanguage.ChineseSimplified => "zh-Hans",
                 _ => "en",
             };
 
-        private static SherpaOnnxEditorLanguage DetectEditorLanguage()
+        private static SherpaONNXEditorLanguage DetectEditorLanguage()
         {
             var editorLanguage = ResolveEditorLanguageName();
             if (editorLanguage.IndexOf("Chinese", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return SherpaOnnxEditorLanguage.ChineseSimplified;
+                return SherpaONNXEditorLanguage.ChineseSimplified;
             }
 
-            return SherpaOnnxEditorLanguage.English;
+            return SherpaONNXEditorLanguage.English;
         }
 
         private static string ResolveEditorLanguageName()

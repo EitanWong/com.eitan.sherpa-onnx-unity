@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     internal static class UnityMainThreadScheduler
     {
@@ -731,7 +731,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         private readonly WeakReference<SherpaFileDownloader> _selfReference;
-        private readonly SherpaOnnxModelMetadata _modelMetadata;
+        private readonly SherpaONNXModelMetadata _modelMetadata;
         private readonly int _maxConcurrentChunks;
         private readonly long _defaultChunkSize;
         private readonly int _maxRetryAttempts;
@@ -771,7 +771,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         public event Action<IFeedback> Feedback;
 
         public SherpaFileDownloader(
-            SherpaOnnxModelMetadata metadata = null,
+            SherpaONNXModelMetadata metadata = null,
             int maxConcurrentChunks = 4,
             long chunkSizeMB = 10,
             int maxRetryAttempts = 3,

@@ -1,8 +1,8 @@
 {
-    "name": "Eitan.SherpaOnnxUnity.Samples",
-    "rootNamespace": "Eitan.SherpaOnnxUnity.Samples",
+    "name": "Eitan.SherpaONNXUnity.Samples",
+    "rootNamespace": "Eitan.SherpaONNXUnity.Samples",
     "references": [
-        "Eitan.SherpaOnnxUnity"
+        "Eitan.SherpaONNXUnity"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

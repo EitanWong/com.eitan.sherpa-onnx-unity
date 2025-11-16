@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Eitan.SherpaOnnxUnity.Runtime;
+using Eitan.SherpaONNXUnity.Runtime;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     internal readonly struct ModelFileCriteria
     {
-        private readonly Func<SherpaOnnxModelMetadata, string[]> _candidateResolver;
+        private readonly Func<SherpaONNXModelMetadata, string[]> _candidateResolver;
 
-        public ModelFileCriteria(Func<SherpaOnnxModelMetadata, string[]> candidateResolver, bool expectDirectory = false, long? minSizeBytes = null, int? minEntryCount = null)
+        public ModelFileCriteria(Func<SherpaONNXModelMetadata, string[]> candidateResolver, bool expectDirectory = false, long? minSizeBytes = null, int? minEntryCount = null)
         {
             _candidateResolver = candidateResolver;
             ExpectDirectory = expectDirectory;
@@ -22,7 +22,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         public long? MinSizeBytes { get; }
         public int? MinEntryCount { get; }
 
-        public string[] ResolveCandidates(SherpaOnnxModelMetadata metadata)
+        public string[] ResolveCandidates(SherpaONNXModelMetadata metadata)
         {
             return _candidateResolver?.Invoke(metadata) ?? Array.Empty<string>();
         }
@@ -104,7 +104,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         };
 
         public static bool TryResolveFirstValidPath(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             out string resolvedPath,
             Action<string> onFallback = null,
             params ModelFileCriteria[] criteria)
@@ -155,7 +155,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         public static string ResolveRequiredFile(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             string description,
             Action<string> onFallback = null,
             params ModelFileCriteria[] criteria)
@@ -169,7 +169,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         public static string ResolveRequiredByKeywords(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             string description,
             Action<string> onFallback = null,
             params string[] keywords)
@@ -178,7 +178,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         public static string ResolveOptionalFile(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             Action<string> onFallback = null,
             params ModelFileCriteria[] criteria)
         {
@@ -209,7 +209,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         public static string ResolveOptionalByKeywords(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             Action<string> onFallback = null,
             params string[] keywords)
         {
@@ -217,7 +217,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
         }
 
         public static string ResolveOptionalDirectoryByKeywords(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             Action<string> onFallback = null,
             params string[] keywords)
         {

@@ -7,8 +7,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System.Threading;
     using System.Threading.Tasks;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core;
     using UnityEngine;
     using UnityEngine.Events;
 
@@ -17,19 +17,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     /// from any <see cref="SherpaAudioInputSource"/> (e.g., <see cref="SherpaMicrophoneInput"/>).
     /// Streams audio into the recognizer and exposes transcripts through UnityEvents.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Speech Recognition/Speech Recognizer")]
+    [AddComponentMenu("SherpaONNX/Speech Recognition/Speech Recognizer")]
     [DisallowMultipleComponent]
-    public sealed class SpeechRecognizerComponent : SherpaModuleComponent<SpeechRecognition>
+    public sealed class SpeechRecognizerComponent : SherpaAudioStreamingComponent<SpeechRecognition>
     {
-        [Header("Audio Input")]
-        [SerializeField]
-        [Tooltip("Optional audio source that emits PCM chunks (e.g., SherpaMicrophoneInput).")]
-        private SherpaAudioInputSource audioInput;
-
-        [SerializeField]
-        [Tooltip("Automatically subscribe to the assigned audio input when this component enables.")]
-        private bool autoBindInput = true;
-
         [SerializeField]
         [Tooltip("Avoid emitting duplicate transcripts when the recognizer returns the same value repeatedly.")]
         private bool deduplicateStreamingResults = true;
@@ -38,33 +29,34 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onTranscriptionReady = new UnityEvent<string>();
 
+        /// <summary>
+        /// Allows scripts to subscribe to transcription updates without relying on the inspector.
+        /// </summary>
+        public UnityEvent<string> TranscriptionReadyEvent => onTranscriptionReady;
+
         private readonly Queue<AudioChunk> pendingChunks = new Queue<AudioChunk>();
         private readonly object queueLock = new object();
 
         private CancellationTokenSource streamingCancellation;
-        private SherpaAudioInputSource boundInput;
         private bool drainingQueue;
         private string lastTranscript = string.Empty;
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             streamingCancellation = new CancellationTokenSource();
-            if (Application.isPlaying && autoBindInput)
-            {
-                BindInput(audioInput);
-            }
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
-            UnbindInput(boundInput);
+            base.OnDisable();
             streamingCancellation?.Cancel();
             streamingCancellation?.Dispose();
             streamingCancellation = null;
             ClearQueue();
         }
 
-        protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter);
         }
@@ -109,18 +101,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Binds the recognizer to a new audio input source at runtime.
         /// </summary>
-        public void BindInput(SherpaAudioInputSource source)
-        {
-            audioInput = source;
-            if (boundInput == source)
-            {
-                return;
-            }
-
-            UnbindInput(boundInput);
-            BindInputInternal(source);
-        }
-
         private void EnqueueChunk(AudioChunk chunk)
         {
             if (Module == null || !Module.Initialized)
@@ -193,45 +173,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             onTranscriptionReady?.Invoke(text);
         }
 
-        private void BindInputInternal(SherpaAudioInputSource source)
+        protected override void OnAudioChunkReceived(float[] samples, int sampleRate)
         {
-            if (source == null)
-            {
-                boundInput = null;
-                return;
-            }
-
-            source.ChunkReady += HandleChunkFromInput;
-            boundInput = source;
-
-            if (Application.isPlaying && !source.IsCapturing)
-            {
-                source.TryStartCapture();
-            }
-        }
-
-        private void UnbindInput(SherpaAudioInputSource source)
-        {
-            if (source == null)
-            {
-                return;
-            }
-
-            source.ChunkReady -= HandleChunkFromInput;
-
-            if (boundInput == source)
-            {
-                boundInput = null;
-            }
-        }
-
-        private void HandleChunkFromInput(float[] samples, int sampleRate)
-        {
-            if (samples == null || samples.Length == 0 || sampleRate <= 0)
-            {
-                return;
-            }
-
             EnqueueChunk(new AudioChunk(samples, sampleRate));
         }
 

@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     public sealed class Menu : MonoBehaviour
     {
@@ -16,7 +16,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [Header("Animation Settings")]
         [SerializeField] private float _panelAnimationDuration = 0.3f;
         [SerializeField] private float _buttonAnimationDelay = 0.05f;
-        
+
         private Coroutine _currentPanelAnimation;
         private Vector2 _menuButtonWorldPosition;
 
@@ -41,10 +41,10 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogError("The panel component not assign in inspector, please check.");
                 return;
             }
-            
+
             _menuButton.onClick.AddListener(HandleMenuButtonClick);
             _closeMenuButton.onClick.AddListener(HandleCloseMenuButtonClick);
-            
+
             HandleCloseMenuButtonClick();
             InitializationSceneButtons();
         }
@@ -69,7 +69,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 Debug.LogError("The tamplateButton or rootOfButtons not assigned in inspector, please check it again.");
                 return;
             }
-            
+
             StartCoroutine(CreateSceneButtonsWithAnimation());
         }
 
@@ -77,7 +77,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             int sceneCount = SceneManager.sceneCountInBuildSettings;
             _tamplateButton.gameObject.SetActive(false);
-            
+
             for (int i = 0; i < sceneCount; i++)
             {
                 string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
@@ -94,13 +94,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 }
 
                 int sceneIndex = i;
-                newButton.onClick.AddListener(() => {
+                newButton.onClick.AddListener(() =>
+                {
                     StartCoroutine(LoadSceneWithAnimation(sceneIndex));
                 });
 
                 AddButtonHoverEffects(newButton);
                 StartCoroutine(AnimateButtonIn(newButton.transform));
-                
+
                 yield return new WaitForSeconds(_buttonAnimationDelay);
             }
         }
@@ -146,27 +147,27 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Vector2 buttonCenter = (corners[0] + corners[2]) * 0.5f;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _panel.parent as RectTransform, buttonCenter, null, out _menuButtonWorldPosition);
-            
+
             _menuButton.gameObject.SetActive(false);
             _panel.gameObject.SetActive(true);
             _panel.localScale = Vector3.zero;
             _panel.anchoredPosition = _menuButtonWorldPosition;
-            
+
             float time = 0f;
             while (time < _panelAnimationDuration)
             {
                 time += Time.deltaTime;
                 float t = time / _panelAnimationDuration;
-                
+
                 // Simple back ease out: overshoots then settles
                 float ease = 1f + 2.7f * Mathf.Pow(t - 1f, 3f) + 1.7f * Mathf.Pow(t - 1f, 2f);
-                
+
                 _panel.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, ease);
                 _panel.anchoredPosition = Vector2.Lerp(_menuButtonWorldPosition, Vector2.zero, t);
-                
+
                 yield return null;
             }
-            
+
             _panel.localScale = Vector3.one;
             _panel.anchoredPosition = Vector2.zero;
             _currentPanelAnimation = null;
@@ -177,24 +178,24 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Vector3 startScale = _panel.localScale;
             Vector2 startPos = _panel.anchoredPosition;
             float duration = _panelAnimationDuration * 0.7f;
-            
+
             float time = 0f;
             while (time < duration)
             {
                 time += Time.deltaTime;
                 float t = time / duration;
-                
+
                 // Position moves faster (1.3x speed)
                 float posT = Mathf.Clamp01(t * 1.3f);
                 // Scale uses ease-in for smooth shrinking
                 float scaleT = t * t;
-                
+
                 _panel.localScale = Vector3.Lerp(startScale, Vector3.zero, scaleT);
                 _panel.anchoredPosition = Vector2.Lerp(startPos, _menuButtonWorldPosition, posT);
-                
+
                 yield return null;
             }
-            
+
             _panel.localScale = Vector3.zero;
             _panel.anchoredPosition = _menuButtonWorldPosition;
             _panel.gameObject.SetActive(false);
@@ -206,19 +207,19 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             float duration = _panelAnimationDuration * 0.5f;
             float time = 0f;
-            
+
             while (time < duration)
             {
                 time += Time.deltaTime;
                 float t = time / duration;
-                
+
                 // Simple back ease out
                 float ease = 1f + 2.7f * Mathf.Pow(t - 1f, 3f) + 1.7f * Mathf.Pow(t - 1f, 2f);
                 buttonTransform.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, ease);
-                
+
                 yield return null;
             }
-            
+
             buttonTransform.localScale = Vector3.one;
         }
 
@@ -265,7 +266,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             Vector3 startScale = buttonTransform.localScale;
             Vector3 endScale = Vector3.one * targetScale;
             float time = 0f;
-            
+
             while (time < 0.1f)
             {
                 time += Time.deltaTime;
@@ -273,7 +274,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 buttonTransform.localScale = Vector3.Lerp(startScale, endScale, t);
                 yield return null;
             }
-            
+
             buttonTransform.localScale = endScale;
         }
 

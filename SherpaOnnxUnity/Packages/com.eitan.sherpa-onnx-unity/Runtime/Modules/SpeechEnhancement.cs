@@ -1,29 +1,29 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
     /// <summary>
     /// High-performance speech enhancement module for noise reduction and audio quality improvement.
     /// Supports both real-time streaming and batch processing with zero-GC design.
     /// </summary>
-    public sealed class SpeechEnhancement : SherpaOnnxModule
+    public sealed class SpeechEnhancement : SherpaONNXModule
     {
         private OfflineSpeechDenoiser _denoiser;
         private readonly object _lockObject = new();
         private int _sampleRate;
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechEnhancement;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechEnhancement;
 
-        public SpeechEnhancement(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public SpeechEnhancement(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
         }
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -66,7 +66,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             }
         }
 
-        private OfflineSpeechDenoiserConfig CreateSpeechDenoiserConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
+        private OfflineSpeechDenoiserConfig CreateSpeechDenoiserConfig(SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var config = new OfflineSpeechDenoiserConfig

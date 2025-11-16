@@ -1,6 +1,6 @@
-using Eitan.SherpaOnnxUnity.Runtime.Constants;
+using Eitan.SherpaONNXUnity.Runtime.Constants;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
 
     internal static class SherpaPathResolver
@@ -19,11 +19,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
             return System.IO.Path.Combine(GetModuleRootPath(moduleType), modelID);
         }
 
-        public static string GetModuleRootPath(SherpaOnnxModuleType moduleType)
+        public static string GetModuleRootPath(SherpaONNXModuleType moduleType)
         {
             var ModuleName = System.Text.RegularExpressions.Regex.Replace(moduleType.ToString(), @"([a-z])([A-Z])", "$1-$2").ToLower();
 
-            var modelPathFolder = System.IO.Path.Combine(SherpaOnnxConstants.RootDirectoryName, SherpaOnnxConstants.ModelRootDirectoryName);
+            var modelPathFolder = System.IO.Path.Combine(SherpaONNXConstants.RootDirectoryName, SherpaONNXConstants.ModelRootDirectoryName);
 
 #if UNITY_EDITOR
             return System.IO.Path.Combine(UnityEngine.Application.streamingAssetsPath, modelPathFolder, ModuleName);

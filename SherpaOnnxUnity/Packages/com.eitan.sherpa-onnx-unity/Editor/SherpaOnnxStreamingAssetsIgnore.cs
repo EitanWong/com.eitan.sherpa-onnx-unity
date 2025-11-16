@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
 
     using System;
@@ -11,13 +11,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
     using UnityEditor.Build.Reporting;
     using UnityEngine;
 
-    public sealed class SherpaOnnxStreamingAssetsIgnore :
+    public sealed class SherpaONNXStreamingAssetsIgnore :
         IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
         public int callbackOrder => 0;
 
         private static int s_AssetEditDepth = 0; // reentrancy-safe batching
-        private const string kSessionMovedKey = "SherpaOnnx_AnyMoved"; // session-scoped guard for restore
+        private const string kSessionMovedKey = "SherpaONNX_AnyMoved"; // session-scoped guard for restore
 
         // 需要忽略的 StreamingAssets 相对路径（可扩展多个）
         // 例如：Assets/StreamingAssets/<这些子目录>
@@ -29,7 +29,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         // 备份根目录与标记文件（用于失败兜底）
         private const string HiddenRootAsset = "Assets/StreamingAssets~";
-        private const string ConflictLogPath = "Library/SherpaOnnx_ConflictReport.txt";
+        private const string ConflictLogPath = "Library/SherpaONNX_ConflictReport.txt";
 
         // Dynamic hidden root path (Unity may auto-suffix the folder name). Always reuse the actual path.
         private static string GetOrCreateHiddenRootAsset()
@@ -408,7 +408,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             // Desktop (Standalone) — controlled by Project Settings (default: ignore => treat as read-only)
             if (IsDesktop(target))
             {
-                bool include = SherpaOnnxBuildSettings.Instance.IncludeModelsInDesktopBuild;
+                bool include = SherpaONNXBuildSettings.Instance.IncludeModelsInDesktopBuild;
                 var envOv = GetEnvIncludeModelsDesktopOverride();
                 if (envOv.HasValue)
                 {
@@ -484,7 +484,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             {
                 // Build a simple text report enumerating both sides
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine("==== SherpaOnnx StreamingAssets Conflict ====");
+                sb.AppendLine("==== SherpaONNX StreamingAssets Conflict ====");
                 sb.AppendLine($"Time(UTC): {DateTime.UtcNow:o}");
                 sb.AppendLine($"Subfolder: {subfolder}");
                 sb.AppendLine($"Source: {sourceAssetFolder}");

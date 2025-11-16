@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     /// <summary>
     /// Default implementation of ILogger that uses UnityEngine.Debug.

@@ -1,5 +1,5 @@
 
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
 
@@ -7,14 +7,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
     using System.Linq;
 
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Utilities;
     using UnityEngine;
     using UnityEngine.EventSystems;
 
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
+    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
 
     [RequireComponent(typeof(AudioSource))]
     public class ZeroShotSpeechSynthesisExample : MonoBehaviour, ISherpaFeedbackHandler
@@ -24,7 +24,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Dropdown _modelIDDropdown;
         [SerializeField] private Button _modelLoadOrUnloadButton;
         [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
+        [SerializeField] private Eitan.SherpaONNXUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _speechSynthesisStatusText;
@@ -116,7 +116,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 return;
             }
 
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
+            var reporter = new SherpaONNXFeedbackReporter(null, this);
             TTS = new SpeechSynthesis(modelID, reporter: reporter);
 
             UpdateLoadButtonUI();
@@ -172,7 +172,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechSynthesis);
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
             _modelIDDropdown.options.Clear();
             if (manifest.models != null)

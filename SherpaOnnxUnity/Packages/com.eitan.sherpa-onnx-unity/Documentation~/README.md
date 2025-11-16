@@ -1,8 +1,8 @@
-# com.eitan.sherpaonnxunity
+# com.eitan.SherpaONNXUnity
 
-[![Discord](https://img.shields.io/discord/855294214065487932.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xQgMW9ufN4) [![openupm](https://img.shields.io/npm/v/com.eitan.sherpaonnxunity?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.eitan.sherpaonnxunity/) [![openupm](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&query=%24.downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.sherpaonnxunity)](https://openupm.com/packages/com.eitan.sherpaonnxunity/)
+[![Discord](https://img.shields.io/discord/855294214065487932.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xQgMW9ufN4) [![openupm](https://img.shields.io/npm/v/com.eitan.SherpaONNXUnity?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.eitan.SherpaONNXUnity/) [![openupm](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&query=%24.downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.SherpaONNXUnity)](https://openupm.com/packages/com.eitan.SherpaONNXUnity/)
 
-A EitanWong.SherpaOnnxUnity package for the [Unity](https://unity.com/) Game Engine.
+A EitanWong.SherpaONNXUnity package for the [Unity](https://unity.com/) Game Engine.
 
 ## Installing
 
@@ -30,7 +30,7 @@ openupm add com.eitan.sherpa-onnx-unity
     - `com.eitan.sherpa-onnx-unity`
 - Open the Unity Package Manager window
 - Change the Registry from Unity to `My Registries`
-- Add the `SherpaOnnxUnity` package
+- Add the `SherpaONNXUnity` package
 
 ### Via Unity Package Manager and Git url
 

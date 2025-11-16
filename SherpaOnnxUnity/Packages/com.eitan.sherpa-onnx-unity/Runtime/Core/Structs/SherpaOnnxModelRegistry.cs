@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 using UnityEngine;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
-    public class SherpaOnnxModelRegistry
+    public class SherpaONNXModelRegistry
     {
-        private static readonly SherpaOnnxModelRegistry _instance = new SherpaOnnxModelRegistry();
-        public static SherpaOnnxModelRegistry Instance => _instance;
+        private static readonly SherpaONNXModelRegistry _instance = new SherpaONNXModelRegistry();
+        public static SherpaONNXModelRegistry Instance => _instance;
 
-        private readonly Dictionary<string, SherpaOnnxModelMetadata> _modelData = new Dictionary<string, SherpaOnnxModelMetadata>();
+        private readonly Dictionary<string, SherpaONNXModelMetadata> _modelData = new Dictionary<string, SherpaONNXModelMetadata>();
         private readonly HashSet<string> _resolvedModelIds = new HashSet<string>();
         private readonly SemaphoreSlim _manifestUpdateSemaphore = new SemaphoreSlim(1, 1);
 
-        private SherpaOnnxModelManifest _manifest;
+        private SherpaONNXModelManifest _manifest;
 
         public bool IsInitialized { get; private set; }
         public bool IsInitializing { get; private set; }
@@ -25,7 +25,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         public event Action Initialized;
 
-        private SherpaOnnxModelRegistry() { }
+        private SherpaONNXModelRegistry() { }
 
         /// <summary>
         /// Synchronously ensure the registry is initialized. Since initialization
@@ -51,7 +51,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                 IsInitializing = true;
 
                 // Minimal init: create an empty manifest and reset caches.
-                _manifest = new SherpaOnnxModelManifest();
+                _manifest = new SherpaONNXModelManifest();
                 _resolvedModelIds.Clear();
 
                 // Populate dictionary from (empty) manifest to keep behavior consistent.
@@ -106,7 +106,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         }
 
 
-        private void PopulateDictionaryFromManifest(SherpaOnnxModelManifest manifest, bool clearExisting)
+        private void PopulateDictionaryFromManifest(SherpaONNXModelManifest manifest, bool clearExisting)
         {
             if (clearExisting)
             {
@@ -135,7 +135,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
         }
 
-        private bool IsModuleLoaded(SherpaOnnxModuleType moduleType)
+        private bool IsModuleLoaded(SherpaONNXModuleType moduleType)
         {
             if (_manifest?.models == null)
             {
@@ -156,17 +156,17 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             }
 
 
-            var present = new HashSet<SherpaOnnxModuleType>(
+            var present = new HashSet<SherpaONNXModuleType>(
                 _manifest.models.Where(m => m != null).Select(m => m.moduleType)
             );
-            var required = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
-                .Where(t => t != SherpaOnnxModuleType.Undefined);
+            var required = Constants.SherpaONNXConstants.EnumerateManifestModuleTypes()
+                .Where(t => t != SherpaONNXModuleType.Undefined);
             return required.All(t => present.Contains(t));
         }
 
-        private async Task EnsureModuleDataAsync(SherpaOnnxModuleType moduleType, CancellationToken cancellationToken)
+        private async Task EnsureModuleDataAsync(SherpaONNXModuleType moduleType, CancellationToken cancellationToken)
         {
-            if (moduleType == SherpaOnnxModuleType.Undefined)
+            if (moduleType == SherpaONNXModuleType.Undefined)
             {
                 await EnsureAllModulesLoadedAsync(cancellationToken).ConfigureAwait(true);
                 return;
@@ -185,7 +185,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     return;
                 }
 
-                await Constants.SherpaOnnxConstants.PopulateManifestAsync(_manifest, new[] { moduleType }, cancellationToken).ConfigureAwait(true);
+                await Constants.SherpaONNXConstants.PopulateManifestAsync(_manifest, new[] { moduleType }, cancellationToken).ConfigureAwait(true);
                 PopulateDictionaryFromManifest(_manifest, clearExisting: false);
                 // MarkModuleLoaded(moduleType);
             }
@@ -197,8 +197,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private async Task EnsureAllModulesLoadedAsync(CancellationToken cancellationToken)
         {
-            var pending = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
-                .Where(t => t != SherpaOnnxModuleType.Undefined && !IsModuleLoaded(t))
+            var pending = Constants.SherpaONNXConstants.EnumerateManifestModuleTypes()
+                .Where(t => t != SherpaONNXModuleType.Undefined && !IsModuleLoaded(t))
                 .ToArray();
 
             if (pending.Length == 0)
@@ -209,8 +209,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
             try
             {
-                pending = Constants.SherpaOnnxConstants.EnumerateManifestModuleTypes()
-                    .Where(t => t != SherpaOnnxModuleType.Undefined && !IsModuleLoaded(t))
+                pending = Constants.SherpaONNXConstants.EnumerateManifestModuleTypes()
+                    .Where(t => t != SherpaONNXModuleType.Undefined && !IsModuleLoaded(t))
                     .ToArray();
 
                 if (pending.Length == 0)
@@ -218,7 +218,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
                     return;
                 }
 
-                await Constants.SherpaOnnxConstants.PopulateManifestAsync(_manifest, pending, cancellationToken).ConfigureAwait(true);
+                await Constants.SherpaONNXConstants.PopulateManifestAsync(_manifest, pending, cancellationToken).ConfigureAwait(true);
                 PopulateDictionaryFromManifest(_manifest, clearExisting: false);
             }
             finally
@@ -230,11 +230,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
         /// </summary>
-        private SherpaOnnxModelMetadata GetMetadata(string modelId)
+        private SherpaONNXModelMetadata GetMetadata(string modelId)
         {
             if (!IsInitialized)
             {
-                UnityEngine.Debug.LogWarning("SherpaOnnxModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
+                UnityEngine.Debug.LogWarning("SherpaONNXModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
                 return null;
             }
 
@@ -260,7 +260,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Async version of GetMetadata; awaits initialization if needed.
         /// </summary>
-        public async Task<SherpaOnnxModelMetadata> GetMetadataAsync(string modelId, CancellationToken cancellationToken = default)
+        public async Task<SherpaONNXModelMetadata> GetMetadataAsync(string modelId, CancellationToken cancellationToken = default)
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
@@ -274,7 +274,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Try to get the manifest without waiting. Returns true if initialized and manifest is not null.
         /// </summary>
-        public bool TryGetManifest(out SherpaOnnxModelManifest manifest)
+        public bool TryGetManifest(out SherpaONNXModelManifest manifest)
         {
             manifest = _manifest;
             return IsInitialized && manifest != null && IsManifestFullyLoaded();
@@ -284,7 +284,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// Await until the registry has finished initialization and then return the manifest.
         /// Does not block the main thread.
         /// </summary>
-        public async Task<SherpaOnnxModelManifest> WaitForManifestAsync(CancellationToken cancellationToken = default)
+        public async Task<SherpaONNXModelManifest> WaitForManifestAsync(CancellationToken cancellationToken = default)
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
@@ -296,7 +296,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         /// <summary>
         /// Async version of GetManifest; awaits initialization if needed.
         /// </summary>
-        public async Task<SherpaOnnxModelManifest> GetManifestAsync(CancellationToken cancellationToken = default)
+        public async Task<SherpaONNXModelManifest> GetManifestAsync(CancellationToken cancellationToken = default)
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
@@ -305,8 +305,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime
             return _manifest;
         }
 
-        public async Task<SherpaOnnxModelManifest> GetManifestAsync(
-            SherpaOnnxModuleType moduleType,
+        public async Task<SherpaONNXModelManifest> GetManifestAsync(
+            SherpaONNXModuleType moduleType,
             CancellationToken cancellationToken = default)
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
@@ -314,9 +314,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             // If the caller truly wants "all", they should call the parameterless overload.
             // For Undefined, just return whatever we currently have without forcing a full load.
-            if (moduleType == SherpaOnnxModuleType.Undefined)
+            if (moduleType == SherpaONNXModuleType.Undefined)
             {
-                return _manifest ?? new SherpaOnnxModelManifest();
+                return _manifest ?? new SherpaONNXModelManifest();
             }
 
             // Ensure only the requested module type is present in the cached manifest.
@@ -325,7 +325,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             // Return a filtered snapshot so the caller sees just this module's entries,
             // while the internal _manifest remains the shared cache.
-            var result = new SherpaOnnxModelManifest();
+            var result = new SherpaONNXModelManifest();
             if (_manifest?.models != null)
             {
                 result.models.AddRange(_manifest.models.Where(m => m != null && m.moduleType == moduleType));

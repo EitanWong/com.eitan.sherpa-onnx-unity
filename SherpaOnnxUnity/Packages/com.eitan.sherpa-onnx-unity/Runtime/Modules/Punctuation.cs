@@ -1,27 +1,27 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
 
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-    public class Punctuation : SherpaOnnxModule
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+    public class Punctuation : SherpaONNXModule
     {
         private OfflinePunctuation _punct;
 
         private int _sampleRate;
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.AddPunctuation;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.AddPunctuation;
 
-        public Punctuation(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null) : base(modelID, sampleRate, reporter)
+        public Punctuation(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null) : base(modelID, sampleRate, reporter)
         {
 
         }
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -63,7 +63,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             }
         }
 
-        private OfflinePunctuationConfig CreatePunctuationConfig(SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
+        private OfflinePunctuationConfig CreatePunctuationConfig(SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var config = new OfflinePunctuationConfig();

@@ -1,410 +1,188 @@
-
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
-
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core;
+    using Eitan.Sherpa.Onnx.Unity.Mono.Components;
+    using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
-    using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
 
-    [RequireComponent(typeof(AudioSource))]
-    public class VoiceActivityDetectionExample : MonoBehaviour, ISherpaFeedbackHandler
+    /// <summary>
+    /// Quick-start UI for <see cref="VoiceActivityDetectionComponent"/>.
+    /// </summary>
+    public sealed class VoiceActivityDetectionExample : MonoBehaviour
     {
-        // [SerializeField] private string _onlineModelID = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20";
-        [Header("UI Components")]
-        [SerializeField] private Dropdown _modelIDDropdown;
-        [SerializeField] private Button _modelLoadOrUnloadButton;
-        [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
-        [SerializeField] private Text _totalInitBarText;
-        [SerializeField] private Text _tipsText;
-        [SerializeField] private Text _vadStatusText;
+        [Header("Sherpa Components")]
+        [SerializeField] private VoiceActivityDetectionComponent voiceActivity;
+        [SerializeField] private SherpaMicrophoneInput microphone;
 
+        [Header("UI")]
+        [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Button loadOrUnloadButton;
+        [SerializeField] private Text statusText;
+        [SerializeField] private Text segmentText;
 
-        private VoiceActivityDetection vad;
+        private bool modelRequested;
 
-        private readonly int SampleRate = 16000;
-
-        private Mic.Device device;
-
-        private Color _originLoadBtnColor;
-        private readonly string defaultModelID = "silero-vad-latest";
-        private ModelLoadProgressTracker _progressTracker;
-
-        private AudioSource audioSource;
-        private readonly List<float> accumulatedSpeech = new List<float>();
-        private bool isPlayingBack = false;
-
-        /// <summary>
-        /// True if the VAD model is loaded.
-        /// </summary>
-        private bool IsModelLoaded => vad != null;
-
-        #region Unity Lifecycle Methods
-        private void Start()
+        private void Awake()
         {
-            audioSource = GetComponent<AudioSource>();
-            Application.runInBackground = true;
-            Application.targetFrameRate = 30;
-            _modelLoadOrUnloadButton.onClick.AddListener(HandleModelLoadOrUnloadButtonClick);
-            _totalInitProgressBar.gameObject.SetActive(false);
-            _initMessageText.gameObject.SetActive(false);
-            _tipsText.text = "Load a model to begin.";
-            _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
-            _originLoadBtnColor = _modelLoadOrUnloadButton.GetComponent<Image>().color;
-            _progressTracker = new ModelLoadProgressTracker(_totalInitProgressBar, _totalInitBarText, _initMessageText);
-            _ = InitDropdownAsync();
-            UpdateLoadButtonUI();
+            if (loadOrUnloadButton != null)
+            {
+                loadOrUnloadButton.onClick.AddListener(ToggleModel);
+            }
+
+            if (voiceActivity != null)
+            {
+                voiceActivity.SpeakingStateChanged += HandleSpeakingStateChanged;
+                voiceActivity.SpeechSegmentReady += HandleSegmentReady;
+                voiceActivity.InitializationStateChangedEvent.AddListener(HandleReadyStateChanged);
+                if (microphone != null)
+                {
+                    voiceActivity.BindInput(microphone);
+                }
+            }
+        }
+
+        private void OnEnable()
+        {
+            _ = PopulateDropdownAsync();
+            statusText.text = "Load a VAD model.";
+            segmentText.text = string.Empty;
+            UpdateButtonLabel();
         }
 
         private void OnDestroy()
         {
-            // Ensure all resources are properly released when the object is destroyed.
-            Cleanup();
-
-            // Clean up UI event listeners to prevent memory leaks.
-            if (_modelLoadOrUnloadButton != null)
+            if (loadOrUnloadButton != null)
             {
-                _modelLoadOrUnloadButton.onClick.RemoveListener(HandleModelLoadOrUnloadButtonClick);
+                loadOrUnloadButton.onClick.RemoveListener(ToggleModel);
+            }
+
+            if (voiceActivity != null)
+            {
+                voiceActivity.SpeakingStateChanged -= HandleSpeakingStateChanged;
+                voiceActivity.SpeechSegmentReady -= HandleSegmentReady;
+                voiceActivity.InitializationStateChangedEvent.RemoveListener(HandleReadyStateChanged);
             }
         }
-        #endregion
 
-        #region Model and Recording Control
-        /// <summary>
-        /// Loads the VAD model with the specified ID and prepares for recording.
-        /// </summary>
-        /// <param name="modelID">The ID of the model to load.</param>
-        private void Load(string modelID)
+        private async Task PopulateDropdownAsync()
         {
-            if (IsModelLoaded)
+            if (modelDropdown == null)
             {
-                Debug.LogError("Please unload the current model first.");
                 return;
             }
 
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
-            vad = new VoiceActivityDetection(modelID, SampleRate, reporter);
-            vad.OnSpeakingStateChanged += HandleSpeechStateChanged;
-            vad.OnSpeechSegmentDetected += HandleSpeechSegmentCollected;
+            modelDropdown.options.Clear();
+            modelDropdown.captionText.text = "Loading VAD models…";
+            modelDropdown.interactable = false;
 
-            UpdateLoadButtonUI();
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.VoiceActivityDetection).ConfigureAwait(true);
 
-        }
-
-        /// <summary>
-        /// Unloads the current VAD model and releases all related resources.
-        /// </summary>
-        private void Unload()
-        {
-            if (!IsModelLoaded)
+            if (manifest.models == null || manifest.models.Count == 0)
             {
-                Debug.LogWarning("No model is loaded, no need to unload.");
+                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
                 return;
             }
 
+            List<Dropdown.OptionData> options = manifest.models
+                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                .Select(m => new Dropdown.OptionData(m.modelId))
+                .ToList();
 
-            Cleanup();
-            _vadStatusText.text = "VAD Status: Model not loaded\nPlease select a model to load.";
-            _tipsText.text = "Load a model to begin.";
-            UpdateLoadButtonUI();
+            modelDropdown.AddOptions(options);
+            modelDropdown.interactable = true;
         }
 
-        /// <summary>
-        /// Starts microphone recording.
-        /// </summary>
-        private void StartRecording()
+        private string SelectedModelId =>
+            modelDropdown != null && modelDropdown.options.Count > 0
+                ? modelDropdown.options[modelDropdown.value].text
+                : string.Empty;
+
+        private void ToggleModel()
         {
-            if (isPlayingBack)
+            if (voiceActivity == null)
             {
-                Debug.LogWarning("Cannot start recording during playback.");
+                statusText.text = "Assign the VoiceActivityDetectionComponent.";
                 return;
             }
-            if (!Mic.Initialized)
+
+            if (!modelRequested)
             {
-                Mic.Init();
-            }
-            var devices = Mic.AvailableDevices;
-            if (devices.Count > 0)
-            {
-                // Only get a new device and subscribe if we don't have one.
-                // This prevents re-subscribing the event handler on resume.
-                if (device == null)
+                var modelId = SelectedModelId;
+                if (string.IsNullOrWhiteSpace(modelId))
                 {
-                    device = devices[0];
-                    device.OnFrameCollected += HandleAudioFrameCollected;
-                }
-
-                device.StartRecording(SampleRate, 10);
-                Debug.Log($"Using device: {device.Name}, Sampling Frequency: {device.SamplingFrequency}");
-            }
-        }
-
-        /// <summary>
-        /// A unified resource cleanup method to release all occupied resources.
-        /// </summary>
-        private void Cleanup()
-        {
-            // Stop microphone and unsubscribe
-            if (device != null)
-            {
-                device.StopRecording();
-                device.OnFrameCollected -= HandleAudioFrameCollected;
-                device = null;
-            }
-
-            // Destroy VAD and unsubscribe
-            if (vad != null)
-            {
-                vad.OnSpeakingStateChanged -= HandleSpeechStateChanged;
-                vad.OnSpeechSegmentDetected -= HandleSpeechSegmentCollected;
-                vad.Dispose();
-                vad = null;
-            }
-
-            // Reset playback state
-            if (audioSource != null && audioSource.isPlaying)
-            {
-                audioSource.Stop();
-            }
-            accumulatedSpeech.Clear();
-            isPlayingBack = false;
-
-            _progressTracker?.Reset();
-            _progressTracker?.SetVisible(false);
-        }
-        #endregion
-
-        #region UI and Initialization
-        private async Task InitDropdownAsync()
-        {
-            _modelIDDropdown.options.Clear();
-            _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
-            _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.VoiceActivityDetection);
-            _modelLoadOrUnloadButton.gameObject.SetActive(true);
-            _modelIDDropdown.options.Clear();
-            if (manifest.models != null)
-            {
-                System.Collections.Generic.List<OptionData> modelOptions = manifest.models.Select(m => new OptionData(m.modelId)).ToList();
-                _modelIDDropdown.AddOptions(modelOptions);
-
-                var defaultIndex = modelOptions.FindIndex(m => m.text == defaultModelID);
-                _modelIDDropdown.value = defaultIndex;
-                _modelIDDropdown.interactable = true;
-            }
-            else
-            {
-                _modelIDDropdown.interactable = false;
-            }
-        }
-
-        private void UpdateLoadButtonUI()
-        {
-
-            if (IsModelLoaded)// Model is already loaded
-            {
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Unload Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = Color.red;
-                _modelIDDropdown.interactable = false;
-
-                _totalInitProgressBar.gameObject.SetActive(true);
-                _initMessageText.gameObject.SetActive(true);
-            }
-            else // No model loaded, preparing to initialize a new one
-            {
-
-                _modelLoadOrUnloadButton.GetComponentInChildren<Text>().text = "Load Model";
-                _modelLoadOrUnloadButton.GetComponent<Image>().color = _originLoadBtnColor;
-                _modelIDDropdown.interactable = true;
-
-                _totalInitProgressBar.gameObject.SetActive(false);
-                _initMessageText.gameObject.SetActive(false);
-                _tipsText.text = "Load a model to begin.";
-
-            }
-        }
-
-        private void HandleModelLoadOrUnloadButtonClick()
-        {
-            if (IsModelLoaded)// Model is already loaded
-            {
-                Unload();
-            }
-            else // No model loaded, initialize a new one
-            {
-                Load(_modelIDDropdown.captionText.text);
-            }
-
-        }
-        #endregion
-
-        #region VAD Core Logic
-        private void HandleSpeechStateChanged(bool isSpeaking)
-        {
-            if (isSpeaking)
-            {
-                _vadStatusText.text = "VAD Status: <color=green>Speaking</color>";
-                _tipsText.text = "Recording speech segment...";
-            }
-            else
-            {
-                _vadStatusText.text = "VAD Status: <color=red>Silent</color>";
-                _tipsText.text = "Speech ended. Preparing for playback...";
-                // When the user stops speaking and we have recorded something, start playback.
-                if (accumulatedSpeech.Count > 0 && !isPlayingBack)
-                {
-                    _ = PlayAndResumeAsync();
-                }
-            }
-        }
-
-        private void HandleSpeechSegmentCollected(float[] segment)
-        {
-            if (segment == null || segment.Length == 0)
-            {
-                Debug.LogWarning("Received an empty speech segment.");
-                return;
-            }
-            accumulatedSpeech.AddRange(segment);
-        }
-
-        private async Task PlayAndResumeAsync()
-        {
-            if (accumulatedSpeech.Count == 0)
-            {
-                return;
-            }
-
-            // Set a flag to prevent audio processing during playback.
-
-            isPlayingBack = true;
-
-            var samples = accumulatedSpeech.ToArray();
-            accumulatedSpeech.Clear();
-
-            AudioClip clip = AudioClip.Create("SpeechSegment", samples.Length, 1, SampleRate, false);
-            clip.SetData(samples, 0);
-
-            audioSource.clip = clip;
-            audioSource.Play();
-            _vadStatusText.text = $"Playback: <color=blue>{clip.length:F2}s</color>";
-            _tipsText.text = "Playing back the last detected speech segment.";
-            // Debug.Log($"Playing back {clip.length:F2} seconds of audio.");
-
-            // Wait for playback to complete.
-            while (audioSource.isPlaying)
-            {
-                await Task.Yield();
-            }
-
-            // Destroy the temporary AudioClip to free up memory.
-            Destroy(clip);
-
-            // Reset the flag to allow audio processing to resume.
-            if (IsModelLoaded)
-            {
-                _vadStatusText.text = "VAD Status: <color=grey>Listening...</color>";
-                // Debug.Log("Playback finished. Resuming audio processing.");
-                _tipsText.text = "Playback finished. Resumed recording. Speak now.";
-            }
-            isPlayingBack = false;
-        }
-
-        private void HandleAudioFrameCollected(int sampleRate, int channelCount, float[] pcm)
-        {
-            try
-            {
-                // While playing back the previous segment, ignore new audio frames.
-                if (vad == null || isPlayingBack)
-                {
+                    statusText.text = "Select a model first.";
                     return;
                 }
-                vad.StreamDetect(pcm);
 
+                voiceActivity.ModelId = modelId.Trim();
+                if (voiceActivity.TryLoadModule())
+                {
+                    modelRequested = true;
+                    statusText.text = $"Loaded {voiceActivity.ModelId}.";
+                }
             }
-            catch (Exception ex)
+            else
             {
-                // Log errors to avoid crashing the application
-                Debug.LogError($"An error occurred in HandleAudioFrameCollected: {ex}");
+                voiceActivity.DisposeModule();
+                modelRequested = false;
+                statusText.text = "Model disposed.";
+                segmentText.text = string.Empty;
+            }
+
+            UpdateButtonLabel();
+        }
+
+        private void UpdateButtonLabel()
+        {
+            if (loadOrUnloadButton == null)
+            {
+                return;
+            }
+
+            var label = loadOrUnloadButton.GetComponentInChildren<Text>();
+            if (label != null)
+            {
+                label.text = modelRequested ? "Unload Model" : "Load Model";
             }
         }
-        #endregion
 
-        #region ISherpaFeedbackHandler Implementation
-
-        public void OnFeedback(PrepareFeedback feedback)
+        private void HandleReadyStateChanged(bool ready)
         {
-            _progressTracker.Reset();
-            _progressTracker.MarkStageComplete(Stage.Prepare, feedback.Message);
-            _tipsText.text = $"<b>[Loading]:</b> {feedback.Metadata.modelId}\nThe model is loading, please wait patiently.";
+            if (!modelRequested)
+            {
+                return;
+            }
+
+            statusText.text = ready ? "Listening for speech…" : "Model not ready.";
         }
 
-        public void OnFeedback(DownloadFeedback feedback)
+        private void HandleSpeakingStateChanged(bool speaking)
         {
-            _progressTracker.UpdateStage(Stage.Download, feedback.Message, feedback.Progress);
+            if (!modelRequested)
+            {
+                return;
+            }
+
+            statusText.text = speaking ? "Speech detected" : "Silence";
         }
 
-        public void OnFeedback(CleanFeedback feedback)
+        private void HandleSegmentReady(float[] samples, int sampleRate)
         {
-            _progressTracker.MarkStageComplete(Stage.Clean, feedback.Message);
+            if (samples == null || samples.Length == 0)
+            {
+                return;
+            }
+
+            segmentText.text = $"Captured {samples.Length / (float)sampleRate:F1}s of speech";
         }
-
-        public void OnFeedback(VerifyFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Verify, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(DecompressFeedback feedback)
-        {
-            _progressTracker.UpdateStage(Stage.Decompress, feedback.Message, feedback.Progress);
-        }
-
-        public void OnFeedback(LoadFeedback feedback)
-        {
-            _progressTracker.MarkStageComplete(Stage.Load, feedback.Message);
-            _tipsText.text = $"<b><color=cyan>[Loading]</color>:</b> \nThe model {feedback.Metadata.modelId} is loading.";
-        }
-
-        public void OnFeedback(CancelFeedback feedback)
-        {
-            Unload();
-            _tipsText.text = $"<b><color=yellow>Cancelled</color>:</b> {feedback.Metadata.modelId}\n{feedback.Message}";
-        }
-
-        public void OnFeedback(SuccessFeedback feedback)
-        {
-            _progressTracker.Complete("Success");
-            _progressTracker.SetVisible(false);
-            _initMessageText.text = string.Empty;
-            _vadStatusText.text = $"VAD Model Loaded\nNow you can speak to test.";
-            _tipsText.text = $"Model {feedback.Metadata.modelId} loaded.";
-
-            StartRecording();
-
-        }
-
-        public void OnFeedback(FailedFeedback feedback)
-        {
-            UnityEngine.Debug.LogError($"[Failed] :{feedback.Message}");
-            Unload();
-            _initMessageText.text = feedback.Message;
-            _tipsText.text = $"<b><color=red>[Failed]</color>:</b> \nThe model failed to load.";
-            _vadStatusText.text = "VAD Status: <color=red>Load failed</color>";
-
-        }
-        #endregion
 
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
         }
     }
-
 }

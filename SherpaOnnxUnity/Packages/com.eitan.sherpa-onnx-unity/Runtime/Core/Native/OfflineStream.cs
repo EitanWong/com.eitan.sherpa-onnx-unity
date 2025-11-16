@@ -3,7 +3,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
     public class OfflineStream : IDisposable
@@ -44,7 +44,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflineStream(Handle);
+            SherpaONNXDestroyOfflineStream(Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -54,15 +54,15 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         public IntPtr Handle => _handle.Handle;
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflineStream(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflineStream(IntPtr handle);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxAcceptWaveformOffline")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXAcceptWaveformOffline")]
         private static extern void AcceptWaveform(IntPtr handle, int sampleRate, float[] samples, int n);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxGetOfflineStreamResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXGetOfflineStreamResult")]
         private static extern IntPtr GetResult(IntPtr handle);
 
-        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDestroyOfflineRecognizerResult")]
+        [DllImport(Dll.Filename, EntryPoint = "SherpaONNXDestroyOfflineRecognizerResult")]
         private static extern void DestroyResult(IntPtr handle);
     }
 

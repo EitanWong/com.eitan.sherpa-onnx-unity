@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ SherpaOnnxUnity
+# 🎙️ SherpaONNXUnity
 
 ### Unity离线语音识别与语音活动检测包
 
@@ -8,12 +8,12 @@
 
 **语言**: [English](./README.md) | [中文](./README_zh.md)
 
-[![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/) 
+[![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Downloads](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.sherpa-onnx-unity&style=flat-square)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.1** (2025-10-28)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.1** (2025-10-28)
 
 </div>
 
@@ -42,7 +42,7 @@
 - **模块初始化**：增强了初始化过程，增加了对必需文件和目录的全面检查。
 - **Sherpa-onnx 升级**：更新至 v1.12.15。
 
-[📋 **查看完整更新日志**](./SherpaOnnxUnity/SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
+[📋 **查看完整更新日志**](./SherpaONNXUnity/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -119,7 +119,7 @@
    - URL: `https://package.openupm.com`
    - Scope: `com.eitan.sherpa-onnx-unity`
 3. **Window → Package Manager → My Registries**
-4. 安装 **SherpaOnnxUnity**
+4. 安装 **SherpaONNXUnity**
 
 </details>
 
@@ -139,9 +139,9 @@ openupm add com.eitan.sherpa-onnx-unity
 **🎯 最快的入门方式是导入并探索示例场景：**
 
 1. 打开 **Window → Package Manager**
-2. 在 **In Project** 标签页中找到 **SherpaOnnxUnity**
+2. 在 **In Project** 标签页中找到 **SherpaONNXUnity**
 3. 展开 **Samples** 部分
-4. 点击"SherpaOnnxUnity Sample"旁边的 **Import**
+4. 点击"SherpaONNXUnity Sample"旁边的 **Import**
 
 示例包含：
 - **实时语音识别** - 麦克风实时输入和转录
@@ -192,7 +192,7 @@ openupm add com.eitan.sherpa-onnx-unity
 ### 项目结构
 
 ```
-SherpaOnnxUnity/
+SherpaONNXUnity/
 ├── Packages/com.eitan.sherpa-onnx-unity/
 │   ├── Runtime/           # 核心包代码
 │   ├── Editor/            # Unity编辑器扩展
@@ -224,13 +224,13 @@ SherpaOnnxUnity/
 ### 重要许可信息
 
 - ✅ **商业使用**: 允许
-- ✅ **修改**: 允许  
+- ✅ **修改**: 允许
 - ✅ **分发**: 允许
 - ✅ **私人使用**: 允许
 - ❗ **许可声明**: 必须包含在再分发中
 - ❗ **版权声明**: 必须保留
 
-**合规说明**: 在项目中使用此包时，确保在应用程序的法律文档中包含SherpaOnnxUnity和sherpa-onnx的许可声明。
+**合规说明**: 在项目中使用此包时，确保在应用程序的法律文档中包含SherpaONNXUnity和sherpa-onnx的许可声明。
 
 ## 🙏 致谢
 

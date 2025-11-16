@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities
 {
     // 建議將此函式放在一個靜態的工具類別中
     public static class MathUtils

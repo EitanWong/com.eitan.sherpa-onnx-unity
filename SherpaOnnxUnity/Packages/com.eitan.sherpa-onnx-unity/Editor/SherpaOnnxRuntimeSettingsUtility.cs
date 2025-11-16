@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
     using System;
     using System.Collections.Generic;
@@ -8,13 +8,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
     using System.Text;
     using UnityEditor;
     using UnityEngine;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
 
-    internal static class SherpaOnnxRuntimeSettingsUtility
+    internal static class SherpaONNXRuntimeSettingsUtility
     {
-        private const string TypeFilter = "t:" + nameof(SherpaOnnxRuntimeSettings);
+        private const string TypeFilter = "t:" + nameof(SherpaONNXRuntimeSettings);
 
-        internal static SherpaOnnxRuntimeSettings LoadOrCreateSettingsAsset()
+        internal static SherpaONNXRuntimeSettings LoadOrCreateSettingsAsset()
         {
             var existing = FindExistingAsset();
             if (existing != null)
@@ -23,13 +23,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
             }
 
             EnsureResourcesFolder();
-            var settings = ScriptableObject.CreateInstance<SherpaOnnxRuntimeSettings>();
-            AssetDatabase.CreateAsset(settings, SherpaOnnxRuntimeSettings.AssetPath);
+            var settings = ScriptableObject.CreateInstance<SherpaONNXRuntimeSettings>();
+            AssetDatabase.CreateAsset(settings, SherpaONNXRuntimeSettings.AssetPath);
             AssetDatabase.SaveAssets();
             return settings;
         }
 
-        private static SherpaOnnxRuntimeSettings FindExistingAsset()
+        private static SherpaONNXRuntimeSettings FindExistingAsset()
         {
             var matches = FindAllResourceAssets();
             if (matches.Count == 0)
@@ -58,7 +58,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     continue;
                 }
 
-                var asset = AssetDatabase.LoadAssetAtPath<SherpaOnnxRuntimeSettings>(path);
+                var asset = AssetDatabase.LoadAssetAtPath<SherpaONNXRuntimeSettings>(path);
                 if (asset != null)
                 {
                     assets.Add(new AssetEntry(asset, path));
@@ -81,7 +81,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         private static void LogDuplicateAssets(List<AssetEntry> entries)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"Multiple {nameof(SherpaOnnxRuntimeSettings)} assets were found under Resources. Only one asset is supported. Please delete the duplicates:");
+            sb.AppendLine($"Multiple {nameof(SherpaONNXRuntimeSettings)} assets were found under Resources. Only one asset is supported. Please delete the duplicates:");
             foreach (var entry in entries)
             {
                 sb.Append(" • ").AppendLine(entry.Path);
@@ -92,7 +92,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private static void EnsureResourcesFolder()
         {
-            var directory = Path.GetDirectoryName(SherpaOnnxRuntimeSettings.AssetPath);
+            var directory = Path.GetDirectoryName(SherpaONNXRuntimeSettings.AssetPath);
             if (string.IsNullOrEmpty(directory) || Directory.Exists(directory))
             {
                 return;
@@ -104,13 +104,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private readonly struct AssetEntry
         {
-            public AssetEntry(SherpaOnnxRuntimeSettings asset, string path)
+            public AssetEntry(SherpaONNXRuntimeSettings asset, string path)
             {
                 Asset = asset;
                 Path = path;
             }
 
-            public SherpaOnnxRuntimeSettings Asset { get; }
+            public SherpaONNXRuntimeSettings Asset { get; }
             public string Path { get; }
         }
     }

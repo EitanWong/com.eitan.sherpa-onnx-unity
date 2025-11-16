@@ -3,8 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 {
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -46,7 +46,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             onIdentifiedProp = serializedObject.FindProperty("onLanguageIdentified");
             onFailedProp = serializedObject.FindProperty("onIdentificationFailed");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaOnnxModuleType.SpokenLanguageIdentification, Repaint);
+            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.SpokenLanguageIdentification, Repaint);
             modelSelector.Refresh();
         }
 
@@ -72,12 +72,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
-                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldModelId, "Model ID"));
-                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
-                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
-                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
-                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionModelSettings, "Model Settings"), Styles.Header);
+                modelSelector?.DrawModelField(modelIdProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldModelId, "Model ID"));
+                EditorGUILayout.PropertyField(sampleRateProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldSampleRate, "Sample Rate (Hz)"));
+                EditorGUILayout.PropertyField(loadOnAwakeProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLoadOnAwake, "Load On Awake"));
+                EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
+                EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
         }
 
@@ -85,13 +85,13 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.SectionClip, "Clip Input"), Styles.Header);
-                EditorGUILayout.PropertyField(clipProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.FieldClip, "Audio Clip"));
-                EditorGUILayout.PropertyField(identifyOnStartProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.FieldIdentifyOnStart, "Identify On Start"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.SectionClip, "Clip Input"), Styles.Header);
+                EditorGUILayout.PropertyField(clipProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.FieldClip, "Audio Clip"));
+                EditorGUILayout.PropertyField(identifyOnStartProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.FieldIdentifyOnStart, "Identify On Start"));
 
                 using (new EditorGUI.DisabledScope(!Application.isPlaying || clipProp.objectReferenceValue == null))
                 {
-                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.ButtonIdentify, "Identify Clip")))
+                    if (GUILayout.Button(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.ButtonIdentify, "Identify Clip")))
                     {
                         runtimeComponent.IdentifyAssignedClip();
                     }
@@ -100,7 +100,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                 if (!Application.isPlaying)
                 {
                     EditorGUILayout.HelpBox(
-                        SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.HelpPlaymodeRequired, "Enter Play Mode to run this preview directly from the inspector."),
+                        SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.HelpPlaymodeRequired, "Enter Play Mode to run this preview directly from the inspector."),
                         MessageType.Info);
                 }
             }
@@ -110,9 +110,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         {
             using (new EditorGUILayout.VerticalScope(Styles.Section))
             {
-                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaOnnxL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
-                EditorGUILayout.PropertyField(onIdentifiedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.EventIdentified, "On Language Identified"));
-                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaOnnxL10n.Inspectors.SpokenLanguageIdentification.EventFailed, "On Identification Failed"));
+                EditorGUILayout.LabelField(SherpaInspectorContent.Text(SherpaONNXL10n.Inspectors.Common.SectionEvents, "Events"), Styles.Header);
+                EditorGUILayout.PropertyField(onIdentifiedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.EventIdentified, "On Language Identified"));
+                EditorGUILayout.PropertyField(onFailedProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.SpokenLanguageIdentification.EventFailed, "On Identification Failed"));
             }
         }
     }

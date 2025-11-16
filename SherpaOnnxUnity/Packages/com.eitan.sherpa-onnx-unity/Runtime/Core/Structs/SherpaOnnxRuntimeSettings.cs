@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     /// <summary>
-    /// ScriptableObject that stores default environment values for SherpaOnnx.
+    /// ScriptableObject that stores default environment values for SherpaONNX.
     /// Serialized under Resources so the data ships with builds and can be read very early.
     /// </summary>
-    public sealed class SherpaOnnxRuntimeSettings : ScriptableObject
+    public sealed class SherpaONNXRuntimeSettings : ScriptableObject
     {
-        public const string ResourceName = "SherpaOnnxRuntimeSettings";
+        public const string ResourceName = "SherpaONNXRuntimeSettings";
         public const string AssetPath = "Assets/Resources/" + ResourceName + ".asset";
         internal const string FetchLatestManifestPropertyName = nameof(_fetchLatestManifest);
         internal const string AutoDownloadModelsPropertyName = nameof(_autoDownloadModels);
@@ -34,22 +34,22 @@ namespace Eitan.SherpaOnnxUnity.Runtime
         [Tooltip("Cache lifetime for fetched checksum.txt content, in seconds. Use 0 to disable caching entirely.")]
         private int _checksumCacheTtlSeconds = 3600;
 
-        internal static SherpaOnnxRuntimeSettings LoadFromResources()
+        internal static SherpaONNXRuntimeSettings LoadFromResources()
         {
             // Fast path: default root-level asset.
-            var direct = Resources.Load<SherpaOnnxRuntimeSettings>(ResourceName);
+            var direct = Resources.Load<SherpaONNXRuntimeSettings>(ResourceName);
             if (direct != null)
             {
                 return direct;
             }
 
-            var discovered = Resources.LoadAll<SherpaOnnxRuntimeSettings>(string.Empty);
+            var discovered = Resources.LoadAll<SherpaONNXRuntimeSettings>(string.Empty);
             if (discovered == null || discovered.Length == 0)
             {
                 return null;
             }
 
-            var valid = new List<SherpaOnnxRuntimeSettings>(discovered.Length);
+            var valid = new List<SherpaONNXRuntimeSettings>(discovered.Length);
             foreach (var candidate in discovered)
             {
                 if (candidate != null)
@@ -65,7 +65,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
             if (valid.Count > 1)
             {
-                Debug.LogError($"Multiple {nameof(SherpaOnnxRuntimeSettings)} assets detected under Resources. Please keep only one asset to avoid ambiguity.");
+                Debug.LogError($"Multiple {nameof(SherpaONNXRuntimeSettings)} assets detected under Resources. Please keep only one asset to avoid ambiguity.");
             }
 
             valid.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
@@ -74,34 +74,34 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         internal void ApplyEnvironmentDefaults()
         {
-            SetBool(SherpaOnnxEnvironment.BuiltinKeys.FetchLatestManifest, _fetchLatestManifest);
-            SetBool(SherpaOnnxEnvironment.BuiltinKeys.AutoDownloadModels, _autoDownloadModels);
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, _fetchLatestManifest);
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, _autoDownloadModels);
             SetStringOrClear(
-                SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheDirectory,
+                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory,
                 _checksumCacheDirectory);
 
             var ttl = Mathf.Max(0, _checksumCacheTtlSeconds);
-            SherpaOnnxEnvironment.Set(
-                SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
+            SherpaONNXEnvironment.Set(
+                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
                 ttl.ToString(CultureInfo.InvariantCulture));
         }
 
         private static void SetBool(string key, bool value) =>
-            SherpaOnnxEnvironment.Set(key, value ? bool.TrueString : bool.FalseString);
+            SherpaONNXEnvironment.Set(key, value ? bool.TrueString : bool.FalseString);
 
         private static void SetStringOrClear(string key, string value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                SherpaOnnxEnvironment.Remove(key);
+                SherpaONNXEnvironment.Remove(key);
                 return;
             }
 
-            SherpaOnnxEnvironment.Set(key, value.Trim());
+            SherpaONNXEnvironment.Set(key, value.Trim());
         }
     }
 
-    internal static class SherpaOnnxRuntimeSettingsBootstrap
+    internal static class SherpaONNXRuntimeSettingsBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
         private static void ApplyRuntimeDefaults() => Apply();
@@ -113,7 +113,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime
 
         private static void Apply()
         {
-            var asset = SherpaOnnxRuntimeSettings.LoadFromResources();
+            var asset = SherpaONNXRuntimeSettings.LoadFromResources();
             asset?.ApplyEnvironmentDefaults();
         }
     }

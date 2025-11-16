@@ -1,12 +1,12 @@
 
-namespace Eitan.SherpaOnnxUnity.Tests
+namespace Eitan.SherpaONNXUnity.Tests
 {
 
     using System.Collections.Generic;
     using NUnit.Framework;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Constants;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Constants;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
 
     public class SherpaModelMatcherTests
@@ -14,7 +14,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         // ===== Dynamic UseCases generated from Constants =====
         public static IEnumerable<TestCaseData> AllAsrIds_FromConstants()
         {
-            foreach (var meta in SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES)
+            foreach (var meta in SherpaONNXConstants.Models.ASR_MODELS_METADATA_TABLES)
             {
                 if (meta == null || string.IsNullOrEmpty(meta.modelId))
                 {
@@ -28,7 +28,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
 
         public static IEnumerable<TestCaseData> AllVadIds_FromConstants()
         {
-            foreach (var meta in SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES)
+            foreach (var meta in SherpaONNXConstants.Models.VAD_MODELS_METADATA_TABLES)
             {
                 if (meta == null || string.IsNullOrEmpty(meta.modelId))
                 {
@@ -42,7 +42,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
 
         public static IEnumerable<TestCaseData> AllTtsIds_FromConstants()
         {
-            foreach (var meta in SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES)
+            foreach (var meta in SherpaONNXConstants.Models.TTS_MODELS_METADATA_TABLES)
             {
                 if (meta == null || string.IsNullOrEmpty(meta.modelId))
                 {
@@ -323,41 +323,41 @@ namespace Eitan.SherpaOnnxUnity.Tests
         {
             // 典型 ASR 都应映射为 SpeechRecognition
             yield return ModCase("sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
             yield return ModCase("sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
             yield return ModCase("sherpa-onnx-zipformer-ru-2024-09-18",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
             yield return ModCase("sherpa-onnx-nemo-ctc-en-conformer-small",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
             yield return ModCase("sherpa-onnx-paraformer-trilingual-zh-cantonese-en",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
             yield return ModCase("sherpa-onnx-whisper-tiny.en",
-                SherpaOnnxModuleType.SpeechRecognition);
+                SherpaONNXModuleType.SpeechRecognition);
 
             // VAD
             yield return ModCase("silero-vad",
-                SherpaOnnxModuleType.VoiceActivityDetection);
+                SherpaONNXModuleType.VoiceActivityDetection);
 
             // Punct
             yield return ModCase("my-awesome-punct-zh",
-                SherpaOnnxModuleType.AddPunctuation);
+                SherpaONNXModuleType.AddPunctuation);
 
             // KWS
             yield return ModCase("toy-kws-demo",
-                SherpaOnnxModuleType.KeywordSpotting);
+                SherpaONNXModuleType.KeywordSpotting);
 
             // Speech Enhancement
             yield return ModCase("gtcrn-speech-enhance",
-                SherpaOnnxModuleType.SpeechEnhancement);
+                SherpaONNXModuleType.SpeechEnhancement);
 
             // LID（命中 langid/language-id/lid 等关键词）
             yield return ModCase("some-langid-model",
-                SherpaOnnxModuleType.SpokenLanguageIdentification);
+                SherpaONNXModuleType.SpokenLanguageIdentification);
 
             // 负例：无任何关键词
             yield return ModCase("pure-random-model-id",
-                SherpaOnnxModuleType.Undefined);
+                SherpaONNXModuleType.Undefined);
         }
 
         // --------------- Online/Offline 判定用例 ---------------
@@ -390,20 +390,20 @@ namespace Eitan.SherpaOnnxUnity.Tests
         public void ModuleType_LID_Boundaries_Work()
         {
             // Positive: multiple accepted variants
-            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+            Assert.AreEqual(SherpaONNXModuleType.SpokenLanguageIdentification,
                 SherpaUtils.Model.GetModuleTypeByModelId("foo-langid-bar"),
                 "langid should map to SpokenLanguageIdentification");
 
-            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+            Assert.AreEqual(SherpaONNXModuleType.SpokenLanguageIdentification,
                 SherpaUtils.Model.GetModuleTypeByModelId("foo-language-id-bar"),
                 "language-id should map to SpokenLanguageIdentification");
 
-            Assert.AreEqual(SherpaOnnxModuleType.SpokenLanguageIdentification,
+            Assert.AreEqual(SherpaONNXModuleType.SpokenLanguageIdentification,
                 SherpaUtils.Model.GetModuleTypeByModelId("foo-lid-bar"),
                 "lid should map to SpokenLanguageIdentification");
 
             // Negative: 'lid' as part of 'lidar' should NOT match
-            Assert.AreEqual(SherpaOnnxModuleType.Undefined,
+            Assert.AreEqual(SherpaONNXModuleType.Undefined,
                 SherpaUtils.Model.GetModuleTypeByModelId("foo-lidar-sensor"),
                 "'lidar' must not be treated as 'lid'");
         }
@@ -467,7 +467,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         }
 
         [Test, TestCaseSource(nameof(ModuleTypeCases))]
-        public void GetModuleTypeByModelId_Works(string modelId, SherpaOnnxModuleType expected)
+        public void GetModuleTypeByModelId_Works(string modelId, SherpaONNXModuleType expected)
         {
             var actual = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             Assert.AreEqual(expected, actual, $"ModuleType 不匹配: {modelId}");
@@ -485,7 +485,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         {
             // Module type must be ASR
             var module = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
-            Assert.AreEqual(SherpaOnnxModuleType.SpeechRecognition, module, $"[ASR][ModuleType] 应为 SpeechRecognition: {modelId}");
+            Assert.AreEqual(SherpaONNXModuleType.SpeechRecognition, module, $"[ASR][ModuleType] 应为 SpeechRecognition: {modelId}");
 
             // ASR subtype must not be None
             var asr = SherpaUtils.Model.GetSpeechRecognitionModelType(modelId);
@@ -508,7 +508,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         public void All_VAD_Models_Are_Mapped_Correctly(string modelId)
         {
             var module = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
-            Assert.AreEqual(SherpaOnnxModuleType.VoiceActivityDetection, module, $"[VAD][ModuleType] 应为 VoiceActivityDetection: {modelId}");
+            Assert.AreEqual(SherpaONNXModuleType.VoiceActivityDetection, module, $"[VAD][ModuleType] 应为 VoiceActivityDetection: {modelId}");
 
             var vad = SherpaUtils.Model.GetVoiceActivityDetectionModelType(modelId);
             Assert.AreNotEqual(VoiceActivityDetectionModelType.None, vad, $"[VAD][Subtype] 不能为 None: {modelId}");
@@ -524,7 +524,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         public void All_TTS_Models_Are_Mapped_Correctly(string modelId)
         {
             var module = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
-            Assert.AreEqual(SherpaOnnxModuleType.SpeechSynthesis, module, $"[TTS][ModuleType] 应为 SpeechSynthesis: {modelId}");
+            Assert.AreEqual(SherpaONNXModuleType.SpeechSynthesis, module, $"[TTS][ModuleType] 应为 SpeechSynthesis: {modelId}");
 
             var tts = SherpaUtils.Model.GetSpeechSynthesisModelType(modelId);
             Assert.AreNotEqual(SpeechSynthesisModelType.None, tts, $"[TTS][Subtype] 不能为 None: {modelId}");
@@ -586,7 +586,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
                 Assert.IsTrue(set.Add(id), $"常量表中发现重复的 modelId: {id}");
             }
 
-            foreach (var m in SherpaOnnxConstants.Models.ASR_MODELS_METADATA_TABLES)
+            foreach (var m in SherpaONNXConstants.Models.ASR_MODELS_METADATA_TABLES)
             {
                 if (m != null)
                 {
@@ -595,7 +595,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
             }
 
 
-            foreach (var m in SherpaOnnxConstants.Models.VAD_MODELS_METADATA_TABLES)
+            foreach (var m in SherpaONNXConstants.Models.VAD_MODELS_METADATA_TABLES)
             {
                 if (m != null)
                 {
@@ -604,7 +604,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
             }
 
 
-            foreach (var m in SherpaOnnxConstants.Models.TTS_MODELS_METADATA_TABLES)
+            foreach (var m in SherpaONNXConstants.Models.TTS_MODELS_METADATA_TABLES)
             {
                 if (m != null)
                 {
@@ -619,7 +619,7 @@ namespace Eitan.SherpaOnnxUnity.Tests
         private static TestCaseData Case(string id, SpeechRecognitionModelType expect)
             => new TestCaseData(id, expect).SetName($"ASR::{id} -> {expect}");
 
-        private static TestCaseData ModCase(string id, SherpaOnnxModuleType expect)
+        private static TestCaseData ModCase(string id, SherpaONNXModuleType expect)
             => new TestCaseData(id, expect).SetName($"MOD::{id} -> {expect}");
 
         private static TestCaseData BoolCase(string id, bool expect)
@@ -666,14 +666,14 @@ namespace Eitan.SherpaOnnxUnity.Tests
                 }
             }
 
-            var modSamples = new Dictionary<string, SherpaOnnxModuleType>
+            var modSamples = new Dictionary<string, SherpaONNXModuleType>
             {
-                { "silero-vad", SherpaOnnxModuleType.VoiceActivityDetection },
-                { "my-awesome-punct-zh", SherpaOnnxModuleType.AddPunctuation },
-                { "toy-kws-demo", SherpaOnnxModuleType.KeywordSpotting },
-                { "gtcrn-speech-enhance", SherpaOnnxModuleType.SpeechEnhancement },
-                { "some-langid-model", SherpaOnnxModuleType.SpokenLanguageIdentification },
-                { "pure-random-model-id", SherpaOnnxModuleType.Undefined },
+                { "silero-vad", SherpaONNXModuleType.VoiceActivityDetection },
+                { "my-awesome-punct-zh", SherpaONNXModuleType.AddPunctuation },
+                { "toy-kws-demo", SherpaONNXModuleType.KeywordSpotting },
+                { "gtcrn-speech-enhance", SherpaONNXModuleType.SpeechEnhancement },
+                { "some-langid-model", SherpaONNXModuleType.SpokenLanguageIdentification },
+                { "pure-random-model-id", SherpaONNXModuleType.Undefined },
             };
 
             foreach (var kv in modSamples)

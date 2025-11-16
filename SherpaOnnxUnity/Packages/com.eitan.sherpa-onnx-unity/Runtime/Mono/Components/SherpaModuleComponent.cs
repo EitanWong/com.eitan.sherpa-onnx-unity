@@ -3,7 +3,7 @@
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
     using System;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.Events;
 
@@ -13,11 +13,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     /// </summary>
     /// <typeparam name="TModule">Concrete sherpa module type.</typeparam>
     public abstract class SherpaModuleComponent<TModule> : MonoBehaviour, ISherpaFeedbackHandler
-        where TModule : SherpaOnnxModule
+        where TModule : SherpaONNXModule
     {
         [Header("Model")]
         [SerializeField]
-        [Tooltip("Model identifier registered in SherpaOnnxModelRegistry.")]
+        [Tooltip("Model identifier registered in SherpaONNXModelRegistry.")]
         private string modelId = string.Empty;
 
         [SerializeField]
@@ -44,6 +44,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private FeedbackMessageEvent onFeedbackMessage = new FeedbackMessageEvent();
 
         /// <summary>
+        /// Exposes the initialization UnityEvent so callers can register listeners in code.
+        /// </summary>
+        public UnityEvent<bool> InitializationStateChangedEvent => onInitializationStateChanged;
+
+        /// <summary>
+        /// Exposes feedback messages so UI scripts can surface loader state easily.
+        /// </summary>
+        public FeedbackMessageEvent FeedbackMessages => onFeedbackMessage;
+
+        /// <summary>
         /// UnityEvent wrapper that exposes textual feedback.
         /// </summary>
         [Serializable]
@@ -52,7 +62,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         }
 
         private TModule module;
-        private SherpaOnnxFeedbackReporter reporter;
+        private SherpaONNXFeedbackReporter reporter;
         private bool isReady;
 
         /// <summary>
@@ -63,7 +73,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Gets the reporter used to receive load/prepare feedback.
         /// </summary>
-        protected SherpaOnnxFeedbackReporter Reporter => reporter;
+        protected SherpaONNXFeedbackReporter Reporter => reporter;
 
         /// <summary>
         /// Gets or sets the model identifier.
@@ -150,8 +160,20 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 return false;
             }
 
-            reporter = new SherpaOnnxFeedbackReporter(null, this);
-            module = CreateModule(modelId.Trim(), sampleRate, reporter);
+            reporter = new SherpaONNXFeedbackReporter(null, this);
+
+            try
+            {
+                module = CreateModule(modelId.Trim(), sampleRate, reporter);
+            }
+            catch (Exception ex)
+            {
+                module = null;
+                reporter = null;
+                Debug.LogError($"[{GetType().Name}] Failed to create module for model '{modelId}': {ex.Message}");
+                return false;
+            }
+
             if (module == null)
             {
                 Debug.LogError($"[{GetType().Name}] Failed to create module for model '{modelId}'.");
@@ -179,7 +201,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Derived classes must instantiate the concrete module here.
         /// </summary>
-        protected abstract TModule CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter);
+        protected abstract TModule CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter);
 
         #region Feedback Handling
 
@@ -251,9 +273,17 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             isReady = ready;
             onInitializationStateChanged?.Invoke(ready);
+            OnModuleInitializationStateChanged(ready);
+        }
+
+        /// <summary>
+        /// Invoked whenever the module transitions between ready/not-ready states.
+        /// </summary>
+        /// <param name="ready">True when the module finished initializing successfully.</param>
+        protected virtual void OnModuleInitializationStateChanged(bool ready)
+        {
         }
 
         #endregion
     }
 }
-

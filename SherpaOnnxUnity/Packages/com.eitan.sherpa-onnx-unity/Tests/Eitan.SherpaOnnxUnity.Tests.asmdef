@@ -1,10 +1,10 @@
 {
-    "name": "Eitan.SherpaOnnxUnity.Tests",
-    "rootNamespace": "Eitan.SherpaOnnxUnity.Tests",
+    "name": "Eitan.SherpaONNXUnity.Tests",
+    "rootNamespace": "Eitan.SherpaONNXUnity.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Eitan.SherpaOnnxUnity"
+        "Eitan.SherpaONNXUnity"
     ],
     "includePlatforms": [
         "Editor"

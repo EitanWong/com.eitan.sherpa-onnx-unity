@@ -1,6 +1,6 @@
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
-    public enum SherpaOnnxModuleType
+    public enum SherpaONNXModuleType
     {
 
         Undefined,

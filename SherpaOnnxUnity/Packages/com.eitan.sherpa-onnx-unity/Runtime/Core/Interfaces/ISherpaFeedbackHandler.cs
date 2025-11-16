@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
 
     // The Visitor interface defines a Visit method for each concrete feedback type.

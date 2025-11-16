@@ -1,20 +1,20 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
 {
 
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
     /// <summary>
     /// High-level Unity wrapper for sherpa-onnx audio tagging.
     /// Provides both non-streaming (one-shot) and streaming (buffered) APIs.
     /// </summary>
-    public class AudioTagging : SherpaOnnxModule
+    public class AudioTagging : SherpaONNXModule
     {
-        private Eitan.SherpaOnnxUnity.Runtime.Native.AudioTagging _tagger;
+        private Eitan.SherpaONNXUnity.Runtime.Native.AudioTagging _tagger;
         private readonly object _lockObject = new object();
 
         private const float kWindowSeconds = 1.0f;
@@ -63,9 +63,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
 
         /// <summary>默认返回 TopK。</summary>
         public int DefaultTopK = 5;
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.AudioTagging;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.AudioTagging;
 
-        public AudioTagging(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public AudioTagging(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
         }
@@ -265,10 +265,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
 
         // ------------------------------- Module lifecycle -------------------------------
         protected override async Task<bool> Initialization(
-           SherpaOnnxModelMetadata metadata,
+           SherpaONNXModelMetadata metadata,
            int sampleRate,
            bool isMobilePlatform,
-           SherpaOnnxFeedbackReporter reporter,
+           SherpaONNXFeedbackReporter reporter,
            CancellationToken ct)
         {
             try
@@ -284,7 +284,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
                     {
                         return Task.FromResult(false);
                     }
-                    _tagger = new Eitan.SherpaOnnxUnity.Runtime.Native.AudioTagging(config);
+                    _tagger = new Eitan.SherpaONNXUnity.Runtime.Native.AudioTagging(config);
                     var initialized = IsSuccessInitializad(_tagger);
                     if (initialized)
                     {
@@ -303,9 +303,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Modules
         }
 
         private AudioTaggingConfig CreateAudioTaggingConfig(
-            SherpaOnnxModelMetadata metadata,
+            SherpaONNXModelMetadata metadata,
             bool isMobilePlatform,
-            SherpaOnnxFeedbackReporter reporter)
+            SherpaONNXFeedbackReporter reporter)
         {
             var _modelType = SherpaUtils.Model.GetAudioTaggingModelType(metadata.modelId);
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);

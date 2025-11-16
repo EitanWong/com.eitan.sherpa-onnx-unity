@@ -3,7 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     // IntPtr is actually a `const float*` from C++
     public delegate int OfflineTtsCallback(IntPtr samples, int n);
@@ -13,7 +13,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
     {
         public OfflineTts(OfflineTtsConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOfflineTts(ref config);
+            IntPtr h = SherpaONNXCreateOfflineTts(ref config);
             _handle = new HandleRef(this, h);
         }
 
@@ -23,7 +23,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8BytesWithNull = new byte[utf8Bytes.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Bytes, utf8BytesWithNull, utf8Bytes.Length);
             utf8BytesWithNull[utf8Bytes.Length] = 0; // Null terminator
-            IntPtr p = SherpaOnnxOfflineTtsGenerate(_handle.Handle, utf8BytesWithNull, speakerId, speed);
+            IntPtr p = SherpaONNXOfflineTtsGenerate(_handle.Handle, utf8BytesWithNull, speakerId, speed);
             return new OfflineTtsGeneratedAudio(p);
         }
 
@@ -33,7 +33,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8BytesWithNull = new byte[utf8Bytes.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Bytes, utf8BytesWithNull, utf8Bytes.Length);
             utf8BytesWithNull[utf8Bytes.Length] = 0; // Null terminator
-            IntPtr p = SherpaOnnxOfflineTtsGenerateWithCallback(_handle.Handle, utf8BytesWithNull, speakerId, speed, callback);
+            IntPtr p = SherpaONNXOfflineTtsGenerateWithCallback(_handle.Handle, utf8BytesWithNull, speakerId, speed, callback);
             return new OfflineTtsGeneratedAudio(p);
         }
 
@@ -43,7 +43,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8BytesWithNull = new byte[utf8Bytes.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Bytes, utf8BytesWithNull, utf8Bytes.Length);
             utf8BytesWithNull[utf8Bytes.Length] = 0; // Null terminator
-            IntPtr p = SherpaOnnxOfflineTtsGenerateWithProgressCallback(_handle.Handle, utf8BytesWithNull, speakerId, speed, callback);
+            IntPtr p = SherpaONNXOfflineTtsGenerateWithProgressCallback(_handle.Handle, utf8BytesWithNull, speakerId, speed, callback);
             return new OfflineTtsGeneratedAudio(p);
         }
 
@@ -134,7 +134,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
                     Marshal.Copy(promptSamples, 0, pSamples, n);
                 }
 
-                IntPtr p = SherpaOnnxOfflineTtsGenerateWithZipvoice(
+                IntPtr p = SherpaONNXOfflineTtsGenerateWithZipvoice(
                     _handle.Handle,
                     utf8Text,
                     utf8PromptText,
@@ -172,7 +172,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflineTts(_handle.Handle);
+            SherpaONNXDestroyOfflineTts(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -184,7 +184,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             get
             {
-                return SherpaOnnxOfflineTtsSampleRate(_handle.Handle);
+                return SherpaONNXOfflineTtsSampleRate(_handle.Handle);
             }
         }
 
@@ -192,32 +192,32 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             get
             {
-                return SherpaOnnxOfflineTtsNumSpeakers(_handle.Handle);
+                return SherpaONNXOfflineTtsNumSpeakers(_handle.Handle);
             }
         }
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflineTts(ref OfflineTtsConfig config);
+        private static extern IntPtr SherpaONNXCreateOfflineTts(ref OfflineTtsConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflineTts(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflineTts(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOfflineTtsSampleRate(IntPtr handle);
+        private static extern int SherpaONNXOfflineTtsSampleRate(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOfflineTtsNumSpeakers(IntPtr handle);
+        private static extern int SherpaONNXOfflineTtsNumSpeakers(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxOfflineTtsGenerate(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed);
+        private static extern IntPtr SherpaONNXOfflineTtsGenerate(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed);
 
         [DllImport(Dll.Filename, CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr SherpaOnnxOfflineTtsGenerateWithCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed, OfflineTtsCallback callback);
+        private static extern IntPtr SherpaONNXOfflineTtsGenerateWithCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed, OfflineTtsCallback callback);
 
         [DllImport(Dll.Filename, CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr SherpaOnnxOfflineTtsGenerateWithProgressCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed, OfflineTtsCallbackProgress callback);
+        private static extern IntPtr SherpaONNXOfflineTtsGenerateWithProgressCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, int sid, float speed, OfflineTtsCallbackProgress callback);
 
         [DllImport(Dll.Filename, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr SherpaOnnxOfflineTtsGenerateWithZipvoice(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8PromptText, IntPtr promptSamples, int nPrompt, int promptSampleRate, float speed, int numSteps);
+        internal static extern IntPtr SherpaONNXOfflineTtsGenerateWithZipvoice(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8PromptText, IntPtr promptSamples, int nPrompt, int promptSampleRate, float speed, int numSteps);
     }
 }

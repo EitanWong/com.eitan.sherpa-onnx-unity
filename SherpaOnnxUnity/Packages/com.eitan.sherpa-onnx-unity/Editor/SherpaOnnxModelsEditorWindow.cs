@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor
+namespace Eitan.SherpaONNXUnity.Editor
 {
 
     using System.Collections.Generic;
@@ -11,22 +11,22 @@ namespace Eitan.SherpaOnnxUnity.Editor
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine.Networking;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using System;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Editor.Localization;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Editor.Localization;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
 
     /// <summary>
     /// Lightweight adapter to surface Prepare/download/install/verify progress into the EditorWindow.
     /// Call Report(progress, message) from any background task to update the UI.
     /// </summary>
-    internal sealed class SherpaOnnxFeedbackReporterAdapter
+    internal sealed class SherpaONNXFeedbackReporterAdapter
     {
         private readonly Action<float, string> _onReport;
 
-        public SherpaOnnxFeedbackReporterAdapter(Action<float, string> onReport)
+        public SherpaONNXFeedbackReporterAdapter(Action<float, string> onReport)
         {
             _onReport = onReport;
         }
@@ -38,7 +38,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         }
     }
 
-    public class SherpaOnnxModelsEditorWindow : EditorWindow
+    public class SherpaONNXModelsEditorWindow : EditorWindow
     {
         private const string FilterAllValue = "All";
 
@@ -107,10 +107,10 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             if (string.Equals(value, FilterAllValue, StringComparison.Ordinal))
             {
-                return L(SherpaOnnxL10n.Common.FilterAll, "All");
+                return L(SherpaONNXL10n.Common.FilterAll, "All");
             }
 
-            if (Enum.TryParse(value, out SherpaOnnxModuleType module))
+            if (Enum.TryParse(value, out SherpaONNXModuleType module))
             {
                 return GetModuleDisplayName(module);
             }
@@ -122,28 +122,28 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             if (string.Equals(value, FilterAllValue, StringComparison.Ordinal))
             {
-                return L(SherpaOnnxL10n.Common.FilterAll, "All");
+                return L(SherpaONNXL10n.Common.FilterAll, "All");
             }
 
             return GetLanguageDisplayName(value);
         }
 
-        private string GetModuleDisplayName(SherpaOnnxModuleType module)
+        private string GetModuleDisplayName(SherpaONNXModuleType module)
         {
             return module switch
             {
-                SherpaOnnxModuleType.Undefined => L(SherpaOnnxL10n.Models.CategoryUndefined, "Undefined"),
-                SherpaOnnxModuleType.SpeechRecognition => L(SherpaOnnxL10n.Models.CategorySpeechRecognition, "Speech Recognition"),
-                SherpaOnnxModuleType.SpeechSynthesis => L(SherpaOnnxL10n.Models.CategorySpeechSynthesis, "Speech Synthesis"),
-                SherpaOnnxModuleType.SourceSeparation => L(SherpaOnnxL10n.Models.CategorySourceSeparation, "Source Separation"),
-                SherpaOnnxModuleType.SpeakerIdentification => L(SherpaOnnxL10n.Models.CategorySpeakerIdentification, "Speaker Identification"),
-                SherpaOnnxModuleType.SpeakerDiarization => L(SherpaOnnxL10n.Models.CategorySpeakerDiarization, "Speaker Diarization"),
-                SherpaOnnxModuleType.SpokenLanguageIdentification => L(SherpaOnnxL10n.Models.CategorySpokenLanguageId, "Spoken Language Identification"),
-                SherpaOnnxModuleType.AudioTagging => L(SherpaOnnxL10n.Models.CategoryAudioTagging, "Audio Tagging"),
-                SherpaOnnxModuleType.VoiceActivityDetection => L(SherpaOnnxL10n.Models.CategoryVad, "Voice Activity Detection"),
-                SherpaOnnxModuleType.KeywordSpotting => L(SherpaOnnxL10n.Models.CategoryKeywordSpotting, "Keyword Spotting"),
-                SherpaOnnxModuleType.AddPunctuation => L(SherpaOnnxL10n.Models.CategoryAddPunctuation, "Add Punctuation"),
-                SherpaOnnxModuleType.SpeechEnhancement => L(SherpaOnnxL10n.Models.CategorySpeechEnhancement, "Speech Enhancement"),
+                SherpaONNXModuleType.Undefined => L(SherpaONNXL10n.Models.CategoryUndefined, "Undefined"),
+                SherpaONNXModuleType.SpeechRecognition => L(SherpaONNXL10n.Models.CategorySpeechRecognition, "Speech Recognition"),
+                SherpaONNXModuleType.SpeechSynthesis => L(SherpaONNXL10n.Models.CategorySpeechSynthesis, "Speech Synthesis"),
+                SherpaONNXModuleType.SourceSeparation => L(SherpaONNXL10n.Models.CategorySourceSeparation, "Source Separation"),
+                SherpaONNXModuleType.SpeakerIdentification => L(SherpaONNXL10n.Models.CategorySpeakerIdentification, "Speaker Identification"),
+                SherpaONNXModuleType.SpeakerDiarization => L(SherpaONNXL10n.Models.CategorySpeakerDiarization, "Speaker Diarization"),
+                SherpaONNXModuleType.SpokenLanguageIdentification => L(SherpaONNXL10n.Models.CategorySpokenLanguageId, "Spoken Language Identification"),
+                SherpaONNXModuleType.AudioTagging => L(SherpaONNXL10n.Models.CategoryAudioTagging, "Audio Tagging"),
+                SherpaONNXModuleType.VoiceActivityDetection => L(SherpaONNXL10n.Models.CategoryVad, "Voice Activity Detection"),
+                SherpaONNXModuleType.KeywordSpotting => L(SherpaONNXL10n.Models.CategoryKeywordSpotting, "Keyword Spotting"),
+                SherpaONNXModuleType.AddPunctuation => L(SherpaONNXL10n.Models.CategoryAddPunctuation, "Add Punctuation"),
+                SherpaONNXModuleType.SpeechEnhancement => L(SherpaONNXL10n.Models.CategorySpeechEnhancement, "Speech Enhancement"),
                 _ => module.ToString()
             };
         }
@@ -152,40 +152,40 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                return L(SherpaOnnxL10n.Common.LanguageOther, "Other");
+                return L(SherpaONNXL10n.Common.LanguageOther, "Other");
             }
 
             switch (code.ToLowerInvariant())
             {
-                case "other": return L(SherpaOnnxL10n.Common.LanguageOther, "Other");
-                case "chinese": return L(SherpaOnnxL10n.Common.LanguageChinese, "Chinese");
-                case "cantonese": return L(SherpaOnnxL10n.Common.LanguageCantonese, "Cantonese");
-                case "english": return L(SherpaOnnxL10n.Common.LanguageEnglish, "English");
-                case "japanese": return L(SherpaOnnxL10n.Common.LanguageJapanese, "Japanese");
-                case "korean": return L(SherpaOnnxL10n.Common.LanguageKorean, "Korean");
-                case "thai": return L(SherpaOnnxL10n.Common.LanguageThai, "Thai");
-                case "vietnamese": return L(SherpaOnnxL10n.Common.LanguageVietnamese, "Vietnamese");
-                case "russian": return L(SherpaOnnxL10n.Common.LanguageRussian, "Russian");
-                case "french": return L(SherpaOnnxL10n.Common.LanguageFrench, "French");
-                case "spanish": return L(SherpaOnnxL10n.Common.LanguageSpanish, "Spanish");
-                case "german": return L(SherpaOnnxL10n.Common.LanguageGerman, "German");
-                case "dutch": return L(SherpaOnnxL10n.Common.LanguageDutch, "Dutch");
-                case "danish": return L(SherpaOnnxL10n.Common.LanguageDanish, "Danish");
-                case "czech": return L(SherpaOnnxL10n.Common.LanguageCzech, "Czech");
-                case "catalan": return L(SherpaOnnxL10n.Common.LanguageCatalan, "Catalan");
-                case "arabic": return L(SherpaOnnxL10n.Common.LanguageArabic, "Arabic");
-                case "italian": return L(SherpaOnnxL10n.Common.LanguageItalian, "Italian");
-                case "portuguese": return L(SherpaOnnxL10n.Common.LanguagePortuguese, "Portuguese");
-                case "turkish": return L(SherpaOnnxL10n.Common.LanguageTurkish, "Turkish");
-                case "polish": return L(SherpaOnnxL10n.Common.LanguagePolish, "Polish");
-                case "swedish": return L(SherpaOnnxL10n.Common.LanguageSwedish, "Swedish");
-                case "norwegian": return L(SherpaOnnxL10n.Common.LanguageNorwegian, "Norwegian");
-                case "indonesian": return L(SherpaOnnxL10n.Common.LanguageIndonesian, "Indonesian");
-                case "malay": return L(SherpaOnnxL10n.Common.LanguageMalay, "Malay");
-                case "hindi": return L(SherpaOnnxL10n.Common.LanguageHindi, "Hindi");
-                case "urdu": return L(SherpaOnnxL10n.Common.LanguageUrdu, "Urdu");
-                case "persian": return L(SherpaOnnxL10n.Common.LanguagePersian, "Persian");
-                case "hebrew": return L(SherpaOnnxL10n.Common.LanguageHebrew, "Hebrew");
+                case "other": return L(SherpaONNXL10n.Common.LanguageOther, "Other");
+                case "chinese": return L(SherpaONNXL10n.Common.LanguageChinese, "Chinese");
+                case "cantonese": return L(SherpaONNXL10n.Common.LanguageCantonese, "Cantonese");
+                case "english": return L(SherpaONNXL10n.Common.LanguageEnglish, "English");
+                case "japanese": return L(SherpaONNXL10n.Common.LanguageJapanese, "Japanese");
+                case "korean": return L(SherpaONNXL10n.Common.LanguageKorean, "Korean");
+                case "thai": return L(SherpaONNXL10n.Common.LanguageThai, "Thai");
+                case "vietnamese": return L(SherpaONNXL10n.Common.LanguageVietnamese, "Vietnamese");
+                case "russian": return L(SherpaONNXL10n.Common.LanguageRussian, "Russian");
+                case "french": return L(SherpaONNXL10n.Common.LanguageFrench, "French");
+                case "spanish": return L(SherpaONNXL10n.Common.LanguageSpanish, "Spanish");
+                case "german": return L(SherpaONNXL10n.Common.LanguageGerman, "German");
+                case "dutch": return L(SherpaONNXL10n.Common.LanguageDutch, "Dutch");
+                case "danish": return L(SherpaONNXL10n.Common.LanguageDanish, "Danish");
+                case "czech": return L(SherpaONNXL10n.Common.LanguageCzech, "Czech");
+                case "catalan": return L(SherpaONNXL10n.Common.LanguageCatalan, "Catalan");
+                case "arabic": return L(SherpaONNXL10n.Common.LanguageArabic, "Arabic");
+                case "italian": return L(SherpaONNXL10n.Common.LanguageItalian, "Italian");
+                case "portuguese": return L(SherpaONNXL10n.Common.LanguagePortuguese, "Portuguese");
+                case "turkish": return L(SherpaONNXL10n.Common.LanguageTurkish, "Turkish");
+                case "polish": return L(SherpaONNXL10n.Common.LanguagePolish, "Polish");
+                case "swedish": return L(SherpaONNXL10n.Common.LanguageSwedish, "Swedish");
+                case "norwegian": return L(SherpaONNXL10n.Common.LanguageNorwegian, "Norwegian");
+                case "indonesian": return L(SherpaONNXL10n.Common.LanguageIndonesian, "Indonesian");
+                case "malay": return L(SherpaONNXL10n.Common.LanguageMalay, "Malay");
+                case "hindi": return L(SherpaONNXL10n.Common.LanguageHindi, "Hindi");
+                case "urdu": return L(SherpaONNXL10n.Common.LanguageUrdu, "Urdu");
+                case "persian": return L(SherpaONNXL10n.Common.LanguagePersian, "Persian");
+                case "hebrew": return L(SherpaONNXL10n.Common.LanguageHebrew, "Hebrew");
                 default: return code;
             }
         }
@@ -204,9 +204,9 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             return phase switch
             {
-                DownloadPhase.Download => L(SherpaOnnxL10n.Models.StatusDownloadPhase, "Download"),
-                DownloadPhase.Install => L(SherpaOnnxL10n.Models.StatusInstallPhase, "Install"),
-                DownloadPhase.Verify => L(SherpaOnnxL10n.Models.StatusVerifyPhase, "Verify"),
+                DownloadPhase.Download => L(SherpaONNXL10n.Models.StatusDownloadPhase, "Download"),
+                DownloadPhase.Install => L(SherpaONNXL10n.Models.StatusInstallPhase, "Install"),
+                DownloadPhase.Verify => L(SherpaONNXL10n.Models.StatusVerifyPhase, "Verify"),
                 _ => string.Empty
             };
         }
@@ -225,7 +225,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             // public string Language;
             public List<string> Languages = new List<string>();  // 单语种列表（去重）
 
-            public SherpaOnnxModelMetadata Metadata;
+            public SherpaONNXModelMetadata Metadata;
             public bool? IsDownloaded; // null = checking, true = downloaded, false = not downloaded
             public bool Expanded;
             public bool VerifyFailed;      // set when post-install verification fails
@@ -247,7 +247,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         // Representation of an active download
         private class DownloadTask
         {
-            public SherpaOnnxModelMetadata Metadata;
+            public SherpaONNXModelMetadata Metadata;
             public float Progress;
             public string Status;
             public DownloadPhase Phase;
@@ -261,21 +261,21 @@ namespace Eitan.SherpaOnnxUnity.Editor
             public bool IsCompressed;
             public bool IsCanceled;
         }
-        [MenuItem("Window/Sherpa Onnx/Model Manager")]
+        [MenuItem("Window/SherpaONNX/Model Manager")]
         private static void ShowWindow()
         {
-            var window = GetWindow<SherpaOnnxModelsEditorWindow>();
+            var window = GetWindow<SherpaONNXModelsEditorWindow>();
             window.UpdateWindowTitle();
             window.Show();
         }
 
-        // [MenuItem("Window/Sherpa Onnx/Reset Registry")]
+        // [MenuItem("Window/SherpaONNX/Reset Registry")]
         // private static void ResetRegistryMenu()
         // {
         //     // Clear registry state and open the window with a forced refresh
-        //     SherpaOnnxModelRegistry.Instance.Uninitialize();
-        //     var window = GetWindow<SherpaOnnxModelsEditorWindow>();
-        //     window.titleContent = new GUIContent("Sherpa ONNX Models");
+        //     SherpaONNXModelRegistry.Instance.Uninitialize();
+        //     var window = GetWindow<SherpaONNXModelsEditorWindow>();
+        //     window.titleContent = new GUIContent("SherpaONNX Models");
         //     window.Show();
         //     window.ForceRefreshManifest();
         // }
@@ -286,7 +286,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             autoRepaintOnSceneChange = true;
 
             UpdateWindowTitle();
-            SherpaOnnxLocalization.LanguageChanged += OnLanguageChanged;
+            SherpaONNXLocalization.LanguageChanged += OnLanguageChanged;
 
             // Ensure data is fresh when (re)opening
             RefreshData();
@@ -313,7 +313,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 EditorApplication.update += _backgroundRepaintHandler;
             }
             // Auto-refresh when the registry finishes initializing
-            SherpaOnnxModelRegistry.Instance.Initialized += OnRegistryInitialized;
+            SherpaONNXModelRegistry.Instance.Initialized += OnRegistryInitialized;
         }
         private void OnDisable()
         {
@@ -323,8 +323,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
                 _backgroundRepaintHandler = null;
             }
-            try { SherpaOnnxModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
-            try { SherpaOnnxLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
+            try { SherpaONNXModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
+            try { SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
             try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
             CancelAllActiveOperations();
         }
@@ -335,8 +335,8 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
                 _backgroundRepaintHandler = null;
             }
-            try { SherpaOnnxModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
-            try { SherpaOnnxLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
+            try { SherpaONNXModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
+            try { SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
             try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
             CancelAllActiveOperations();
         }
@@ -350,7 +350,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
         private void UpdateWindowTitle()
         {
-            titleContent = new GUIContent(L(SherpaOnnxL10n.Models.WindowTitle, "Sherpa ONNX Models"));
+            titleContent = new GUIContent(L(SherpaONNXL10n.Models.WindowTitle, "SherpaONNX Models"));
         }
         /// <summary>
         /// Clears caches and repopulates the list of models, categories and languages.
@@ -364,11 +364,11 @@ namespace Eitan.SherpaOnnxUnity.Editor
             // The "All" option at index 0
             _categories.Add(FilterAllValue);
             _languages.Add(FilterAllValue);
-            _categories.AddRange(Enum.GetNames(typeof(SherpaOnnxModuleType)));
+            _categories.AddRange(Enum.GetNames(typeof(SherpaONNXModuleType)));
             RebuildPopupArrays();
 
-            var reg = SherpaOnnxModelRegistry.Instance;
-            SherpaOnnxModelManifest manifest;
+            var reg = SherpaONNXModelRegistry.Instance;
+            SherpaONNXModelManifest manifest;
             if (!reg.TryGetManifest(out manifest))
             {
                 // Still initializing – show spinner and wait asynchronously (on MAIN thread)
@@ -400,7 +400,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     {
                         _isLoadingManifest = false;
                         ShowNotification(new GUIContent(string.Format(
-                            L(SherpaOnnxL10n.Models.NotificationManifestLoadFailed, "Manifest load failed: {0}"),
+                            L(SherpaONNXL10n.Models.NotificationManifestLoadFailed, "Manifest load failed: {0}"),
                             ex.Message)));
                         _needsRepaint = true;
                     }
@@ -433,7 +433,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             // Rebuild base dropdown items ("All" + categories)
             _categories.Add(FilterAllValue);
             _languages.Add(FilterAllValue);
-            _categories.AddRange(Enum.GetNames(typeof(SherpaOnnxModuleType)));
+            _categories.AddRange(Enum.GetNames(typeof(SherpaONNXModuleType)));
             RebuildPopupArrays();
 
             // Enter loading state and keep spinner alive
@@ -447,7 +447,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var token = _loadCts.Token;
 
             // Clear the registry so any in-flight init won't pollute new state
-            var reg = SherpaOnnxModelRegistry.Instance;
+            var reg = SherpaONNXModelRegistry.Instance;
             reg.Uninitialize();
 
             // Kick the async re-fetch from the main thread to respect UnityWebRequest threading rules
@@ -475,14 +475,14 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 {
                     _isLoadingManifest = false;
                     ShowNotification(new GUIContent(string.Format(
-                        L(SherpaOnnxL10n.Models.NotificationManifestReloadFailed, "Manifest reload failed: {0}"),
+                        L(SherpaONNXL10n.Models.NotificationManifestReloadFailed, "Manifest reload failed: {0}"),
                         ex.Message)));
                     _needsRepaint = true;
                 }
             };
         }
 
-        private void BuildFromManifest(SherpaOnnxModelManifest manifest)
+        private void BuildFromManifest(SherpaONNXModelManifest manifest)
         {
             if (manifest == null || manifest.models == null)
             {
@@ -556,18 +556,18 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 });
             }
         }
-        private void SetVerifyFailed(SherpaOnnxModelMetadata meta, bool failed, string message = null)
+        private void SetVerifyFailed(SherpaONNXModelMetadata meta, bool failed, string message = null)
         {
             var entry = _allEntries.FirstOrDefault(e => e.Metadata == meta);
             if (entry == null) { return; }
 
             entry.VerifyFailed = failed;
             entry.VerifyMessage = failed
-                ? (message ?? L(SherpaOnnxL10n.Models.StatusVerifyFailedMessage, "Verification failed. Please re-download."))
+                ? (message ?? L(SherpaONNXL10n.Models.StatusVerifyFailedMessage, "Verification failed. Please re-download."))
                 : string.Empty;
             _needsRepaint = true;
         }
-        private void RescanSingle(SherpaOnnxModelMetadata meta)
+        private void RescanSingle(SherpaONNXModelMetadata meta)
         {
             var entry = _allEntries.FirstOrDefault(e => e.Metadata == meta);
             if (entry == null)
@@ -596,7 +596,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         /// <summary>
         /// Deletes the model folder for a given metadata.
         /// </summary>
-        private bool DeleteModelFolder(SherpaOnnxModelMetadata meta, string modelDirOverride = null)
+        private bool DeleteModelFolder(SherpaONNXModelMetadata meta, string modelDirOverride = null)
         {
             try
             {
@@ -638,15 +638,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
         private void OnGUI()
         {
             EditorGUILayout.LabelField(
-                L(SherpaOnnxL10n.Models.Header, "Sherpa ONNX Model Manager"),
+                L(SherpaONNXL10n.Models.Header, "SherpaONNX Model Manager"),
                 EditorStyles.boldLabel);
             DrawToolbar();
 
-            var reg = SherpaOnnxModelRegistry.Instance;
-            SherpaOnnxModelManifest _mfCheck;
+            var reg = SherpaONNXModelRegistry.Instance;
+            SherpaONNXModelManifest _mfCheck;
             if (_isLoadingManifest || reg.IsInitializing || !reg.TryGetManifest(out _mfCheck))
             {
-                DrawLoadingSpinner(L(SherpaOnnxL10n.Models.LoadingRemote, "Fetching model manifest from GitHub…"));
+                DrawLoadingSpinner(L(SherpaONNXL10n.Models.LoadingRemote, "Fetching model manifest from GitHub…"));
                 return;
             }
 
@@ -655,7 +655,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         }
         private void DrawLoadingSpinner(string message = null)
         {
-            message ??= L(SherpaOnnxL10n.Models.LoadingGeneric, "Fetching model manifest…");
+            message ??= L(SherpaONNXL10n.Models.LoadingGeneric, "Fetching model manifest…");
             _spinnerFrame = (int)(EditorApplication.timeSinceStartup * 10) % 12;
             var icon = EditorGUIUtility.IconContent($"WaitSpin{_spinnerFrame:00}");
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
@@ -707,7 +707,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Space(4);
 
                     // Category
-                    GUILayout.Label(L(SherpaOnnxL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel);
+                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel);
                     _selectedCategoryIndex = EditorGUILayout.Popup(
                         _selectedCategoryIndex,
                         _categoriesArray,
@@ -719,7 +719,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     GUILayout.Space(4);
 
                     // Language
-                    GUILayout.Label(L(SherpaOnnxL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel);
+                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel);
                     _selectedLanguageIndex = EditorGUILayout.Popup(
                         _selectedLanguageIndex,
                         _languagesArray,
@@ -733,22 +733,22 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     if (useOverflow)
                     {
                         if (EditorGUILayout.DropdownButton(
-                                Lc(SherpaOnnxL10n.Models.ToolbarMore, "More"),
+                                Lc(SherpaONNXL10n.Models.ToolbarMore, "More"),
                                 FocusType.Passive,
                                 EditorStyles.toolbarDropDown,
                                 GUILayout.Width(60)))
                         {
                             var menu = new GenericMenu();
                             menu.AddItem(
-                                Lc(SherpaOnnxL10n.Common.ButtonClear, "Clear", SherpaOnnxL10n.Common.TooltipClearFilters, "Reset search and all filters"),
+                                Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
                                 false,
                                 ResetFilters);
                             menu.AddItem(
-                                Lc(SherpaOnnxL10n.Common.ButtonRefresh, "Refresh", SherpaOnnxL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
+                                Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
                                 false,
                                 ForceRefreshManifest);
                             menu.AddItem(
-                                Lc(SherpaOnnxL10n.Common.ButtonRescan, "Rescan", SherpaOnnxL10n.Common.TooltipRescan, "Re-check download status for all models"),
+                                Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
                                 false,
                                 KickoffDownloadStatusScan);
                             var r = GUILayoutUtility.GetLastRect();
@@ -759,7 +759,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     else
                     {
                         if (GUILayout.Button(
-                                Lc(SherpaOnnxL10n.Common.ButtonClear, "Clear", SherpaOnnxL10n.Common.TooltipClearFilters, "Reset search and all filters"),
+                                Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
                                 EditorStyles.toolbarButton,
                                 GUILayout.Width(56)))
                         {
@@ -767,7 +767,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         }
 
                         if (GUILayout.Button(
-                                Lc(SherpaOnnxL10n.Common.ButtonRefresh, "Refresh", SherpaOnnxL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
+                                Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
                                 EditorStyles.toolbarButton,
                                 GUILayout.Width(70)))
                         {
@@ -775,7 +775,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         }
 
                         if (GUILayout.Button(
-                                Lc(SherpaOnnxL10n.Common.ButtonRescan, "Rescan", SherpaOnnxL10n.Common.TooltipRescan, "Re-check download status for all models"),
+                                Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
                                 EditorStyles.toolbarButton,
                                 GUILayout.Width(70)))
                         {
@@ -797,7 +797,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     _searchQuery = _searchField.OnToolbarGUI(narrowSearchRect, _searchQuery);
 
                     if (GUILayout.Button(
-                            Lc(SherpaOnnxL10n.Common.ButtonClear, "Clear", SherpaOnnxL10n.Common.TooltipClearFilters, "Reset search and all filters"),
+                            Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
                             EditorStyles.toolbarButton,
                             GUILayout.Width(56)))
                     {
@@ -805,7 +805,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     }
 
                     if (GUILayout.Button(
-                            Lc(SherpaOnnxL10n.Common.ButtonRefresh, "Refresh", SherpaOnnxL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
+                            Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
                             EditorStyles.toolbarButton,
                             GUILayout.Width(70)))
                     {
@@ -813,7 +813,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     }
 
                     if (GUILayout.Button(
-                            Lc(SherpaOnnxL10n.Common.ButtonRescan, "Rescan", SherpaOnnxL10n.Common.TooltipRescan, "Re-check download status for all models"),
+                            Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
                             EditorStyles.toolbarButton,
                             GUILayout.Width(70)))
                     {
@@ -824,7 +824,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 // Row 2: Filters (expand to available width)
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
                 {
-                    GUILayout.Label(L(SherpaOnnxL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel, GUILayout.Width(60));
+                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel, GUILayout.Width(60));
                     _selectedCategoryIndex = EditorGUILayout.Popup(
                         _selectedCategoryIndex,
                         _categoriesArray,
@@ -833,7 +833,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
                     GUILayout.Space(6);
 
-                    GUILayout.Label(L(SherpaOnnxL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel, GUILayout.Width(60));
+                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel, GUILayout.Width(60));
                     _selectedLanguageIndex = EditorGUILayout.Popup(
                         _selectedLanguageIndex,
                         _languagesArray,
@@ -919,7 +919,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 if (Mathf.Approximately(totalHeight, 0f))
                 {
                     EditorGUILayout.HelpBox(
-                        L(SherpaOnnxL10n.Models.HelpNoMatches, "No models match the current filters."),
+                        L(SherpaONNXL10n.Models.HelpNoMatches, "No models match the current filters."),
                         MessageType.Info);
                 }
                 else
@@ -1074,13 +1074,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var categoryLabel = GetModuleDisplayName(entry.Metadata.moduleType);
             EditorGUILayout.LabelField(
                 string.Format(
-                    L(SherpaOnnxL10n.Models.LabelCategoryPrefix, "Category: {0}"),
+                    L(SherpaONNXL10n.Models.LabelCategoryPrefix, "Category: {0}"),
                     categoryLabel),
                 EditorStyles.miniLabel);
 
             EditorGUILayout.LabelField(
                 string.Format(
-                    L(SherpaOnnxL10n.Models.LabelLanguagePrefix, "Language: {0}"),
+                    L(SherpaONNXL10n.Models.LabelLanguagePrefix, "Language: {0}"),
                     FormatLanguageList(entry.Languages)),
                 EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
@@ -1096,7 +1096,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             using (new EditorGUILayout.HorizontalScope())
             {
                 EditorGUILayout.LabelField(
-                    L(SherpaOnnxL10n.Models.LabelUrlPrefix, "URL: "),
+                    L(SherpaONNXL10n.Models.LabelUrlPrefix, "URL: "),
                     EditorStyles.miniLabel,
                     GUILayout.Width(40));
                 if (string.IsNullOrEmpty(url))
@@ -1132,30 +1132,30 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             // Copy Name button
             if (GUILayout.Button(
-                    Lc(SherpaOnnxL10n.Models.ButtonCopyName, "Copy Name", SherpaOnnxL10n.Models.TooltipCopyName, "Copy modelId to clipboard"),
+                    Lc(SherpaONNXL10n.Models.ButtonCopyName, "Copy Name", SherpaONNXL10n.Models.TooltipCopyName, "Copy modelId to clipboard"),
                     GUILayout.Width(90)))
             {
                 EditorGUIUtility.systemCopyBuffer = entry.Metadata.modelId;
                 ShowNotification(new GUIContent(string.Format(
-                    L(SherpaOnnxL10n.Models.NotificationCopiedName, "Copied: {0}"),
+                    L(SherpaONNXL10n.Models.NotificationCopiedName, "Copied: {0}"),
                     entry.Metadata.modelId)));
             }
 
             // Copy URL button
             if (GUILayout.Button(
-                    Lc(SherpaOnnxL10n.Models.ButtonCopyUrl, "Copy URL", SherpaOnnxL10n.Models.TooltipCopyUrl, "Copy download URL to clipboard"),
+                    Lc(SherpaONNXL10n.Models.ButtonCopyUrl, "Copy URL", SherpaONNXL10n.Models.TooltipCopyUrl, "Copy download URL to clipboard"),
                     GUILayout.Width(80)))
             {
                 if (!string.IsNullOrEmpty(entry.Metadata.downloadUrl))
                 {
                     EditorGUIUtility.systemCopyBuffer = entry.Metadata.downloadUrl;
                     ShowNotification(new GUIContent(
-                        L(SherpaOnnxL10n.Models.NotificationCopiedUrl, "Copied URL")));
+                        L(SherpaONNXL10n.Models.NotificationCopiedUrl, "Copied URL")));
                 }
                 else
                 {
                     ShowNotification(new GUIContent(
-                        L(SherpaOnnxL10n.Models.NotificationNoUrl, "No URL")));
+                        L(SherpaONNXL10n.Models.NotificationNoUrl, "No URL")));
                 }
             }
 
@@ -1164,7 +1164,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             string modelDir = Path.Combine(moduleRoot, entry.Metadata.modelId);
             EditorGUI.BeginDisabledGroup(!Directory.Exists(modelDir));
             if (GUILayout.Button(
-                    Lc(SherpaOnnxL10n.Models.ButtonReveal, "Reveal", SherpaOnnxL10n.Common.TooltipReveal, "Reveal model folder in Finder/Explorer"),
+                    Lc(SherpaONNXL10n.Models.ButtonReveal, "Reveal", SherpaONNXL10n.Common.TooltipReveal, "Reveal model folder in Finder/Explorer"),
                     GUILayout.Width(70)))
             {
                 EditorUtility.RevealInFinder(modelDir);
@@ -1173,7 +1173,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             // Rescan button
             if (GUILayout.Button(
-                    Lc(SherpaOnnxL10n.Common.ButtonRescan, "Rescan", SherpaOnnxL10n.Common.TooltipEntryRescan, "Re-check whether this model is fully downloaded & verified"),
+                    Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipEntryRescan, "Re-check whether this model is fully downloaded & verified"),
                     GUILayout.Width(70)))
             {
                 RescanSingle(entry.Metadata);
@@ -1182,14 +1182,14 @@ namespace Eitan.SherpaOnnxUnity.Editor
             // Download button
             EditorGUI.BeginDisabledGroup(!hasUrlInMetadata || isDownloadingThis || entry.IsDownloaded == true);
             var downloadLabel = entry.VerifyFailed
-                ? L(SherpaOnnxL10n.Models.ButtonRedownload, "Re-download")
-                : L(SherpaOnnxL10n.Models.ButtonDownload, "Download");
+                ? L(SherpaONNXL10n.Models.ButtonRedownload, "Re-download")
+                : L(SherpaONNXL10n.Models.ButtonDownload, "Download");
             var downloadTooltip = entry.VerifyFailed
-                ? L(SherpaOnnxL10n.Models.TooltipRedownload, "Verification failed previously. Click to re-download.")
-                : L(SherpaOnnxL10n.Models.TooltipDownload, "Download model archive");
+                ? L(SherpaONNXL10n.Models.TooltipRedownload, "Verification failed previously. Click to re-download.")
+                : L(SherpaONNXL10n.Models.TooltipDownload, "Download model archive");
             var dlContent = hasUrlInMetadata
                 ? new GUIContent(downloadLabel, downloadTooltip)
-                : Lc(SherpaOnnxL10n.Models.NotificationNoUrl, "No URL", SherpaOnnxL10n.Models.TooltipNoUrl, "No download URL in metadata");
+                : Lc(SherpaONNXL10n.Models.NotificationNoUrl, "No URL", SherpaONNXL10n.Models.TooltipNoUrl, "No download URL in metadata");
 
             if (GUILayout.Button(dlContent, GUILayout.Width(90)))
             {
@@ -1204,22 +1204,22 @@ namespace Eitan.SherpaOnnxUnity.Editor
             bool canDelete = Directory.Exists(modelDir);
             EditorGUI.BeginDisabledGroup(!canDelete);
             if (GUILayout.Button(
-                    Lc(SherpaOnnxL10n.Models.ButtonDelete, "Delete", SherpaOnnxL10n.Models.TooltipDelete, "Delete local model files"),
+                    Lc(SherpaONNXL10n.Models.ButtonDelete, "Delete", SherpaONNXL10n.Models.TooltipDelete, "Delete local model files"),
                     GUILayout.Width(70)))
             {
                 bool confirm = EditorUtility.DisplayDialog(
-                    L(SherpaOnnxL10n.Models.DialogDeleteTitle, "Delete Model"),
+                    L(SherpaONNXL10n.Models.DialogDeleteTitle, "Delete Model"),
                     string.Format(
-                        L(SherpaOnnxL10n.Models.DialogDeleteMessage, "Are you sure you want to delete local files for '{0}'?"),
+                        L(SherpaONNXL10n.Models.DialogDeleteMessage, "Are you sure you want to delete local files for '{0}'?"),
                         entry.Metadata.modelId),
-                    L(SherpaOnnxL10n.Models.DialogDeleteConfirm, "Delete"),
-                    L(SherpaOnnxL10n.Models.DialogDeleteCancel, "Cancel"));
+                    L(SherpaONNXL10n.Models.DialogDeleteConfirm, "Delete"),
+                    L(SherpaONNXL10n.Models.DialogDeleteCancel, "Cancel"));
                 if (confirm)
                 {
                     if (DeleteModelFolder(entry.Metadata, modelDir))
                     {
                         ShowNotification(new GUIContent(string.Format(
-                            L(SherpaOnnxL10n.Models.NotificationDeleted, "Deleted: {0}"),
+                            L(SherpaONNXL10n.Models.NotificationDeleted, "Deleted: {0}"),
                             entry.Metadata.modelId)));
                         _activeDownloads.RemoveAll(d => d.Metadata == entry.Metadata);
                         _needsRepaint = true;
@@ -1228,7 +1228,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     else
                     {
                         ShowNotification(new GUIContent(string.Format(
-                            L(SherpaOnnxL10n.Models.NotificationDeleteFailed, "Delete failed: {0}"),
+                            L(SherpaONNXL10n.Models.NotificationDeleteFailed, "Delete failed: {0}"),
                             entry.Metadata.modelId)));
                     }
                 }
@@ -1254,7 +1254,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             Rect pRect = EditorGUILayout.GetControlRect(false, showProgress ? 18f : 0f);
             if (showProgress)
             {
-                var fallback = L(SherpaOnnxL10n.Models.StatusWorking, "Working…");
+                var fallback = L(SherpaONNXL10n.Models.StatusWorking, "Working…");
                 EditorGUI.ProgressBar(pRect, Mathf.Clamp01(prog), string.IsNullOrEmpty(status) ? fallback : status);
             }
 
@@ -1266,7 +1266,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 bool canCancel = currentDownload != null && !currentDownload.IsCanceled;
                 using (new EditorGUI.DisabledScope(!canCancel))
                 {
-                    if (GUI.Button(btnRect, L(SherpaOnnxL10n.Common.ButtonCancel, "Cancel")) && currentDownload != null)
+                    if (GUI.Button(btnRect, L(SherpaONNXL10n.Common.ButtonCancel, "Cancel")) && currentDownload != null)
                     {
                         CancelDownload(currentDownload);
                     }
@@ -1283,22 +1283,22 @@ namespace Eitan.SherpaOnnxUnity.Editor
             Color col;
             if (entry.VerifyFailed)
             {
-                text = L(SherpaOnnxL10n.Models.StatusVerifyFailed, "Verify Failed");
+                text = L(SherpaONNXL10n.Models.StatusVerifyFailed, "Verify Failed");
                 col = new Color(0.85f, 0.2f, 0.2f); // stronger red
             }
             else if (entry.IsDownloaded == null)
             {
-                text = L(SherpaOnnxL10n.Models.StatusChecking, "Checking…");
+                text = L(SherpaONNXL10n.Models.StatusChecking, "Checking…");
                 col = new Color(1.0f, 0.65f, 0f);
             }
             else if (entry.IsDownloaded == true)
             {
-                text = L(SherpaOnnxL10n.Models.StatusDownloaded, "Downloaded");
+                text = L(SherpaONNXL10n.Models.StatusDownloaded, "Downloaded");
                 col = new Color(0.25f, 0.75f, 0.25f);
             }
             else
             {
-                text = L(SherpaOnnxL10n.Models.StatusNotDownloaded, "Not Downloaded");
+                text = L(SherpaONNXL10n.Models.StatusNotDownloaded, "Not Downloaded");
                 col = new Color(0.75f, 0.3f, 0.3f);
             }
             var prev = GUI.color;
@@ -1321,7 +1321,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                L(SherpaOnnxL10n.Models.LabelActiveDownloads, "Active Downloads"),
+                L(SherpaONNXL10n.Models.LabelActiveDownloads, "Active Downloads"),
                 EditorStyles.boldLabel);
             foreach (var download in _activeDownloads.ToArray())
             {
@@ -1331,14 +1331,14 @@ namespace Eitan.SherpaOnnxUnity.Editor
                     : $"{download.Metadata.modelId}  •  {phaseLabel}";
                 EditorGUILayout.LabelField(header);
                 Rect rect = EditorGUILayout.GetControlRect(false, 18f);
-                var fallback = L(SherpaOnnxL10n.Models.StatusWorking, "Working…");
+                var fallback = L(SherpaONNXL10n.Models.StatusWorking, "Working…");
                 EditorGUI.ProgressBar(rect, download.Progress, string.IsNullOrEmpty(download.Status) ? fallback : download.Status);
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     GUILayout.FlexibleSpace();
                     EditorGUI.BeginDisabledGroup(download.IsCanceled);
-                    if (GUILayout.Button(L(SherpaOnnxL10n.Common.ButtonCancel, "Cancel"), GUILayout.Width(70)))
+                    if (GUILayout.Button(L(SherpaONNXL10n.Common.ButtonCancel, "Cancel"), GUILayout.Width(70)))
                     {
                         CancelDownload(download);
                     }
@@ -1371,7 +1371,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             foreach (var d in _activeDownloads.ToList())
             {
-                CancelDownload(d, L(SherpaOnnxL10n.Models.StatusWindowClosed, "Window closed"));
+                CancelDownload(d, L(SherpaONNXL10n.Models.StatusWindowClosed, "Window closed"));
             }
             _activeDownloads.Clear();
             isDownloading = false;
@@ -1382,7 +1382,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         {
             try
             {
-                reason ??= L(SherpaOnnxL10n.Models.StatusCancelByUser, "Canceled by user");
+                reason ??= L(SherpaONNXL10n.Models.StatusCancelByUser, "Canceled by user");
                 task.IsCanceled = true;
                 try { task.Cts?.Cancel(); } catch { }
                 try { task.Request?.Abort(); } catch { }
@@ -1409,7 +1409,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             {
                 // Always prune footer row & notify
                 CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaOnnxL10n.Models.NotificationCanceled, "Canceled: {0}"),
+                    L(SherpaONNXL10n.Models.NotificationCanceled, "Canceled: {0}"),
                     task.Metadata.modelId));
                 // And refresh the pill/progress on the list row
                 RescanSingle(task.Metadata);
@@ -1795,7 +1795,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         /// <summary>
         /// Initiates a download for the given model metadata if a download URL is present.
         /// </summary>
-        private void StartDownload(SherpaOnnxModelMetadata metadata)
+        private void StartDownload(SherpaONNXModelMetadata metadata)
         {
             if (string.IsNullOrEmpty(metadata.downloadUrl))
             {
@@ -1813,7 +1813,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             {
                 Metadata = metadata,
                 Progress = 0f,
-                Status = L(SherpaOnnxL10n.Models.StatusStarting, "Starting..."),
+                Status = L(SherpaONNXL10n.Models.StatusStarting, "Starting..."),
                 Phase = DownloadPhase.Download
             };
             _activeDownloads.Add(task);
@@ -1839,7 +1839,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 Directory.CreateDirectory(downloadDir);
             }
 
-            var reporter = new SherpaOnnxFeedbackReporterAdapter((p, msg) =>
+            var reporter = new SherpaONNXFeedbackReporterAdapter((p, msg) =>
             {
                 task.Progress = p;
                 task.Status = msg;
@@ -1849,7 +1849,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             var request = UnityWebRequest.Get(url);
             task.Request = request;
             var operation = request.SendWebRequest();
-            var canceledStatus = L(SherpaOnnxL10n.Models.StatusCanceled, "Canceled");
+            var canceledStatus = L(SherpaONNXL10n.Models.StatusCanceled, "Canceled");
             EditorApplication.CallbackFunction updateHandler = null;
             updateHandler = () =>
             {
@@ -1886,15 +1886,15 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
                                 if (t.IsFaulted)
                                 {
-                                    var baseMessage = t.Exception?.GetBaseException().Message ?? L(SherpaOnnxL10n.Models.StatusUnknown, "unknown");
+                                    var baseMessage = t.Exception?.GetBaseException().Message ?? L(SherpaONNXL10n.Models.StatusUnknown, "unknown");
                                     var msg = string.Format(
-                                        L(SherpaOnnxL10n.Models.StatusSaveError, "Save Error: {0}"),
+                                        L(SherpaONNXL10n.Models.StatusSaveError, "Save Error: {0}"),
                                         baseMessage);
                                     SetVerifyFailed(task.Metadata, true, msg);
                                     task.Progress = 1f;
                                     task.Status = msg;
                                     CompleteDownload(task, success: false, notifyMessage: string.Format(
-                                        L(SherpaOnnxL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
+                                        L(SherpaONNXL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
                                         task.Metadata.modelId));
                                     RescanSingle(task.Metadata);
                                 }
@@ -1916,13 +1916,13 @@ namespace Eitan.SherpaOnnxUnity.Editor
                             else
                             {
                                 string err = string.Format(
-                                    L(SherpaOnnxL10n.Models.StatusGenericError, "Error: {0}"),
+                                    L(SherpaONNXL10n.Models.StatusGenericError, "Error: {0}"),
                                     request.error);
                                 SetVerifyFailed(task.Metadata, true, err);
                                 task.Progress = 1f;
                                 task.Status = err;
                                 CompleteDownload(task, success: false, notifyMessage: string.Format(
-                                    L(SherpaOnnxL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
+                                    L(SherpaONNXL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
                                     task.Metadata.modelId));
                                 RescanSingle(task.Metadata);
                             }
@@ -1947,7 +1947,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 task.Progress = 0.7f * p;
                 var percentText = (p * 100f).ToString("0");
                 task.Status = string.Format(
-                    L(SherpaOnnxL10n.Models.StatusDownloadProgress, "Downloading... {0}%"),
+                    L(SherpaONNXL10n.Models.StatusDownloadProgress, "Downloading... {0}%"),
                     percentText);
                 _needsRepaint = true;
             };
@@ -1961,16 +1961,16 @@ namespace Eitan.SherpaOnnxUnity.Editor
             string archivePath,
             string moduleDirectory,
             bool isCompressed,
-            SherpaOnnxFeedbackReporterAdapter reporter,
+            SherpaONNXFeedbackReporterAdapter reporter,
             CancellationToken token)
         {
-            var canceledStatus = L(SherpaOnnxL10n.Models.StatusCanceled, "Canceled");
+            var canceledStatus = L(SherpaONNXL10n.Models.StatusCanceled, "Canceled");
             if (token.IsCancellationRequested) { CancelDownload(task, canceledStatus); return; }
             // INSTALL (decompress if archive)
             try
             {
                 task.Phase = DownloadPhase.Install;
-                reporter.Report(0.72f, L(SherpaOnnxL10n.Models.StatusPreparingInstall, "Preparing install..."));
+                reporter.Report(0.72f, L(SherpaONNXL10n.Models.StatusPreparingInstall, "Preparing install..."));
 
                 if (isCompressed)
                 {
@@ -1980,7 +1980,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                         float mapped = 0.7f + 0.2f * Mathf.Clamp01(args.Progress);
                         var percent = (args.Progress * 100f).ToString("0");
                         reporter.Report(mapped, string.Format(
-                            L(SherpaOnnxL10n.Models.StatusExtracting, "Extracting... {0}%  (Elapsed {1})"),
+                            L(SherpaONNXL10n.Models.StatusExtracting, "Extracting... {0}%  (Elapsed {1})"),
                             percent,
                             args.ElapsedTime));
                     });
@@ -1992,7 +1992,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
 
                     if (!result.Success)
                     {
-                        throw new InvalidOperationException(result.ErrorMessage ?? L(SherpaOnnxL10n.Models.StatusExtractionFailed, "Extraction failed"));
+                        throw new InvalidOperationException(result.ErrorMessage ?? L(SherpaONNXL10n.Models.StatusExtractionFailed, "Extraction failed"));
                     }
 
                     // Clean up the archive after successful extraction
@@ -2007,7 +2007,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 else
                 {
                     // Non-compressed payload; nothing to extract
-                    reporter.Report(0.9f, L(SherpaOnnxL10n.Models.StatusInstallSkipped, "Install skipped (no archive), verifying..."));
+                    reporter.Report(0.9f, L(SherpaONNXL10n.Models.StatusInstallSkipped, "Install skipped (no archive), verifying..."));
                 }
             }
             catch (OperationCanceledException)
@@ -2023,14 +2023,14 @@ namespace Eitan.SherpaOnnxUnity.Editor
                 task.Phase = DownloadPhase.Install;
                 task.Progress = 1f;
                 var installError = string.Format(
-                    L(SherpaOnnxL10n.Models.StatusInstallError, "Install Error: {0}"),
+                    L(SherpaONNXL10n.Models.StatusInstallError, "Install Error: {0}"),
                     e.Message);
                 task.Status = installError;
 
                 // Mark verification as failed for UI list, hide progress, and notify
                 SetVerifyFailed(task.Metadata, true, installError);
                 CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaOnnxL10n.Models.StatusInstallFailed, "Install failed: {0}"),
+                    L(SherpaONNXL10n.Models.StatusInstallFailed, "Install failed: {0}"),
                     task.Metadata.modelId));
                 _needsRepaint = true;
                 return;
@@ -2039,7 +2039,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
             if (token.IsCancellationRequested) { CancelDownload(task, canceledStatus); return; }
             // VERIFY
             task.Phase = DownloadPhase.Verify;
-            reporter.Report(0.92f, L(SherpaOnnxL10n.Models.StatusVerifying, "Verifying files..."));
+            reporter.Report(0.92f, L(SherpaONNXL10n.Models.StatusVerifying, "Verifying files..."));
 
             bool verified = false;
             try
@@ -2054,22 +2054,22 @@ namespace Eitan.SherpaOnnxUnity.Editor
             if (verified)
             {
                 SetVerifyFailed(task.Metadata, false);
-                reporter.Report(1f, L(SherpaOnnxL10n.Models.StatusCompleted, "Completed"));
+                reporter.Report(1f, L(SherpaONNXL10n.Models.StatusCompleted, "Completed"));
 
                 // Hide the download status section and notify success
                 CompleteDownload(task, success: true, notifyMessage: string.Format(
-                    L(SherpaOnnxL10n.Models.StatusDownloadedWithCheck, "Downloaded ✓ {0}"),
+                    L(SherpaONNXL10n.Models.StatusDownloadedWithCheck, "Downloaded ✓ {0}"),
                     task.Metadata.modelId));
             }
             else
             {
                 SetVerifyFailed(task.Metadata, true,
-                    L(SherpaOnnxL10n.Models.StatusVerifyFailedRetryMessage, "Verification failed. Click Re-download to try again."));
-                reporter.Report(1f, L(SherpaOnnxL10n.Models.StatusVerifyFailed, "Verify Failed"));
+                    L(SherpaONNXL10n.Models.StatusVerifyFailedRetryMessage, "Verification failed. Click Re-download to try again."));
+                reporter.Report(1f, L(SherpaONNXL10n.Models.StatusVerifyFailed, "Verify Failed"));
 
                 // Hide the download status section and notify failure
                 CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaOnnxL10n.Models.StatusVerifyFailedRetry, "Verify failed: {0}"),
+                    L(SherpaONNXL10n.Models.StatusVerifyFailedRetry, "Verify failed: {0}"),
                     task.Metadata.modelId));
             }
 
@@ -2079,7 +2079,7 @@ namespace Eitan.SherpaOnnxUnity.Editor
         }
 
         private static string L(string key, string fallback) =>
-            SherpaOnnxLocalization.Tr(key, fallback);
+            SherpaONNXLocalization.Tr(key, fallback);
 
         private static GUIContent Lc(string labelKey, string fallback, string tooltipKey = null, string tooltipFallback = null)
         {

@@ -4,117 +4,117 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class VersionInfo
     {
         public static String Version
         {
-          get
-          {
-            IntPtr p = SherpaOnnxGetVersionStr();
-
-            string s = "";
-            int length = 0;
-
-            unsafe
+            get
             {
-                byte* b = (byte*)p;
-                if (b != null)
+                IntPtr p = SherpaONNXGetVersionStr();
+
+                string s = "";
+                int length = 0;
+
+                unsafe
                 {
-                    while (*b != 0)
+                    byte* b = (byte*)p;
+                    if (b != null)
                     {
-                        ++b;
-                        length += 1;
+                        while (*b != 0)
+                        {
+                            ++b;
+                            length += 1;
+                        }
                     }
                 }
-            }
 
-            if (length > 0)
-            {
-                byte[] stringBuffer = new byte[length];
-                Marshal.Copy(p, stringBuffer, 0, length);
-                s = Encoding.UTF8.GetString(stringBuffer);
-            }
+                if (length > 0)
+                {
+                    byte[] stringBuffer = new byte[length];
+                    Marshal.Copy(p, stringBuffer, 0, length);
+                    s = Encoding.UTF8.GetString(stringBuffer);
+                }
 
-            return s;
-          }
+                return s;
+            }
         }
 
         public static String GitSha1
         {
-          get
-          {
-            IntPtr p = SherpaOnnxGetGitSha1();
-
-            string s = "";
-            int length = 0;
-
-            unsafe
+            get
             {
-                byte* b = (byte*)p;
-                if (b != null)
+                IntPtr p = SherpaONNXGetGitSha1();
+
+                string s = "";
+                int length = 0;
+
+                unsafe
                 {
-                    while (*b != 0)
+                    byte* b = (byte*)p;
+                    if (b != null)
                     {
-                        ++b;
-                        length += 1;
+                        while (*b != 0)
+                        {
+                            ++b;
+                            length += 1;
+                        }
                     }
                 }
-            }
 
-            if (length > 0)
-            {
-                byte[] stringBuffer = new byte[length];
-                Marshal.Copy(p, stringBuffer, 0, length);
-                s = Encoding.UTF8.GetString(stringBuffer);
-            }
+                if (length > 0)
+                {
+                    byte[] stringBuffer = new byte[length];
+                    Marshal.Copy(p, stringBuffer, 0, length);
+                    s = Encoding.UTF8.GetString(stringBuffer);
+                }
 
-            return s;
-          }
+                return s;
+            }
         }
 
         public static String GitDate
         {
-          get
-          {
-            IntPtr p = SherpaOnnxGetGitDate();
-
-            string s = "";
-            int length = 0;
-
-            unsafe
+            get
             {
-                byte* b = (byte*)p;
-                if (b != null)
+                IntPtr p = SherpaONNXGetGitDate();
+
+                string s = "";
+                int length = 0;
+
+                unsafe
                 {
-                    while (*b != 0)
+                    byte* b = (byte*)p;
+                    if (b != null)
                     {
-                        ++b;
-                        length += 1;
+                        while (*b != 0)
+                        {
+                            ++b;
+                            length += 1;
+                        }
                     }
                 }
-            }
 
-            if (length > 0)
-            {
-                byte[] stringBuffer = new byte[length];
-                Marshal.Copy(p, stringBuffer, 0, length);
-                s = Encoding.UTF8.GetString(stringBuffer);
-            }
+                if (length > 0)
+                {
+                    byte[] stringBuffer = new byte[length];
+                    Marshal.Copy(p, stringBuffer, 0, length);
+                    s = Encoding.UTF8.GetString(stringBuffer);
+                }
 
-            return s;
-          }
+                return s;
+            }
         }
 
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxGetVersionStr();
+        private static extern IntPtr SherpaONNXGetVersionStr();
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxGetGitSha1();
+        private static extern IntPtr SherpaONNXGetGitSha1();
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxGetGitDate();
+        private static extern IntPtr SherpaONNXGetGitDate();
     }
 }

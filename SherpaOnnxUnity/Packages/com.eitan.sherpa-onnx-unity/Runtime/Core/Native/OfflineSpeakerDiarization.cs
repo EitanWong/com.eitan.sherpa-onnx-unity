@@ -3,7 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     // IntPtr is actually a `const float*` from C++
     public delegate int OfflineSpeakerDiarizationProgressCallback(int numProcessedChunks, int numTotalChunks, IntPtr arg);
@@ -12,24 +12,24 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
     {
         public OfflineSpeakerDiarization(OfflineSpeakerDiarizationConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOfflineSpeakerDiarization(ref config);
+            IntPtr h = SherpaONNXCreateOfflineSpeakerDiarization(ref config);
             _handle = new HandleRef(this, h);
         }
 
         public void SetConfig(OfflineSpeakerDiarizationConfig config)
         {
-            SherpaOnnxOfflineSpeakerDiarizationSetConfig(_handle.Handle, ref config);
+            SherpaONNXOfflineSpeakerDiarizationSetConfig(_handle.Handle, ref config);
         }
 
         public OfflineSpeakerDiarizationSegment[] Process(float[] samples)
         {
-            IntPtr result = SherpaOnnxOfflineSpeakerDiarizationProcess(_handle.Handle, samples, samples.Length);
+            IntPtr result = SherpaONNXOfflineSpeakerDiarizationProcess(_handle.Handle, samples, samples.Length);
             return ProcessImpl(result);
         }
 
         public OfflineSpeakerDiarizationSegment[] ProcessWithCallback(float[] samples, OfflineSpeakerDiarizationProgressCallback callback, IntPtr arg)
         {
-            IntPtr result = SherpaOnnxOfflineSpeakerDiarizationProcessWithCallback(_handle.Handle, samples, samples.Length, callback, arg);
+            IntPtr result = SherpaONNXOfflineSpeakerDiarizationProcessWithCallback(_handle.Handle, samples, samples.Length, callback, arg);
             return ProcessImpl(result);
         }
 
@@ -37,29 +37,29 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             if (result == IntPtr.Zero)
             {
-              return new OfflineSpeakerDiarizationSegment[] {};
+                return new OfflineSpeakerDiarizationSegment[] { };
             }
 
-            int numSegments = SherpaOnnxOfflineSpeakerDiarizationResultGetNumSegments(result);
-            IntPtr p = SherpaOnnxOfflineSpeakerDiarizationResultSortByStartTime(result);
+            int numSegments = SherpaONNXOfflineSpeakerDiarizationResultGetNumSegments(result);
+            IntPtr p = SherpaONNXOfflineSpeakerDiarizationResultSortByStartTime(result);
 
             OfflineSpeakerDiarizationSegment[] ans = new OfflineSpeakerDiarizationSegment[numSegments];
             unsafe
             {
-              int size = sizeof(float) * 2 + sizeof(int);
-              for (int i = 0; i != numSegments; ++i)
-              {
-                IntPtr t = new IntPtr((byte*)p + i * size);
-                ans[i] = new OfflineSpeakerDiarizationSegment(t);
+                int size = sizeof(float) * 2 + sizeof(int);
+                for (int i = 0; i != numSegments; ++i)
+                {
+                    IntPtr t = new IntPtr((byte*)p + i * size);
+                    ans[i] = new OfflineSpeakerDiarizationSegment(t);
 
-                // The following IntPtr.Add() does not support net20
-                // ans[i] = new OfflineSpeakerDiarizationSegment(IntPtr.Add(p, i));
-              }
+                    // The following IntPtr.Add() does not support net20
+                    // ans[i] = new OfflineSpeakerDiarizationSegment(IntPtr.Add(p, i));
+                }
             }
 
 
-            SherpaOnnxOfflineSpeakerDiarizationDestroySegment(p);
-            SherpaOnnxOfflineSpeakerDiarizationDestroyResult(result);
+            SherpaONNXOfflineSpeakerDiarizationDestroySegment(p);
+            SherpaONNXOfflineSpeakerDiarizationDestroyResult(result);
 
             return ans;
 
@@ -80,7 +80,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflineSpeakerDiarization(_handle.Handle);
+            SherpaONNXDestroyOfflineSpeakerDiarization(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -92,39 +92,39 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         {
             get
             {
-                return SherpaOnnxOfflineSpeakerDiarizationGetSampleRate(_handle.Handle);
+                return SherpaONNXOfflineSpeakerDiarizationGetSampleRate(_handle.Handle);
             }
         }
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflineSpeakerDiarization(ref OfflineSpeakerDiarizationConfig config);
+        private static extern IntPtr SherpaONNXCreateOfflineSpeakerDiarization(ref OfflineSpeakerDiarizationConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflineSpeakerDiarization(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflineSpeakerDiarization(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOfflineSpeakerDiarizationGetSampleRate(IntPtr handle);
+        private static extern int SherpaONNXOfflineSpeakerDiarizationGetSampleRate(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxOfflineSpeakerDiarizationResultGetNumSegments(IntPtr handle);
+        private static extern int SherpaONNXOfflineSpeakerDiarizationResultGetNumSegments(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxOfflineSpeakerDiarizationProcess(IntPtr handle, float[] samples, int n);
+        private static extern IntPtr SherpaONNXOfflineSpeakerDiarizationProcess(IntPtr handle, float[] samples, int n);
 
         [DllImport(Dll.Filename, CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr SherpaOnnxOfflineSpeakerDiarizationProcessWithCallback(IntPtr handle, float[] samples, int n, OfflineSpeakerDiarizationProgressCallback callback, IntPtr arg);
+        private static extern IntPtr SherpaONNXOfflineSpeakerDiarizationProcessWithCallback(IntPtr handle, float[] samples, int n, OfflineSpeakerDiarizationProgressCallback callback, IntPtr arg);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOfflineSpeakerDiarizationDestroyResult(IntPtr handle);
+        private static extern void SherpaONNXOfflineSpeakerDiarizationDestroyResult(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxOfflineSpeakerDiarizationResultSortByStartTime(IntPtr handle);
+        private static extern IntPtr SherpaONNXOfflineSpeakerDiarizationResultSortByStartTime(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOfflineSpeakerDiarizationDestroySegment(IntPtr handle);
+        private static extern void SherpaONNXOfflineSpeakerDiarizationDestroySegment(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxOfflineSpeakerDiarizationSetConfig(IntPtr handle, ref OfflineSpeakerDiarizationConfig config);
+        private static extern void SherpaONNXOfflineSpeakerDiarizationSetConfig(IntPtr handle, ref OfflineSpeakerDiarizationConfig config);
     }
 }
 

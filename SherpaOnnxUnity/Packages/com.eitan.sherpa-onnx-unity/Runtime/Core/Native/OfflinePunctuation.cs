@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class OfflinePunctuation : IDisposable
     {
         public OfflinePunctuation(OfflinePunctuationConfig config)
         {
-            IntPtr h = SherpaOnnxCreateOfflinePunctuation(ref config);
+            IntPtr h = SherpaONNXCreateOfflinePunctuation(ref config);
             _handle = new HandleRef(this, h);
         }
 
@@ -66,7 +66,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyOfflinePunctuation(_handle.Handle);
+            SherpaONNXDestroyOfflinePunctuation(_handle.Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -76,10 +76,10 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
 
         [DllImport(Dll.Filename)]
-        private static extern IntPtr SherpaOnnxCreateOfflinePunctuation(ref OfflinePunctuationConfig config);
+        private static extern IntPtr SherpaONNXCreateOfflinePunctuation(ref OfflinePunctuationConfig config);
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyOfflinePunctuation(IntPtr handle);
+        private static extern void SherpaONNXDestroyOfflinePunctuation(IntPtr handle);
 
         [DllImport(Dll.Filename)]
         private static extern IntPtr SherpaOfflinePunctuationAddPunct(IntPtr handle, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Text);

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     /// <summary>
     /// Result data for checksum cache deletion attempts.

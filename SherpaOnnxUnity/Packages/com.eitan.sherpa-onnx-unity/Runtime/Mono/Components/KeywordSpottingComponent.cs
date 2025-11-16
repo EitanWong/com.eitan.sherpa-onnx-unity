@@ -4,26 +4,18 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
     using System;
     using System.Collections.Generic;
-    using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Modules;
     using UnityEngine;
     using UnityEngine.Events;
 
     /// <summary>
     /// Streams audio from an input source into the sherpa-onnx keyword spotter.
     /// </summary>
-    [AddComponentMenu("Sherpa ONNX/Keyword Spotting/Keyword Spotter")]
+    [AddComponentMenu("SherpaONNX/Keyword Spotting/Keyword Spotter")]
     [DisallowMultipleComponent]
-    public sealed class KeywordSpottingComponent : SherpaModuleComponent<KeywordSpotting>
+    public sealed class KeywordSpottingComponent : SherpaAudioStreamingComponent<KeywordSpotting>
     {
-        [Header("Audio Input")]
-        [SerializeField]
-        private SherpaAudioInputSource audioInput;
-
-        [SerializeField]
-        private bool autoBindInput = true;
-
         [Header("Keyword Settings")]
         [SerializeField]
         [Tooltip("Score boost applied to registered keywords.")]
@@ -42,9 +34,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<string> onKeywordDetected = new UnityEvent<string>();
 
-        private SherpaAudioInputSource boundInput;
+        /// <summary>
+        /// Gives runtime access to keyword detection events for quick UI wiring.
+        /// </summary>
+        public UnityEvent<string> KeywordDetectedEvent => onKeywordDetected;
 
-        protected override KeywordSpotting CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaOnnxFeedbackReporter resolvedReporter)
+        protected override KeywordSpotting CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
             var payload = customKeywords != null && customKeywords.Count > 0
                 ? customKeywords.ToArray()
@@ -55,22 +50,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             return module;
         }
 
-        private void OnEnable()
-        {
-            if (Application.isPlaying && autoBindInput)
-            {
-                BindInput(audioInput);
-            }
-        }
-
-        private void OnDisable()
-        {
-            UnbindInput(boundInput);
-        }
-
         protected override void OnDestroy()
         {
-            UnbindInput(boundInput);
             if (Module != null)
             {
                 Module.OnKeywordDetected -= HandleKeywordDetected;
@@ -78,55 +59,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             base.OnDestroy();
         }
 
-        public void BindInput(SherpaAudioInputSource source)
+        protected override void OnAudioChunkReceived(float[] samples, int sampleRate)
         {
-            if (boundInput == source)
-            {
-                return;
-            }
-
-            UnbindInput(boundInput);
-
-            if (source == null)
-            {
-                return;
-            }
-
-            source.ChunkReady += HandleChunkFromInput;
-            boundInput = source;
-
-            if (Application.isPlaying && !source.IsCapturing)
-            {
-                source.TryStartCapture();
-            }
-        }
-
-        public void UnbindInput(SherpaAudioInputSource source)
-        {
-            if (source == null)
-            {
-                return;
-            }
-
-            source.ChunkReady -= HandleChunkFromInput;
-            if (boundInput == source)
-            {
-                boundInput = null;
-            }
-        }
-
-        public void FeedSamples(float[] samples, int sampleRate)
-        {
-            HandleChunkFromInput(samples, sampleRate);
-        }
-
-        private void HandleChunkFromInput(float[] samples, int sampleRate)
-        {
-            if (samples == null || samples.Length == 0)
-            {
-                return;
-            }
-
             if (!EnsureModuleReady(out var module))
             {
                 return;
@@ -138,6 +72,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
 
             module.StreamDetect(samples);
+        }
+
+        public void FeedSamples(float[] samples, int sampleRate)
+        {
+            if (!CanProcessChunk(samples, sampleRate))
+            {
+                return;
+            }
+
+            OnAudioChunkReceived(samples, sampleRate);
         }
 
         private void HandleKeywordDetected(string keyword)

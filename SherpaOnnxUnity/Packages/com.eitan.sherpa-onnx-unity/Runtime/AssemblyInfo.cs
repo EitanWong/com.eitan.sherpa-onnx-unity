@@ -5,5 +5,5 @@ using UnityEngine.Scripting;
 
 [assembly: Preserve]
 [assembly: AlwaysLinkAssembly]
-[assembly: InternalsVisibleTo("Eitan.SherpaOnnxUnity.Editor")]
-[assembly: InternalsVisibleTo("Eitan.SherpaOnnxUnity.Tests")]
+[assembly: InternalsVisibleTo("Eitan.SherpaONNXUnity.Editor")]
+[assembly: InternalsVisibleTo("Eitan.SherpaONNXUnity.Tests")]

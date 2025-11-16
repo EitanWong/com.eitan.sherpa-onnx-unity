@@ -1,4 +1,4 @@
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Lexicon
 {
     using System;
     using System.Collections.Generic;
@@ -960,7 +960,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon
     //   internal static class EnglishProperCaseLexiconExtra {
     //       public static readonly string[] Single  = { "Haisheng", "Haibao", ... };
     //       public static readonly string[] Upper   = { "EOU", "VAD", "GPU", ... };
-    //       public static readonly string[] Phrases = { "Sherpa ONNX", "ZipVoice TTS", ... };
+    //       public static readonly string[] Phrases = { "SherpaONNX", "ZipVoice TTS", ... };
     //   }
     //
     // Those arrays will be automatically concatenated via reflection at startup.
@@ -1058,7 +1058,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon
 
             // Concepts & Titles
             "Stochastic Gradient Descent","Zero Shot Learning","Few Shot Learning","Large Language Model",
-            "Unity Editor","Unity Player","Sherpa ONNX","Visual Studio",
+            "Unity Editor","Unity Player","SherpaONNX","Visual Studio",
             "World War I","World War II","Cold War","Middle Ages","Renaissance Period","Industrial Revolution","Information Age",
             "Artificial Intelligence","Machine Learning","Deep Learning","Natural Language Processing","Computer Vision",
             "Augmented Reality","Virtual Reality","Mixed Reality","Internet of Things","Big Data","Cloud Computing","Quantum Computing",
@@ -1120,7 +1120,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Lexicon
             IEnumerable<string>? extra = null;
             try
             {
-                var t = Type.GetType("Eitan.SherpaOnnxUnity.Runtime.Utilities.Lexicon.EnglishProperCaseLexiconExtra");
+                var t = Type.GetType("Eitan.SherpaONNXUnity.Runtime.Utilities.Lexicon.EnglishProperCaseLexiconExtra");
                 if (t != null)
                 {
                     var f = t.GetField(fieldName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);

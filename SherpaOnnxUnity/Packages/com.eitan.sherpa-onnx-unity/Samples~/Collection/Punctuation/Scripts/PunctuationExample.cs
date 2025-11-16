@@ -1,10 +1,10 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
@@ -15,7 +15,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Dropdown _modelIDDropdown;
         [SerializeField] private Button _modelLoadOrUnloadButton;
         [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
+        [SerializeField] private Eitan.SherpaONNXUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
 
@@ -58,7 +58,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.AddPunctuation);
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.AddPunctuation);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();
@@ -136,7 +136,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 return;
             }
 
-            var reporter = new SherpaOnnxFeedbackReporter(null, this);
+            var reporter = new SherpaONNXFeedbackReporter(null, this);
             punctuation = new Punctuation(modelID, reporter: reporter);
 
             _modelLoadOrUnloadButton.interactable = false;

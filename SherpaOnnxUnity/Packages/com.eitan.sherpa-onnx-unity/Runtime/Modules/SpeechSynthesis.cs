@@ -1,31 +1,31 @@
 // SpeechSynthesis.cs
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
     using UnityEngine;
 
-    public class SpeechSynthesis : SherpaOnnxModule
+    public class SpeechSynthesis : SherpaONNXModule
     {
 
         private OfflineTts _tts;
         private int _activeGenerationCount;
         private TaskCompletionSource<bool> _shutdownCompletionSource;
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.SpeechSynthesis;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechSynthesis;
 
-        public SpeechSynthesis(string modelID, int sampleRate = -1, SherpaOnnxFeedbackReporter reporter = null)
+        public SpeechSynthesis(string modelID, int sampleRate = -1, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
 
         }
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -69,7 +69,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
             }
         }
 
-        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaOnnxModelMetadata metadata, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        private async Task<OfflineTtsConfig> CreateTtsConfig(SpeechSynthesisModelType modelType, SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var ttsModelConfig = new OfflineTtsConfig();
@@ -119,7 +119,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
 
                 case SpeechSynthesisModelType.Matcha:
                     {
-                        var vocoderMetadata = await SherpaOnnxModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
+                        var vocoderMetadata = await SherpaONNXModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
 
                         await SherpaUtils.Prepare.PrepareAndLoadModelAsync(vocoderMetadata, reporter, ct);
                         var vocoderFallback = CreateFallbackReporter(vocoderMetadata, reporter);

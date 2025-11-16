@@ -1,15 +1,15 @@
 
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Modules;
+    using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Modules;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
+    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
     public class AudioTaggingExample : MonoBehaviour, ISherpaFeedbackHandler
     {
 
@@ -18,7 +18,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Dropdown _modelIDDropdown;
         [SerializeField] private Button _modelLoadOrUnloadButton;
         [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
+        [SerializeField] private Eitan.SherpaONNXUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _tagResultText;
@@ -54,7 +54,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         {
             if (audioTagging == null)
             {
-                var reporter = new SherpaOnnxFeedbackReporter(null, this);
+                var reporter = new SherpaONNXFeedbackReporter(null, this);
                 audioTagging = new AudioTagging(modelID, SampleRate, reporter);
 
                 _modelLoadFlag = true;
@@ -129,7 +129,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
             _modelIDDropdown.options.Clear();
             _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
             _modelLoadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.AudioTagging);
+            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.AudioTagging);
             _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
             _modelIDDropdown.options.Clear();

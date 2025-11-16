@@ -2,10 +2,10 @@
 using System.Linq;
 using System.Text;
 using System;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Exception;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin.Data;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin.Exception;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin.Data;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core.Utilities.Pinyin
+namespace Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin
 {
     /// <summary>
     /// 拼音与汉字相互转换入口

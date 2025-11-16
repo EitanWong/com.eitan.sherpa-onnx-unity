@@ -5,29 +5,29 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
+using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
 using UnityEngine.Networking;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Constants
+namespace Eitan.SherpaONNXUnity.Runtime.Constants
 {
-    public partial class SherpaOnnxConstants
+    public partial class SherpaONNXConstants
     {
-        private static readonly SherpaOnnxModuleType[] ALL_MANIFEST_MODULE_TYPES = new[]
+        private static readonly SherpaONNXModuleType[] ALL_MANIFEST_MODULE_TYPES = new[]
         {
-            SherpaOnnxModuleType.SpeechRecognition,
-            SherpaOnnxModuleType.VoiceActivityDetection,
-            SherpaOnnxModuleType.SpeechSynthesis,
-            SherpaOnnxModuleType.KeywordSpotting,
-            SherpaOnnxModuleType.SpeechEnhancement,
-            SherpaOnnxModuleType.SpokenLanguageIdentification,
-            SherpaOnnxModuleType.AddPunctuation,
-            SherpaOnnxModuleType.AudioTagging,
-            SherpaOnnxModuleType.SpeakerIdentification,
-            SherpaOnnxModuleType.SourceSeparation,
-            SherpaOnnxModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained
+            SherpaONNXModuleType.SpeechRecognition,
+            SherpaONNXModuleType.VoiceActivityDetection,
+            SherpaONNXModuleType.SpeechSynthesis,
+            SherpaONNXModuleType.KeywordSpotting,
+            SherpaONNXModuleType.SpeechEnhancement,
+            SherpaONNXModuleType.SpokenLanguageIdentification,
+            SherpaONNXModuleType.AddPunctuation,
+            SherpaONNXModuleType.AudioTagging,
+            SherpaONNXModuleType.SpeakerIdentification,
+            SherpaONNXModuleType.SourceSeparation,
+            SherpaONNXModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained
         };
 
-        internal static IEnumerable<SherpaOnnxModuleType> EnumerateManifestModuleTypes()
+        internal static IEnumerable<SherpaONNXModuleType> EnumerateManifestModuleTypes()
         {
             return ALL_MANIFEST_MODULE_TYPES;
         }
@@ -35,14 +35,14 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         private const int DefaultChecksumCacheTtlSeconds = 3600;
 
         private static bool ShouldFetchLatestManifest() =>
-            SherpaOnnxEnvironment.GetBool(SherpaOnnxEnvironment.BuiltinKeys.FetchLatestManifest, @default: true);
+            SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, @default: true);
 
         private static int GetChecksumCacheTtlSeconds()
         {
             try
             {
-                return SherpaOnnxEnvironment.GetInt(
-                    SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
+                return SherpaONNXEnvironment.GetInt(
+                    SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
                     DefaultChecksumCacheTtlSeconds);
             }
             catch
@@ -83,7 +83,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache read failed ({cachePath}): {ex.Message}");
+                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache read failed ({cachePath}): {ex.Message}");
                 return false;
             }
         }
@@ -113,7 +113,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache write failed ({cachePath}): {ex.Message}");
+                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache write failed ({cachePath}): {ex.Message}");
             }
         }
 
@@ -156,7 +156,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
         private static string ResolveChecksumCacheRoot()
         {
-            var customRoot = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.ChecksumCacheDirectory, string.Empty);
+            var customRoot = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory, string.Empty);
             return string.IsNullOrWhiteSpace(customRoot) ? ResolveDefaultCacheRoot() : customRoot.Trim();
         }
 
@@ -195,7 +195,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             catch (Exception ex)
             {
                 errors.Add(ex.Message);
-                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache enumeration failed ({cacheDirectory}): {ex.Message}");
+                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache enumeration failed ({cacheDirectory}): {ex.Message}");
                 return new SherpaChecksumCacheClearResult(
                     cacheDirectory,
                     directoryFound: true,
@@ -218,7 +218,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 {
                     failed++;
                     errors.Add($"{file}: {ex.Message}");
-                    UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache delete failed ({file}): {ex.Message}");
+                    UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache delete failed ({file}): {ex.Message}");
                 }
             }
 
@@ -255,7 +255,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             catch (Exception ex)
             {
                 errors?.Add($"{directory}: {ex.Message}");
-                UnityEngine.Debug.LogWarning($"SherpaOnnx checksum cache cleanup failed ({directory}): {ex.Message}");
+                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache cleanup failed ({directory}): {ex.Message}");
             }
         }
 
@@ -266,7 +266,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 var unityTemp = UnityEngine.Application.temporaryCachePath;
                 if (!string.IsNullOrEmpty(unityTemp))
                 {
-                    return Path.Combine(unityTemp, "SherpaOnnxUnity");
+                    return Path.Combine(unityTemp, "SherpaONNXUnity");
                 }
             }
             catch
@@ -279,7 +279,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 var systemTemp = Path.GetTempPath();
                 if (!string.IsNullOrEmpty(systemTemp))
                 {
-                    return Path.Combine(systemTemp, "SherpaOnnxUnity");
+                    return Path.Combine(systemTemp, "SherpaONNXUnity");
                 }
             }
             catch
@@ -287,7 +287,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 // ignored, as a last resort fall through to current directory
             }
 
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", "SherpaOnnxUnity");
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", "SherpaONNXUnity");
         }
 
         private static string SanitizeFileName(string name)
@@ -408,43 +408,43 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             return false;
         }
 
-        private static string GetReleaseTagByModuleType(SherpaOnnxModuleType moduleType)
+        private static string GetReleaseTagByModuleType(SherpaONNXModuleType moduleType)
         {
 
             var tagName = string.Empty;
             switch (moduleType)
             {
-                case SherpaOnnxModuleType.SpeechRecognition:
+                case SherpaONNXModuleType.SpeechRecognition:
                     tagName = "asr-models";
                     break;
-                case SherpaOnnxModuleType.VoiceActivityDetection:
+                case SherpaONNXModuleType.VoiceActivityDetection:
                     tagName = "asr-models"; // i know it's weird but it's work.
                     break;
-                case SherpaOnnxModuleType.SpeechSynthesis:
+                case SherpaONNXModuleType.SpeechSynthesis:
                     tagName = "tts-models";
                     break;
-                case SherpaOnnxModuleType.KeywordSpotting:
+                case SherpaONNXModuleType.KeywordSpotting:
                     tagName = "kws-models";
                     break;
-                case SherpaOnnxModuleType.SpeechEnhancement:
+                case SherpaONNXModuleType.SpeechEnhancement:
                     tagName = "speech-enhancement-models";
                     break;
-                case SherpaOnnxModuleType.SpokenLanguageIdentification:
+                case SherpaONNXModuleType.SpokenLanguageIdentification:
                     tagName = "asr-models"; // use whisper model so it's should be asr-models
                     break;
-                case SherpaOnnxModuleType.AddPunctuation:
+                case SherpaONNXModuleType.AddPunctuation:
                     tagName = "punctuation-models";
                     break;
-                case SherpaOnnxModuleType.AudioTagging:
+                case SherpaONNXModuleType.AudioTagging:
                     tagName = "audio-tagging-models";
                     break;
-                case SherpaOnnxModuleType.SpeakerDiarization:
+                case SherpaONNXModuleType.SpeakerDiarization:
                     tagName = "speaker-segmentation-models";
                     break;
-                case SherpaOnnxModuleType.SpeakerIdentification:
+                case SherpaONNXModuleType.SpeakerIdentification:
                     tagName = "speaker-recongition-models";
                     break;
-                case SherpaOnnxModuleType.SourceSeparation:
+                case SherpaONNXModuleType.SourceSeparation:
                     tagName = "source-separation-models";
                     break;
             }
@@ -462,9 +462,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             string proxy = null;
             try
             {
-                if (SherpaOnnxEnvironment.Contains(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy))
+                if (SherpaONNXEnvironment.Contains(SherpaONNXEnvironment.BuiltinKeys.GithubProxy))
                 {
-                    proxy = SherpaOnnxEnvironment.Get(SherpaOnnxEnvironment.BuiltinKeys.GithubProxy)?.Trim();
+                    proxy = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.GithubProxy)?.Trim();
                 }
             }
             catch (Exception ex)
@@ -620,11 +620,11 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
         }
 
-        public static async Task<SherpaOnnxModelManifest> GetDefaultManifestAsync(
-            IEnumerable<SherpaOnnxModuleType> moduleTypes = null,
+        public static async Task<SherpaONNXModelManifest> GetDefaultManifestAsync(
+            IEnumerable<SherpaONNXModuleType> moduleTypes = null,
             CancellationToken cancellationToken = default)
         {
-            var manifest = new SherpaOnnxModelManifest();
+            var manifest = new SherpaONNXModelManifest();
             await PopulateManifestAsync(manifest, moduleTypes, cancellationToken).ConfigureAwait(true);
             return manifest;
         }
@@ -640,13 +640,13 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         {
             var sherpaModelType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             var tag = GetReleaseTagByModuleType(sherpaModelType);
-            var ext = sherpaModelType == SherpaOnnxModuleType.VoiceActivityDetection ? ".onnx" : ".tar.bz2";
+            var ext = sherpaModelType == SherpaONNXModuleType.VoiceActivityDetection ? ".onnx" : ".tar.bz2";
             var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{modelId}{ext}";
             // Store canonical (raw) GitHub URL in metadata; proxy is applied at request time.
             return rawUrl;
         }
 
-        private static void AddToManifest(SherpaOnnxModelManifest manifest, SherpaOnnxModelMetadata[] modelMetadataList, SherpaOnnxModuleType moduleType)
+        private static void AddToManifest(SherpaONNXModelManifest manifest, SherpaONNXModelMetadata[] modelMetadataList, SherpaONNXModuleType moduleType)
         {
             foreach (var modelConfig in modelMetadataList)
             {
@@ -678,8 +678,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
         }
 
         public static async Task PopulateManifestAsync(
-            SherpaOnnxModelManifest manifest,
-            IEnumerable<SherpaOnnxModuleType> moduleTypes,
+            SherpaONNXModelManifest manifest,
+            IEnumerable<SherpaONNXModuleType> moduleTypes,
             CancellationToken cancellationToken = default)
         {
             if (manifest == null)
@@ -704,7 +704,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                 return;
             }
 
-            var fetchTasks = new Dictionary<SherpaOnnxModuleType, Task<SherpaOnnxModelMetadata[]>>(missingTypes.Length);
+            var fetchTasks = new Dictionary<SherpaONNXModuleType, Task<SherpaONNXModelMetadata[]>>(missingTypes.Length);
             foreach (var moduleType in missingTypes)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -732,7 +732,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
         }
 
-        private static bool ManifestContainsModule(SherpaOnnxModelManifest manifest, SherpaOnnxModuleType moduleType)
+        private static bool ManifestContainsModule(SherpaONNXModelManifest manifest, SherpaONNXModuleType moduleType)
         {
             if (manifest == null || manifest.models == null || manifest.models.Count == 0)
             {
@@ -742,7 +742,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             return manifest.models.Exists(m => m != null && m.moduleType == moduleType);
         }
 
-        private static SherpaOnnxModuleType[] NormalizeModuleTypes(IEnumerable<SherpaOnnxModuleType> moduleTypes)
+        private static SherpaONNXModuleType[] NormalizeModuleTypes(IEnumerable<SherpaONNXModuleType> moduleTypes)
         {
             if (moduleTypes == null)
             {
@@ -750,19 +750,19 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             }
 
             return moduleTypes
-                .Where(t => t != SherpaOnnxModuleType.Undefined)
+                .Where(t => t != SherpaONNXModuleType.Undefined)
                 .Distinct()
                 .ToArray();
         }
 
-        private static SherpaOnnxModelMetadata[] CloneMetadataArray(SherpaOnnxModelMetadata[] source)
+        private static SherpaONNXModelMetadata[] CloneMetadataArray(SherpaONNXModelMetadata[] source)
         {
             if (source == null || source.Length == 0)
             {
-                return Array.Empty<SherpaOnnxModelMetadata>();
+                return Array.Empty<SherpaONNXModelMetadata>();
             }
 
-            var list = new List<SherpaOnnxModelMetadata>(source.Length);
+            var list = new List<SherpaONNXModelMetadata>(source.Length);
             for (int i = 0; i < source.Length; i++)
             {
                 var item = source[i];
@@ -771,7 +771,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                     continue;
                 }
 
-                list.Add(new SherpaOnnxModelMetadata
+                list.Add(new SherpaONNXModelMetadata
                 {
                     modelId = item.modelId,
                     moduleType = item.moduleType,
@@ -785,45 +785,45 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             return list.ToArray();
         }
 
-        private static SherpaOnnxModelMetadata[] GetFallbackModels(SherpaOnnxModuleType moduleType)
+        private static SherpaONNXModelMetadata[] GetFallbackModels(SherpaONNXModuleType moduleType)
         {
             switch (moduleType)
             {
-                case SherpaOnnxModuleType.SpeechRecognition:
+                case SherpaONNXModuleType.SpeechRecognition:
                     return CloneMetadataArray(Models.ASR_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.VoiceActivityDetection:
+                case SherpaONNXModuleType.VoiceActivityDetection:
                     return CloneMetadataArray(Models.VAD_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SpeechSynthesis:
+                case SherpaONNXModuleType.SpeechSynthesis:
                     return CloneMetadataArray(Models.TTS_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.KeywordSpotting:
+                case SherpaONNXModuleType.KeywordSpotting:
                     return CloneMetadataArray(Models.KWS_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SpeechEnhancement:
+                case SherpaONNXModuleType.SpeechEnhancement:
                     return CloneMetadataArray(Models.SPEECH_ENHANCEMENT_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SpokenLanguageIdentification:
+                case SherpaONNXModuleType.SpokenLanguageIdentification:
                     return CloneMetadataArray(Models.SPOKEN_LANGUAGEIDENTIFICATION_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.AddPunctuation:
+                case SherpaONNXModuleType.AddPunctuation:
                     return CloneMetadataArray(Models.PUNCTUATION_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.AudioTagging:
+                case SherpaONNXModuleType.AudioTagging:
                     return CloneMetadataArray(Models.AUDIO_TAGGING_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SpeakerIdentification:
+                case SherpaONNXModuleType.SpeakerIdentification:
                     return CloneMetadataArray(Models.SPEAKER_IDENTIFICATION_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SpeakerDiarization:
+                case SherpaONNXModuleType.SpeakerDiarization:
                     return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
-                case SherpaOnnxModuleType.SourceSeparation:
+                case SherpaONNXModuleType.SourceSeparation:
                     return CloneMetadataArray(Models.SOURCE_SEPARATION_MODELS_METADATA_TABLES);
                 default:
-                    return Array.Empty<SherpaOnnxModelMetadata>();
+                    return Array.Empty<SherpaONNXModelMetadata>();
             }
         }
 
-        private static async Task<SherpaOnnxModelMetadata[]> FetchModelsAsync(SherpaOnnxModuleType moduleType)
+        private static async Task<SherpaONNXModelMetadata[]> FetchModelsAsync(SherpaONNXModuleType moduleType)
         {
             var tag = GetReleaseTagByModuleType(moduleType);
             if (string.IsNullOrWhiteSpace(tag))
             {
-                return Array.Empty<SherpaOnnxModelMetadata>();
+                return Array.Empty<SherpaONNXModelMetadata>();
             }
-            if (moduleType == SherpaOnnxModuleType.SpeakerDiarization)
+            if (moduleType == SherpaONNXModuleType.SpeakerDiarization)
             {
                 // There is no checksum.txt file in https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-segmentation-models, so the model cannot be obtained
                 return CloneMetadataArray(Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES);
@@ -838,8 +838,8 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
             if (!fetchAllowed)
             {
-                UnityEngine.Debug.Log($"FetchModelsAsync({moduleType}) skipped network fetch because {SherpaOnnxEnvironment.BuiltinKeys.FetchLatestManifest}=false and no cache was present.");
-                return Array.Empty<SherpaOnnxModelMetadata>();
+                UnityEngine.Debug.Log($"FetchModelsAsync({moduleType}) skipped network fetch because {SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest}=false and no cache was present.");
+                return Array.Empty<SherpaONNXModelMetadata>();
             }
 
             var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/checksum.txt";
@@ -858,7 +858,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
 
                 if (!ok || string.IsNullOrWhiteSpace(content))
                 {
-                    return Array.Empty<SherpaOnnxModelMetadata>();
+                    return Array.Empty<SherpaONNXModelMetadata>();
                 }
 
                 WriteChecksumCache(tag, content);
@@ -867,25 +867,25 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogWarning($"FetchModelsAsync({moduleType}) failed: {ex.GetType().Name}: {ex.Message}");
-                return Array.Empty<SherpaOnnxModelMetadata>();
+                return Array.Empty<SherpaONNXModelMetadata>();
             }
         }
 
-        private static SherpaOnnxModelMetadata[] ParseChecksumContent(string content, SherpaOnnxModuleType moduleType, string tag)
+        private static SherpaONNXModelMetadata[] ParseChecksumContent(string content, SherpaONNXModuleType moduleType, string tag)
         {
             if (string.IsNullOrWhiteSpace(content))
             {
-                return Array.Empty<SherpaOnnxModelMetadata>();
+                return Array.Empty<SherpaONNXModelMetadata>();
             }
 
-            var list = new List<SherpaOnnxModelMetadata>();
+            var list = new List<SherpaONNXModelMetadata>();
             var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var rkRegex = new Regex(@"rk\d{4}", RegexOptions.IgnoreCase);
 
-            bool isOnnxOnly = moduleType == SherpaOnnxModuleType.VoiceActivityDetection
-                           || moduleType == SherpaOnnxModuleType.SpeechEnhancement;
+            bool isOnnxOnly = moduleType == SherpaONNXModuleType.VoiceActivityDetection
+                           || moduleType == SherpaONNXModuleType.SpeechEnhancement;
             string wantedExt = isOnnxOnly ? ".onnx" : ".tar.bz2";
-            bool isSlidModel = moduleType == SherpaOnnxModuleType.SpokenLanguageIdentification;
+            bool isSlidModel = moduleType == SherpaONNXModuleType.SpokenLanguageIdentification;
 
             foreach (var raw in lines)
             {
@@ -941,7 +941,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Constants
                     $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{(isOnnxOnly ? modelId + ".onnx" : modelId + ".tar.bz2")}"
                 );
 
-                var meta = new SherpaOnnxModelMetadata
+                var meta = new SherpaONNXModelMetadata
                 {
                     modelId = modelId,
                     downloadFileHash = hash,

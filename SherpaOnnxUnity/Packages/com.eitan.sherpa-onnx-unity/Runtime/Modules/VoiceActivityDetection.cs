@@ -1,20 +1,20 @@
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Core
+namespace Eitan.SherpaONNXUnity.Runtime.Core
 {
     using System;
     using System.Buffers; // For ArrayPool
     using System.Collections.Concurrent;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime.Core.Utilities;
-    using Eitan.SherpaOnnxUnity.Runtime.Native;
+    using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
+    using Eitan.SherpaONNXUnity.Runtime.Native;
 
     /// <summary>
     /// [FINAL, SIMPLIFIED & FULLY OPTIMIZED]
     /// Detects speech segments from a real-time audio stream using high-performance, zero-GC techniques,
     /// correctly interfacing with an array-only API.
     /// </summary>
-    public sealed class VoiceActivityDetection : SherpaOnnxModule
+    public sealed class VoiceActivityDetection : SherpaONNXModule
     {
         public event Action<float[]> OnSpeechSegmentDetected;
         public event Action<bool> OnSpeakingStateChanged;
@@ -43,16 +43,16 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
         private int _silentFrames;
         private int _silenceThresholdFrames;
 
-        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaOnnxFeedbackReporter reporter = null)
+        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
             : base(modelID, sampleRate, reporter)
         {
             // Constructor is kept lean. All buffer initializations are deferred to Initialization,
             // as they depend on runtime parameters like sampleRate and windowSize.
         }
 
-        protected override SherpaOnnxModuleType ModuleType => SherpaOnnxModuleType.VoiceActivityDetection;
+        protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.VoiceActivityDetection;
 
-        protected override async Task<bool> Initialization(SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter, CancellationToken ct)
+        protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             try
             {
@@ -282,7 +282,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Core
 
         #region Configuration & Helpers
 
-        private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaOnnxModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaOnnxFeedbackReporter reporter)
+        private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };

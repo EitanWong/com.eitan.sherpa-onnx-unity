@@ -1,6 +1,6 @@
 {
-    "name": "Eitan.SherpaOnnxUnity.Runtime.Native",
-    "rootNamespace": "Eitan.SherpaOnnxUnity.Runtime.Native",
+    "name": "Eitan.SherpaONNXUnity.Runtime.Native",
+    "rootNamespace": "Eitan.SherpaONNXUnity.Runtime.Native",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

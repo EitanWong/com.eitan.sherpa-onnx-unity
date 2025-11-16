@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ SherpaOnnxUnity
+# 🎙️ SherpaONNXUnity
 
 ### Unity Package for Offline Speech Recognition & Voice Activity Detection
 
@@ -8,12 +8,12 @@
 
 **Language**: [English](./README.md) | [中文](./README_zh.md)
 
-[![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/) 
+[![OpenUPM](https://img.shields.io/npm/v/com.eitan.sherpa-onnx-unity?label=openupm&registry_uri=https://package.openupm.com&style=flat-square&color=blue)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Downloads](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=downloads&suffix=%2Fmonth&url=https%3A%2F%2Fpackage.openupm.com%2Fdownloads%2Fpoint%2Flast-month%2Fcom.eitan.sherpa-onnx-unity&style=flat-square)](https://openupm.com/packages/com.eitan.sherpa-onnx-unity/)
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.1** (2025-10-28)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.1** (2025-10-28)
 
 </div>
 
@@ -42,7 +42,7 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 - **Module Initialization**: Enhanced initialization with comprehensive file checks to validate required files and directories.
 - **Sherpa-onnx Upgrade**: Updated to v1.12.15.
 
-[📋 **View Full Changelog**](./SherpaOnnxUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
+[📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -119,7 +119,7 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
    - URL: `https://package.openupm.com`
    - Scope: `com.eitan.sherpa-onnx-unity`
 3. **Window → Package Manager → My Registries**
-4. Install **SherpaOnnxUnity**
+4. Install **SherpaONNXUnity**
 
 </details>
 
@@ -139,9 +139,9 @@ openupm add com.eitan.sherpa-onnx-unity
 **🎯 The fastest way to get started is to import and explore the sample scenes:**
 
 1. Open **Window → Package Manager**
-2. Find **SherpaOnnxUnity** in **In Project** tab
+2. Find **SherpaONNXUnity** in **In Project** tab
 3. Expand **Samples** section
-4. Click **Import** next to "SherpaOnnxUnity Sample"
+4. Click **Import** next to "SherpaONNXUnity Sample"
 
 The samples include:
 - **Real-time Speech Recognition** - Live microphone input with real-time transcription
@@ -192,7 +192,7 @@ Run tests via **Window → General → Test Runner**
 ### Project Structure
 
 ```
-SherpaOnnxUnity/
+SherpaONNXUnity/
 ├── Packages/com.eitan.sherpa-onnx-unity/
 │   ├── Runtime/           # Core package code
 │   ├── Editor/            # Unity editor extensions
@@ -224,13 +224,13 @@ This package is built upon [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx),
 ### Important License Information
 
 - ✅ **Commercial Use**: Permitted
-- ✅ **Modification**: Permitted  
+- ✅ **Modification**: Permitted
 - ✅ **Distribution**: Permitted
 - ✅ **Private Use**: Permitted
 - ❗ **License Notice**: Must be included in redistributions
 - ❗ **Copyright Notice**: Must be preserved
 
-**Compliance Note**: When using this package in your projects, ensure you include the license notices for both SherpaOnnxUnity and sherpa-onnx in your application's legal documentation.
+**Compliance Note**: When using this package in your projects, ensure you include the license notices for both SherpaONNXUnity and sherpa-onnx in your application's legal documentation.
 
 ## 🙏 Acknowledgments
 

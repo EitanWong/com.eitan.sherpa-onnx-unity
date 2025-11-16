@@ -3,7 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Eitan.SherpaOnnxUnity.Runtime.Native
+namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public class DenoisedAudio
     {
@@ -19,7 +19,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
             byte[] utf8FilenameWithNull = new byte[utf8Filename.Length + 1]; // +1 for null terminator
             Array.Copy(utf8Filename, utf8FilenameWithNull, utf8Filename.Length);
             utf8FilenameWithNull[utf8Filename.Length] = 0; // Null terminator
-            int status = SherpaOnnxWriteWave(impl.Samples, impl.NumSamples, impl.SampleRate, utf8FilenameWithNull);
+            int status = SherpaONNXWriteWave(impl.Samples, impl.NumSamples, impl.SampleRate, utf8FilenameWithNull);
             return status == 1;
         }
 
@@ -38,7 +38,7 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
 
         private void Cleanup()
         {
-            SherpaOnnxDestroyDenoisedAudio(Handle);
+            SherpaONNXDestroyDenoisedAudio(Handle);
 
             // Don't permit the handle to be used again.
             _handle = new HandleRef(this, IntPtr.Zero);
@@ -86,9 +86,9 @@ namespace Eitan.SherpaOnnxUnity.Runtime.Native
         }
 
         [DllImport(Dll.Filename)]
-        private static extern void SherpaOnnxDestroyDenoisedAudio(IntPtr handle);
+        private static extern void SherpaONNXDestroyDenoisedAudio(IntPtr handle);
 
         [DllImport(Dll.Filename)]
-        private static extern int SherpaOnnxWriteWave(IntPtr samples, int n, int sample_rate, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Filename);
+        private static extern int SherpaONNXWriteWave(IntPtr samples, int n, int sample_rate, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.I1)] byte[] utf8Filename);
     }
 }

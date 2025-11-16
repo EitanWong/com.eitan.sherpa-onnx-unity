@@ -317,7 +317,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 1165652071}
-          m_TargetAssemblyTypeName: Demo, Eitan.SherpaOnnxUnity.Samples
+          m_TargetAssemblyTypeName: Demo, Eitan.SherpaONNXUnity.Samples
           m_MethodName: OpenGithubRepo
           m_Mode: 1
           m_Arguments:
@@ -1334,7 +1334,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Welcome to the <i>SherpaOnnx for Unity</i> Demo
+  m_Text: Welcome to the <i>SherpaONNX for Unity</i> Demo
 --- !u!222 &1040046780
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1858,7 +1858,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "<size=64><b><i>SherpaOnnx Unity</i></b></size>\n  <size=36>Demo Collection</size>"
+  m_Text: "<size=64><b><i>SherpaONNX Unity</i></b></size>\n  <size=36>Demo Collection</size>"
 --- !u!222 &1367117975
 CanvasRenderer:
   m_ObjectHideFlags: 0

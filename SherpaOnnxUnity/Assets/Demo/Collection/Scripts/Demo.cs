@@ -5,7 +5,7 @@ public sealed class Demo : MonoBehaviour
     private void Start()
     {
         //设置模型文件GitHub下载加速代理
-        SherpaOnnxUnityAPI.SetGithubProxy("https://gh-proxy.com/");
+        SherpaONNXUnityAPI.SetGithubProxy("https://gh-proxy.com/");
     }
     #region Public Methods
     /// <summary>

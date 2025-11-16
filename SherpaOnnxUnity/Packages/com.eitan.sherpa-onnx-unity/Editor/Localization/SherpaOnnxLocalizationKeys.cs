@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
 
-namespace Eitan.SherpaOnnxUnity.Editor.Localization
+namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     /// <summary>
     /// Centralized string keys so we can avoid inline literals throughout the editors.
     /// </summary>
-    internal static class SherpaOnnxL10n
+    internal static class SherpaONNXL10n
     {
         internal static class Common
         {

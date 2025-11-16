@@ -1,14 +1,14 @@
 using System;
 
-namespace Eitan.SherpaOnnxUnity.Runtime
+namespace Eitan.SherpaONNXUnity.Runtime
 {
     public class CancelFeedback : SherpaFeedback
     {
-        public CancelFeedback(SherpaOnnxModelMetadata metadata, string message, Exception exception = null) : base(metadata, message, exception)
+        public CancelFeedback(SherpaONNXModelMetadata metadata, string message, Exception exception = null) : base(metadata, message, exception)
         {
         }
 
-        public override void Accept(ISherpaFeedbackHandler handler)=> handler.OnFeedback(this);
-    
+        public override void Accept(ISherpaFeedbackHandler handler) => handler.OnFeedback(this);
+
     }
 }

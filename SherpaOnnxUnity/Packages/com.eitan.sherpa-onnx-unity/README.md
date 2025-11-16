@@ -1,4 +1,4 @@
-# SherpaOnnxUnity
+# SherpaONNXUnity
 
 A Unity package providing offline speech recognition (ASR), text-to-speech (TTS), and voice activity detection using [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). Supports real-time audio processing, speaker diarization, audio enhancement, and cross-platform deployment.
 
@@ -45,7 +45,7 @@ Add this line to your `Packages/manifest.json`:
 
 ### Model Configuration
 
-Models are automatically managed through the `SherpaOnnxModelRegistry`. Supported model types:
+Models are automatically managed through the `SherpaONNXModelRegistry`. Supported model types:
 
 - **ASR Models**: Whisper, Zipformer, Paraformer, and more
 - **VAD Models**: Silero VAD and similar
@@ -54,16 +54,16 @@ Models are automatically managed through the `SherpaOnnxModelRegistry`. Supporte
 
 ### Core Components
 
-- **SherpaOnnxModule**: Base class for all functionality modules
+- **SherpaONNXModule**: Base class for all functionality modules
 - **SpeechRecognition**: Handles ASR operations
 - **VoiceActivityDetection**: VAD functionality
 
 ### Assembly Structure
 
-- `Eitan.SherpaOnnxUnity` - Main runtime assembly
-- `Eitan.SherpaOnnxUnity.Editor` - Editor tools and extensions
-- `Eitan.SherpaOnnxUnity.Tests` - Unit and integration tests
-- `Eitan.SherpaOnnxUnity.Samples` - Example implementations
+- `Eitan.SherpaONNXUnity` - Main runtime assembly
+- `Eitan.SherpaONNXUnity.Editor` - Editor tools and extensions
+- `Eitan.SherpaONNXUnity.Tests` - Unit and integration tests
+- `Eitan.SherpaONNXUnity.Samples` - Example implementations
 
 ## Platform Support
 
@@ -93,7 +93,7 @@ Models are automatically managed through the `SherpaOnnxModelRegistry`. Supporte
 
 ### Debug Logging
 
-Enable detailed logging in the `SherpaOnnxAnchor` component for debugging.
+Enable detailed logging in the `SherpaONNXAnchor` component for debugging.
 
 ## Contributing
 

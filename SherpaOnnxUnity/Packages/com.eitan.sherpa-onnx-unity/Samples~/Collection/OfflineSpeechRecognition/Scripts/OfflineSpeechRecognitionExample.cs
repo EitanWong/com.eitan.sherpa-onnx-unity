@@ -1,13 +1,13 @@
-namespace Eitan.SherpaOnnxUnity.Samples
+namespace Eitan.SherpaONNXUnity.Samples
 {
     using System;
     using System.Linq;
     using System.Threading.Tasks;
-    using Eitan.SherpaOnnxUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
-    using Stage = Eitan.SherpaOnnxUnity.Samples.ModelLoadProgressTracker.Stage;
+    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
 
     /// <summary>
     /// 离线语音识别示例 / Offline Speech Recognition Example
@@ -31,7 +31,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
         [SerializeField] private Dropdown _modelIDDropdown;
         [SerializeField] private Button _modelLoadOrUnloadButton;
         [SerializeField] private Text _initMessageText;
-        [SerializeField] private Eitan.SherpaOnnxUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
+        [SerializeField] private Eitan.SherpaONNXUnity.Samples.UI.EasyProgressBar _totalInitProgressBar;
         [SerializeField] private Text _totalInitBarText;
         [SerializeField] private Text _tipsText;
         [SerializeField] private Text _transcriptionText;
@@ -144,7 +144,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
                 _modelIDDropdown.options.Clear();
                 _modelIDDropdown.captionText.text = "Fetching model manifest from GitHub…";
                 _modelLoadOrUnloadButton.gameObject.SetActive(false);
-                var manifest = await SherpaOnnxModelRegistry.Instance.GetManifestAsync(SherpaOnnxModuleType.SpeechRecognition);
+                var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechRecognition);
                 _modelLoadOrUnloadButton.gameObject.SetActive(true);
 
                 PopulateModelDropdown(manifest);
@@ -159,14 +159,14 @@ namespace Eitan.SherpaOnnxUnity.Samples
         /// <summary>
         /// 填充模型下拉菜单 / Populate model dropdown
         /// </summary>
-        private void PopulateModelDropdown(SherpaOnnxModelManifest manifest)
+        private void PopulateModelDropdown(SherpaONNXModelManifest manifest)
         {
             _modelIDDropdown.options.Clear();
 
             if (manifest.models != null)
             {
                 var modelOptions = manifest
-                    .Filter(m => !SherpaOnnxUnityAPI.IsOnlineModel(m.modelId))
+                    .Filter(m => !SherpaONNXUnityAPI.IsOnlineModel(m.modelId))
                     .Select(m => new OptionData(m.modelId))
                     .ToList();
 
@@ -203,7 +203,7 @@ namespace Eitan.SherpaOnnxUnity.Samples
 
             try
             {
-                var reporter = new SherpaOnnxFeedbackReporter(null, this);
+                var reporter = new SherpaONNXFeedbackReporter(null, this);
                 speechRecognition = new SpeechRecognition(modelID, SAMPLE_RATE, reporter);
                 _modelLoadFlag = true;
                 UpdateLoadButtonUI();
