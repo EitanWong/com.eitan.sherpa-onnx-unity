@@ -3,16 +3,14 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Eitan.SherpaONNXUnity.Runtime.Core.Utilities;
-using Eitan.SherpaONNXUnity.Runtime.Core.Utilities.Pinyin;
-
 using Eitan.SherpaONNXUnity.Runtime.Native;
+using Eitan.SherpaONNXUnity.Runtime.Utilities;
+using Eitan.SherpaONNXUnity.Runtime.Utilities.Pinyin;
 
-namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
+namespace Eitan.SherpaONNXUnity.Runtime.Modules
 {
     public sealed class KeywordSpotting : SherpaONNXModule
     {
@@ -40,11 +38,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
 
         public event Action<string> OnKeywordDetected;
 
+
+        private readonly SendOrPostCallback _keywordDetectedDispatch;
+
         private KeywordSpotter _keywordSpotter;
         private OnlineStream _stream;
         private readonly ConcurrentQueue<float> _audioQueue = new();
         private readonly object _lockObject = new();
-        private volatile bool _isDetecting;
+        private int _isDetecting;
         private int _sampleRate;
         private readonly float _keywordsScore;
         private readonly float _keywordsThreshold;
@@ -62,6 +63,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
             _keywordsScore = keywordsScore;
             _keywordsThreshold = keywordsThreshold;
             _keywordConfigs = customKeywords;
+            _keywordDetectedDispatch = CreateCallback<string>(keyword =>
+            {
+                OnKeywordDetected?.Invoke(keyword);
+            });
+
         }
 
         protected override async Task<bool> Initialization(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
@@ -194,9 +200,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
                 _audioQueue.Enqueue(samples[i]);
             }
 
-            if (!_isDetecting)
+            if (Interlocked.Exchange(ref _isDetecting, 1) == 0)
             {
-                _isDetecting = true;
                 _ = runner.RunAsync(ProcessAudioQueue);
             }
         }
@@ -235,7 +240,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
             finally
             {
                 ArrayPool<float>.Shared.Return(batch);
-                _isDetecting = false;
+                Volatile.Write(ref _isDetecting, 0);
             }
 
             return Task.CompletedTask;
@@ -250,8 +255,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
                     return;
                 }
 
-
-                _stream.AcceptWaveform(_sampleRate, samples.ToArray());
+                var buffer = SharedBuffer.RentAndCopy(samples);
+                try
+                {
+                    _stream.AcceptWaveform(_sampleRate, buffer);
+                }
+                finally
+                {
+                    SharedBuffer.Return(buffer);
+                }
 
                 while (_keywordSpotter.IsReady(_stream))
                 {
@@ -262,17 +274,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core.Modules
                     {
                         _keywordSpotter.Reset(_stream);
                         var detectedKeyword = result.Keyword;
-                        ExecuteOnMainThread(_ =>
-                        {
-                            try
-                            {
-                                OnKeywordDetected?.Invoke(detectedKeyword);
-                            }
-                            catch (Exception e)
-                            {
-                                UnityEngine.Debug.LogException(e);
-                            }
-                        });
+                        ExecuteOnMainThread(_keywordDetectedDispatch, detectedKeyword);
                     }
                 }
             }

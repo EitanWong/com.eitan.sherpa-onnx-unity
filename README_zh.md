@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.1** (2025-10-28)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.2** (2025-11-23)
 
 </div>
 
@@ -35,14 +35,14 @@
 
 ---
 
-## 🆕 v0.1.2-exp.1 更新内容 (2025-10-28)
+## 🆕 v0.1.2-exp.2 更新内容 (2025-11-23)
 
 ### 🚀 亮点
-- **音频标签集成**：新增通过 sherpa-onnx 进行音频标签识别的支持。
-- **模块初始化**：增强了初始化过程，增加了对必需文件和目录的全面检查。
-- **Sherpa-onnx 升级**：更新至 v1.12.15。
+- **本地化的组件与检视面板**：新增支持中英文的自定义 Inspector、菜单入口和一组可直接拖拽使用的 Mono 组件，覆盖 ASR、VAD、标点、关键词、音频标签、语音增强、TTS 与零样本 TTS，并共享麦克风输入流。
+- **新增示例**：Audio Tagging 与 Zero-Shot Speech Synthesis 场景，内置提示词资产和更新后的示例脚本/进度 UI。
+- **运行时刷新与配置 API**：原生插件移至 `Runtime/Plugins`，模型解析器覆盖更多 ASR/TTS/音频标签家族，同时 `SherpaONNXUnityAPI` 新增 `SetAutoDownloadModels`、`SetFetchLatestManifest`、校验缓存设置等接口，方便在代码中实现 issue #4 提到的自动下载开关。
 
-[📋 **查看完整更新日志**](./SherpaONNXUnity/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
+[📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
 ---
 
@@ -152,16 +152,36 @@ openupm add com.eitan.sherpa-onnx-unity
 - **语种识别** - 从音频片段中识别语言
 - **文本转语音合成** - 高质量语音生成
 - **音频标签** - 自动检测和分类各种音频事件
+- **零样本语音合成** - 基于提示词的声音克隆，附带示例提示词资产
 
 每个示例都包含完整的、示例代码，您可以将其作为自己实现的起点。
 
+**新的拖拽式组件流程（无需样板代码）：**
+- 在场景中添加 `SherpaMicrophoneInput`，用于产生 PCM 数据。
+- 添加对应模块组件（如 `SpeechRecognizerComponent`、`AudioTaggingComponent`、`VoiceActivityDetectionComponent`、`ZeroShotSpeechSynthesisComponent`），并设置 `Model Id`。
+- 订阅 UnityEvents（如 `TranscriptionReadyEvent`、`ClipReadyEvent`）获取结果；组件会在模型加载完成后自动启动采集。
+- 更完整的 API/组件用法见 `SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/Documentation~/README.md` 双语指南。
+
 ### 模型管理器
 
-通过 **Window → Sherpa Onnx → Model Manager** 打开模型管理器窗口
+通过 **Window → Sherpa ONNX → Model Manager** 打开模型管理器窗口
 
 ![模型管理器](https://github.com/user-attachments/assets/ce622a7d-0885-406d-9a97-78ea89474731)
 
 通过模型管理器，你可以搜索所有sherpa-onnx支持的模型，并提供一键下载到本地的功能。
+
+#### 代码层面的运行时设置
+`SherpaONNXUnityAPI` 暴露了与环境变量一致的接口，便于运行时动态调整：
+
+```csharp
+SherpaONNXUnityAPI.SetAutoDownloadModels(false);      // 对应 SHERPA_ONNX_AUTO_DOWNLOAD
+SherpaONNXUnityAPI.SetFetchLatestManifest(true);      // 对应 SHERPA_ONNX_FETCH_LATEST_MANIFEST
+SherpaONNXUnityAPI.SetChecksumCacheDirectory(
+    Path.Combine(Application.persistentDataPath, "SherpaCache"));
+SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);     // 分发离线包时可关闭缓存
+```
+
+结合 `SetGithubProxy` / `ClearGithubProxy`，可在不修改 ScriptableObject 的情况下控制下载行为。
 
 ## 🛠️ 开发
 

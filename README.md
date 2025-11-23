@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.1** (2025-10-28)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.2** (2025-11-23)
 
 </div>
 
@@ -35,12 +35,12 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.2-exp.1 (2025-10-28)
+## 🆕 What's New in v0.1.2-exp.2 (2025-11-23)
 
 ### 🚀 Highlights
-- **Audio Tagging Integration**: Added support for audio tagging via sherpa-onnx.
-- **Module Initialization**: Enhanced initialization with comprehensive file checks to validate required files and directories.
-- **Sherpa-onnx Upgrade**: Updated to v1.12.15.
+- **Drop-in Components & Localization**: New localized inspectors, menu entries, and Mono components for ASR, VAD, punctuation, keyword spotting, audio tagging, speech enhancement, TTS, and zero-shot TTS with shared microphone streaming.
+- **New Samples**: Added Audio Tagging and Zero-Shot Speech Synthesis scenes with prompt assets and updated demo scripts/progress UI.
+- **Runtime Refresh & Config API**: Plugins moved to `Runtime/Plugins`, model resolvers now cover newer ASR/TTS/audio-tagging families, and `SherpaONNXUnityAPI` gained helpers (e.g., `SetAutoDownloadModels`, `SetFetchLatestManifest`, checksum cache controls) so issue #4’s download toggle can be applied at runtime.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -151,17 +151,37 @@ The samples include:
 - **Keyword Spotting** - Voice-activated keyword detection and wake words
 - **Spoken Language Identification** - Identify the language from an audio clip.
 - **Text-to-Speech Synthesis** - High-quality voice generation
-- **Audio Tagging** – Automatic Detection and Classification of Various Audio Eventson
+- **Audio Tagging** – Automatic detection and classification of various audio events
+- **Zero-Shot Speech Synthesis** – Prompt-driven voice cloning with example prompt assets
 
 Each example includes complete sample code that you can use as a starting point for your own implementation.
 
+**New drop-in component flow (no boilerplate scripting):**
+- Add `SherpaMicrophoneInput` to your scene to emit PCM chunks.
+- Add a module component (e.g., `SpeechRecognizerComponent`, `AudioTaggingComponent`, `VoiceActivityDetectionComponent`, `ZeroShotSpeechSynthesisComponent`) and set the `Model Id`.
+- Hook UnityEvents (e.g., `TranscriptionReadyEvent`, `ClipReadyEvent`) for results; the component will start capture when the model finishes loading.
+- See the bilingual guide at `SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/Documentation~/README.md` for full API/component usage.
+
 ### Model Manager
 
-Open the Model Manager window by navigating to **Window → Sherpa Onnx → Model Manager**.
+Open the Model Manager window by navigating to **Window → Sherpa ONNX → Model Manager**.
 
 ![Model Manager](https://github.com/user-attachments/assets/ce622a7d-0885-406d-9a97-78ea89474731)
 
 With the Model Manager, you can search for all the models supported by sherpa-onnx and download them to your local system with a single click.
+
+#### Runtime settings via code
+`SherpaONNXUnityAPI` mirrors all environment/asset knobs so you can react at runtime:
+
+```csharp
+SherpaONNXUnityAPI.SetAutoDownloadModels(false);          // mirrors SHERPA_ONNX_AUTO_DOWNLOAD
+SherpaONNXUnityAPI.SetFetchLatestManifest(true);          // mirrors SHERPA_ONNX_FETCH_LATEST_MANIFEST
+SherpaONNXUnityAPI.SetChecksumCacheDirectory(
+    Path.Combine(Application.persistentDataPath, "SherpaCache"));
+SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);         // disable caching when distributing offline bundles
+```
+
+Use these helpers together with `SetGithubProxy`/`ClearGithubProxy` to control download behavior without touching ScriptableObjects.
 
 ## 🛠️ Development
 
