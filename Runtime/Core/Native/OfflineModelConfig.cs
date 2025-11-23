@@ -1,0 +1,82 @@
+/// Copyright (c)  2024.5 by 东风破
+
+using System.Runtime.InteropServices;
+
+
+namespace Eitan.SherpaONNXUnity.Runtime.Native
+{
+
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct OfflineModelConfig
+    {
+        public OfflineModelConfig(bool initializeDefaults = true)
+        {
+
+            this = default;
+
+            if (!initializeDefaults)
+            {
+                return;
+            }
+
+            Transducer = new OfflineTransducerModelConfig();
+            Paraformer = new OfflineParaformerModelConfig();
+            NeMoCtc = new OfflineNemoEncDecCtcModelConfig();
+            Whisper = new OfflineWhisperModelConfig();
+            Tdnn = new OfflineTdnnModelConfig();
+            Tokens = "";
+            NumThreads = 1;
+            Debug = 0;
+            Provider = "cpu";
+            ModelType = "";
+            ModelingUnit = "cjkchar";
+            BpeVocab = "";
+            TeleSpeechCtc = "";
+            SenseVoice = new OfflineSenseVoiceModelConfig();
+            Moonshine = new OfflineMoonshineModelConfig();
+            FireRedAsr = new OfflineFireRedAsrModelConfig();
+            Dolphin = new OfflineDolphinModelConfig();
+            ZipformerCtc = new OfflineZipformerCtcModelConfig();
+            Canary = new OfflineCanaryModelConfig();
+            WenetCtc = new OfflineWenetCtcModelConfig();
+            Omnilingual = new OfflineOmnilingualAsrCtcModelConfig();
+        }
+        public OfflineTransducerModelConfig Transducer;
+        public OfflineParaformerModelConfig Paraformer;
+        public OfflineNemoEncDecCtcModelConfig NeMoCtc;
+        public OfflineWhisperModelConfig Whisper;
+        public OfflineTdnnModelConfig Tdnn;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Tokens;
+
+        public int NumThreads;
+
+        public int Debug;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Provider;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string ModelType;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string ModelingUnit;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string BpeVocab;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string TeleSpeechCtc;
+
+        public OfflineSenseVoiceModelConfig SenseVoice;
+        public OfflineMoonshineModelConfig Moonshine;
+        public OfflineFireRedAsrModelConfig FireRedAsr;
+        public OfflineDolphinModelConfig Dolphin;
+        public OfflineZipformerCtcModelConfig ZipformerCtc;
+        public OfflineCanaryModelConfig Canary;
+        public OfflineWenetCtcModelConfig WenetCtc;
+        public OfflineOmnilingualAsrCtcModelConfig Omnilingual;
+    }
+}

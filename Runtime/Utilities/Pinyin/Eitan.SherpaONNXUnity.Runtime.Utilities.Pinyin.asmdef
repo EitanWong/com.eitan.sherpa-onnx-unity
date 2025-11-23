@@ -1,0 +1,14 @@
+{
+    "name": "Eitan.SherpaONNXUnity.Runtime.Utilities.Pinyin",
+    "rootNamespace": "Eitan.SherpaONNXUnity.Runtime.Utilities.Pinyin",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,19 @@
+{
+    "name": "Eitan.SherpaONNXUnity",
+    "rootNamespace": "Eitan.SherpaONNXUnity",
+    "references": [
+        "GUID:b542629712c0c4bf5beefd715ba6ad98",
+        "GUID:ce2446cbd2a3e46acbe44b7e7723990d"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "ICSharpCode.SharpZipLib.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

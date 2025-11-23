@@ -1,0 +1,39 @@
+/// Copyright (c)  2024.5 by 东风破
+
+using System.Runtime.InteropServices;
+
+namespace Eitan.SherpaONNXUnity.Runtime.Native
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct OfflineCanaryModelConfig
+    {
+        public OfflineCanaryModelConfig(bool initializeDefaults = true)
+        {
+            this = default;
+
+            if (!initializeDefaults)
+            {
+                return;
+            }
+
+            Encoder = "";
+            Decoder = "";
+            SrcLang = "en";
+            TgtLang = "en";
+            UsePnc = 1;
+        }
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Encoder;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Decoder;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string SrcLang;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string TgtLang;
+
+        public int UsePnc;
+    }
+}
