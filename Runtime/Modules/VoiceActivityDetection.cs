@@ -3,7 +3,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 {
     using System;
     using System.Buffers; // For ArrayPool
-    using System.Collections.Concurrent;
     using System.Threading;
     using System.Threading.Tasks;
     using Eitan.SherpaONNXUnity.Runtime.Utilities;
@@ -33,7 +32,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private readonly SendOrPostCallback _speakingStateDispatch;
 
         // --- Core Data Flow & State ---
-        private readonly ConcurrentQueue<float> _audioQueue = new ConcurrentQueue<float>();
+        private readonly int _maxBufferedSeconds;
+        private readonly bool _dropIfLagging;
+        private BoundedSampleQueue _sampleQueue;
+        private long _lastDropLogTicks;
+        private int _droppedSinceLastLog;
 
         // Leading padding ring buffer (SPSC)
         private CircularBuffer<float> _paddingBuffer;
@@ -45,9 +48,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private int _silentFrames;
         private int _silenceThresholdFrames;
 
-        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null)
+        public VoiceActivityDetection(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null, int maxBufferedSeconds = 5, bool dropIfLagging = true)
             : base(modelID, sampleRate, reporter)
         {
+            _maxBufferedSeconds = Math.Max(1, maxBufferedSeconds);
+            _dropIfLagging = dropIfLagging;
             _speechSegmentDispatch = CreateCallback<float[]>(segment =>
             {
                 OnSpeechSegmentDetected?.Invoke(segment);
@@ -81,6 +86,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 _acceptWaveformWorkspace = new float[_windowSize];
 
                 _segmentWorkspace = new float[sampleRate * 15]; // 15 seconds initial capacity
+                int maxBuffered = Math.Max(sampleRate * _maxBufferedSeconds, _windowSize * 4);
+                _sampleQueue = new BoundedSampleQueue(maxBuffered);
 
                 var initialized = await runner.RunAsync<bool>(cancellationToken =>
                  {
@@ -118,13 +125,19 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 return;
             }
 
-
-
-            foreach (var sample in samples)
+            var dropped = _sampleQueue?.Enqueue(samples) ?? 0;
+            if (_dropIfLagging && dropped > 0)
             {
-                _audioQueue.Enqueue(sample);
+                var totalDropped = Interlocked.Add(ref _droppedSinceLastLog, dropped);
+                var nowTicks = DateTime.UtcNow.Ticks;
+                var last = Volatile.Read(ref _lastDropLogTicks);
+                if (TimeSpan.FromTicks(nowTicks - last) >= TimeSpan.FromSeconds(1) &&
+                    Interlocked.CompareExchange(ref _lastDropLogTicks, nowTicks, last) == last)
+                {
+                    var flushed = Interlocked.Exchange(ref _droppedSinceLastLog, 0);
+                    SherpaLog.Warning($"[VAD] Dropped {flushed} stale samples to maintain bounded buffer ({_sampleQueue?.QueuedSamples ?? 0}/{_sampleQueue?.MaxSamples}).");
+                }
             }
-
         }
 
         public async Task FlushAsync()
@@ -159,24 +172,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             float[] chunkBuffer = ArrayPool<float>.Shared.Rent(_windowSize);
             try
             {
-                while (_audioQueue.Count >= _windowSize)
+                while (_sampleQueue != null && _sampleQueue.QueuedSamples >= _windowSize)
                 {
-                    for (int i = 0; i < _windowSize; i++)
+                    int read = _sampleQueue.DequeueInto(chunkBuffer.AsSpan(0, _windowSize));
+                    if (read < _windowSize)
                     {
-                        if (!_audioQueue.TryDequeue(out chunkBuffer[i]))
-                        {
-                            break;
-                        }
-
+                        break;
                     }
                     ProcessChunk(chunkBuffer.AsSpan(0, _windowSize));
                 }
 
-                if (flush && !_audioQueue.IsEmpty)
+                if (flush && _sampleQueue != null && _sampleQueue.QueuedSamples > 0)
                 {
-                    float[] remainingSamples = _audioQueue.ToArray();
-                    _audioQueue.Clear();
-                    ProcessChunk(remainingSamples);
+                    int remaining = Math.Min(_windowSize, _sampleQueue.QueuedSamples);
+                    int read = _sampleQueue.DequeueInto(chunkBuffer.AsSpan(0, remaining));
+                    if (read > 0)
+                    {
+                        ProcessChunk(chunkBuffer.AsSpan(0, read));
+                    }
                 }
             }
             finally
@@ -291,12 +304,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             _silentFrames = 0;
 
             _paddingBuffer?.Clear();
+            _sampleQueue?.Clear();
         }
 
         protected override void OnDestroy()
         {
             _detector?.Dispose();
             _detector = null;
+            _sampleQueue?.Dispose();
+            _sampleQueue = null;
         }
 
         #region Configuration & Helpers

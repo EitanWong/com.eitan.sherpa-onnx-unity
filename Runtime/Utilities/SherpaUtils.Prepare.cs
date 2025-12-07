@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Net.Http;
+using Eitan.SherpaONNXUnity.Runtime.Constants;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 {
@@ -121,6 +123,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
 
                 var paths = GetModelPaths(metadata);
+                SherpaLog.Verbose(
+                    $"[Prepare] Begin model prepare for '{metadata.modelId}'. Archive={paths.DownloadFileName} Target={paths.ModelDirectory}",
+                    category: "Prepare");
 
                 ReportSafe(reporter, new PrepareFeedback(metadata, message: $"Preparing {metadata.modelId} model"));
 
@@ -139,9 +144,13 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        SherpaLog.Trace(
+                            $"[Prepare] Attempt {attempt + 1}/{MAX_ATTEMPTS} for {metadata.modelId} (autoDownload={autoDownloadEnabled}, compressed={paths.IsCompressed})",
+                            category: "Prepare");
 
                         if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false))
                         {
+                            SherpaLog.Info($"[Prepare] Model '{metadata.modelId}' already verified on disk.", category: "Prepare");
                             return true;
                         }
 
@@ -173,6 +182,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                             if (!extracted)
                             {
+                                SherpaLog.Warning($"[Prepare] Extraction failed for '{metadata.modelId}'. Retrying.", category: "Prepare");
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                                 continue;
                             }
@@ -180,6 +190,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                         if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false))
                         {
+                            SherpaLog.Info($"[Prepare] Model '{metadata.modelId}' prepared successfully after download.", category: "Prepare");
                             return true;
                         }
 
@@ -188,6 +199,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                     ReportSafe(reporter, new FailedFeedback(metadata, message: $"Failed to prepare model {metadata.modelId} after {MAX_ATTEMPTS} attempts. Please download and install the model manually."));
                     await CleanPathAsync(metadata, new[] { paths.ModelDirectory, paths.DownloadFilePath }, reporter, cancellationToken).ConfigureAwait(false);
+                    SherpaLog.Error($"[Prepare] Exhausted retries while preparing '{metadata.modelId}'. Cleaned temp data.", category: "Prepare");
 
                     return false;
                 }
@@ -200,6 +212,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
                     await CleanPathAsync(metadata, new[] { paths.ModelDirectory, paths.DownloadFilePath }, reporter, cancellationToken).ConfigureAwait(false);
+                    SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Unexpected failure for '{metadata.modelId}'.");
                     throw;
                 }
             }
@@ -216,6 +229,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     if (!Directory.Exists(paths.ModuleDirectory) || !Directory.Exists(paths.ModelDirectory) || !Directory.Exists(paths.DownloadDirectory))
                     {
                         // EnsureTargetDirectories(paths);
+                        SherpaLog.Trace($"[Prepare] Model '{metadata.modelId}' not downloaded (missing directories).", category: "Prepare");
                         return false;
                     }
 
@@ -237,18 +251,21 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 if (metadata == null)
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: "No model metadata supplied."));
+                    SherpaLog.Error("[Prepare] Metadata missing for prepare call.", category: "Prepare");
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.modelId))
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: "Model metadata is missing a modelId."));
+                    SherpaLog.Error("[Prepare] Model metadata is missing modelId.", category: "Prepare");
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download URL is missing."));
+                    SherpaLog.Error($"[Prepare] {metadata.modelId} has empty download URL.", category: "Prepare");
                     return false;
                 }
 
@@ -268,9 +285,19 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     if (downloadHashMissing)
                     {
-                        var message = $"{metadata.modelId}: Hash verification for the downloaded archive will be skipped because no hash is configured. Enable {FORCE_HASH_VALIDATION_KEY}=true to enforce.";
-                        ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: metadata.downloadUrl));
-                        UnityEngine.Debug.LogWarning(message);
+                        // Try to populate the hash from checksum.txt to prevent using corrupted archives.
+                        if (SherpaONNXConstants.TryPopulateDownloadHash(metadata))
+                        {
+                            downloadHashMissing = string.IsNullOrWhiteSpace(metadata.downloadFileHash);
+                        }
+
+                        if (downloadHashMissing)
+                        {
+                            var message = $"{metadata.modelId}: Missing download hash; cannot safely load model. Please provide downloadFileHash or set {FORCE_HASH_VALIDATION_KEY}=true to enforce verification.";
+                            ReportSafe(reporter, new FailedFeedback(metadata, message: message));
+                            SherpaLog.Warning(message);
+                            return false;
+                        }
                     }
                 }
 
@@ -279,7 +306,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             private static ModelPaths GetModelPaths(SherpaONNXModelMetadata metadata)
             {
-                var moduleDirectoryPath = SanitizePath(SherpaPathResolver.GetModuleRootPath(metadata.moduleType));
+                // Avoid "undefined" module folders by auto-inferring when moduleType is not set.
+                var moduleType = metadata.moduleType != SherpaONNXModuleType.Undefined
+                    ? metadata.moduleType
+                    : SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId);
+                if (metadata.moduleType == SherpaONNXModuleType.Undefined)
+                {
+                    metadata.moduleType = moduleType;
+                }
+
+                var moduleDirectoryPath = SanitizePath(SherpaPathResolver.GetModuleRootPath(moduleType));
                 var modelDirectoryPath = SanitizePath(Path.Combine(moduleDirectoryPath, metadata.modelId));
 
                 string downloadFileName = string.Empty;
@@ -449,6 +485,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                             message: $"No signature model files found (looking for {string.Join(", ", MODEL_SIGNATURE_EXTENSIONS)}) in {paths.ModelDirectory}.",
                             filePath: paths.ModelDirectory,
                             progress: 0));
+                        SherpaLog.Trace($"[Prepare] No signature files found for {metadata.modelId} in {paths.ModelDirectory}", category: "Prepare");
                         return false;
                     }
 
@@ -511,7 +548,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     var (_, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, metadata.downloadFileHash, reporter, cancellationToken).ConfigureAwait(false);
                     if (downloadedFileCheckResult.Status == FileVerificationStatus.Success)
                     {
-
+                        SherpaLog.Info($"[Prepare] Reusing previously downloaded archive for {metadata.modelId}.", category: "Prepare");
                         return true;
                     }
 
@@ -520,22 +557,39 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         return false;
                     }
                     using var downloader = new SherpaFileDownloader(metadata);
+                    SherpaLog.Verbose($"[Prepare] Downloading '{metadata.modelId}' from {downloadUri} -> {downloadFilePath}", category: "Prepare");
 
-                    if (reporter != null)
-                    {
-                        downloader.Feedback += reporter.Report;
-                    }
+                        if (reporter != null)
+                        {
+                            downloader.Feedback += reporter.Report;
+                        }
 
-                    try
-                    {
-                        var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                            // If the downloader was canceled (e.g., app quit) skip fallback paths and surface cancellation feedback.
+                            if (downloader.WasCanceled || cancellationToken.IsCancellationRequested)
+                            {
+                                ReportSafe(reporter, new CancelFeedback(metadata, message: "Download canceled."));
+                                return false;
+                            }
+
+                            if (!downloadSuccess)
+                            {
+                                SherpaLog.Warning($"[{metadata.modelId}] UnityWebRequest download failed. Falling back to HttpClient.");
+                                downloadSuccess = await DownloadWithHttpClientAsync(metadata, downloadUri.ToString(), downloadFilePath, reporter, cancellationToken).ConfigureAwait(false);
+                        }
+
                         if (!downloadSuccess)
                         {
                             SherpaFileUtils.Delete(downloadFilePath);
                             ReportSafe(reporter, new FailedFeedback(metadata, message: $"Failed downloading {downloadUri} to {downloadFilePath}"));
+                            SherpaLog.Error($"[Prepare] Download failed for {metadata.modelId} from {downloadUri}", category: "Prepare");
                             return false;
                         }
 
+                        SherpaLog.Info($"[Prepare] Download complete for {metadata.modelId}. Verifying...", category: "Prepare");
                         return true;
                     }
                     finally
@@ -555,6 +609,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
                     SherpaFileUtils.Delete(downloadFilePath);
+                    SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Download pipeline crashed for {metadata?.modelId ?? "<unknown>"}.");
                     return false;
                 }
             }
@@ -569,19 +624,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                     if (zipVerifyResult.Status != FileVerificationStatus.Success)
                     {
+                        SherpaLog.Warning($"[Prepare] Zip verification failed for {metadata.modelId}: {zipVerifyResult.Message}", category: "Prepare");
                         return false;
                     }
 
-                    // UnityEngine.Debug.Log($"zip VerifyResult {zipVerifyResult.Status} : {zipVerifyResult.Message}");
+                    // SherpaLog.Info($"zip VerifyResult {zipVerifyResult.Status} : {zipVerifyResult.Message}");
                     var progressAdapter = new Progress<DecompressionEventArgs>(args =>
                     {
                         ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: args.Progress, message: $"Extracting {zipFileName} ({args.Progress * 100:F1}%) Duration: [{args.ElapsedTime}]"));
                     });
+                    SherpaLog.Trace($"[Prepare] Extracting archive for {metadata.modelId}: {zipFileName}", category: "Prepare");
                     var result = await SherpaDecompressHelper.DecompressAsync(zipFilePath, moduleDirectoryPath, progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     if (result.Success)
                     {
                         ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: result.Progress, message: $"Extract Success: {zipFileName} Duration: [{result.ElapsedTime}]"));
+                        SherpaLog.Info($"[Prepare] Extracted archive for {metadata.modelId} in {result.ElapsedTime}.", category: "Prepare");
                         return true;
                     }
                     else
@@ -598,7 +656,66 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     // _logger.LogError($"Extraction failed: {ex.Message}");
                     ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
+                    SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Extraction failed for {metadata.modelId}.");
                     throw;
+                }
+            }
+
+            private static async Task<bool> DownloadWithHttpClientAsync(
+                SherpaONNXModelMetadata metadata,
+                string url,
+                string destinationPath,
+                SherpaONNXFeedbackReporter reporter,
+                CancellationToken cancellationToken)
+            {
+                try
+                {
+                    var tempPath = destinationPath + ".tmp";
+                    var directory = Path.GetDirectoryName(destinationPath);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+
+                    using var httpClient = new HttpClient();
+                    using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+
+                    var total = response.Content.Headers.ContentLength ?? -1;
+                    await using var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    await using var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+
+                    var buffer = new byte[81920];
+                    long written = 0;
+                    int read;
+                    while ((read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+                    {
+                        await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
+                        written += read;
+                        if (total > 0)
+                        {
+                            ReportSafe(reporter, new DownloadFeedback(metadata, Path.GetFileName(destinationPath), written, total, 0));
+                        }
+                    }
+
+                    output.Close();
+
+                    if (File.Exists(destinationPath))
+                    {
+                        File.Delete(destinationPath);
+                    }
+                    File.Move(tempPath, destinationPath);
+                    return true;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
+                    try { if (File.Exists(destinationPath)) File.Delete(destinationPath); } catch { }
+                    return false;
                 }
             }
 
@@ -609,8 +726,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                 try
                 {
+                    var expanded = new List<string>();
+                    foreach (var path in filePaths)
+                    {
+                        if (string.IsNullOrEmpty(path))
+                        { continue; }
+
+                        expanded.Add(path);
+
+                        // Also clean up downloader artifacts (temp file, metadata, chunk directory).
+                        expanded.Add(path + ".download");
+                        expanded.Add(path + ".download.metadata");
+                        expanded.Add(path + ".chunks");
+                    }
+
                     // Remove duplicates and filter existing paths
-                    var distinctPaths = filePaths
+                    var distinctPaths = expanded
                         .Where(path => !string.IsNullOrEmpty(path))
                         .Distinct()
                         .Where(SherpaFileUtils.PathExists)
@@ -630,6 +761,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                             try
                             {
                                 SherpaFileUtils.Delete(path);
+                                SherpaLog.Trace($"[Prepare] Deleted artifact: {path}", category: "Prepare");
                             }
                             catch (Exception ex)
                             {
@@ -685,7 +817,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     }
 
                     ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Allowing insecure download for {resolvedUri} because {ALLOW_INSECURE_DOWNLOAD_KEY}=true.", filePath: resolvedUri.ToString()));
-                    UnityEngine.Debug.LogWarning($"[{metadata.modelId}] Allowing insecure download for {resolvedUri} (override enabled).");
+                    SherpaLog.Warning($"[{metadata.modelId}] Allowing insecure download for {resolvedUri} (override enabled).");
                 }
 
                 downloadUri = resolvedUri;
@@ -716,6 +848,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 var key = SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels;
                 var message = $"Automatic download skipped because {key}=false. Ensure the model files exist under {targetDirectory}.";
                 ReportSafe(reporter, new VerifyFeedback(metadata, message: message, filePath: targetDirectory));
+                SherpaLog.Warning($"[Prepare] Auto-download disabled. Expecting {metadata?.modelId ?? "<unknown>"} at {targetDirectory}", category: "Prepare");
             }
 
             private static void EnsureTargetDirectories(ModelPaths paths)
@@ -747,7 +880,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
                 catch (Exception ex)
                 {
-                    UnityEngine.Debug.LogWarning($"SherpaUtils.Prepare feedback dispatch failed: {ex.Message}");
+                    SherpaLog.Warning($"SherpaUtils.Prepare feedback dispatch failed: {ex.Message}");
                 }
             }
 

@@ -45,6 +45,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Min(0f)]
         private float leadingPaddingDuration = 0.2f;
 
+        [Header("Streaming")]
+        [SerializeField]
+        [Tooltip("Maximum buffered audio (seconds) before oldest samples are dropped.")]
+        [Min(1)]
+        private int maxBufferedSeconds = 5;
+
+        [SerializeField]
+        [Tooltip("Drop incoming audio when the detector is overloaded to avoid unbounded growth.")]
+        private bool dropIfLagging = true;
+
         [Header("Events")]
         [SerializeField]
         private SpeechSegmentUnityEvent onSpeechSegment = new SpeechSegmentUnityEvent();
@@ -70,7 +80,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected override VoiceActivityDetection CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
-            var module = new VoiceActivityDetection(resolvedModelId, resolvedSampleRate, resolvedReporter)
+            var module = new VoiceActivityDetection(resolvedModelId, resolvedSampleRate, resolvedReporter, maxBufferedSeconds, dropIfLagging)
             {
                 Threshold = threshold,
                 MinSilenceDuration = minSilenceDuration,
@@ -120,10 +130,18 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             if (sampleRate != SampleRate && !warnedSampleRateMismatch)
             {
                 warnedSampleRateMismatch = true;
-                Debug.LogWarning($"[VoiceActivityDetectionComponent] Sample rate mismatch. Input={sampleRate}Hz Component={SampleRate}Hz. Consider aligning values to avoid drift.");
+                SherpaLog.Warning($"[VoiceActivityDetectionComponent] Sample rate mismatch. Input={sampleRate}Hz Component={SampleRate}Hz. Consider aligning values to avoid drift.");
             }
 
-            module.StreamDetect(samples);
+            try
+            {
+                module.StreamDetect(samples);
+            }
+            catch (Exception ex)
+            {
+                SherpaLog.Error($"[VoiceActivityDetectionComponent] StreamDetect failed: {ex.Message}");
+                RaiseError(ex.Message);
+            }
         }
 
         protected override void OnInputBound(SherpaAudioInputSource source)

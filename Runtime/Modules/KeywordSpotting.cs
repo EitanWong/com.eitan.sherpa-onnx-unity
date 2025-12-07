@@ -47,6 +47,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private readonly object _lockObject = new();
         private int _isDetecting;
         private int _sampleRate;
+        private readonly int _maxQueuedSamples;
+        private readonly bool _dropIfLagging;
+        private int _queuedSamples;
         private readonly float _keywordsScore;
         private readonly float _keywordsThreshold;
 
@@ -57,12 +60,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.KeywordSpotting;
 
         //支持自定义唤醒词功能 具体要参考https://k2-fsa.github.io/sherpa/onnx/kws/index.html#what-is-open-vocabulary-keyword-spotting 用pinyin库将文字转为拼音，英文需要使用bpe模型进行分词，暂不支持
-        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, KeywordRegistration[] customKeywords = null, SherpaONNXFeedbackReporter reporter = null)
-            : base(modelID, sampleRate, reporter)
+        public KeywordSpotting(string modelID, int sampleRate = 16000, float keywordsScore = 2.0f, float keywordsThreshold = 0.25f, KeywordRegistration[] customKeywords = null, SherpaONNXFeedbackReporter reporter = null, int maxQueuedSamples = 16000, bool dropIfLagging = true, bool startImmediately = true)
+            : base(modelID, sampleRate, reporter, startImmediately)
         {
             _keywordsScore = keywordsScore;
             _keywordsThreshold = keywordsThreshold;
             _keywordConfigs = customKeywords;
+            _maxQueuedSamples = Math.Max(8000, maxQueuedSamples);
+            _dropIfLagging = dropIfLagging;
             _keywordDetectedDispatch = CreateCallback<string>(keyword =>
             {
                 OnKeywordDetected?.Invoke(keyword);
@@ -194,15 +199,32 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 return;
             }
 
+            // If we are already behind and a worker is active, drop the entire chunk to keep latency bounded.
+            if (_dropIfLagging && Volatile.Read(ref _queuedSamples) >= _maxQueuedSamples && Volatile.Read(ref _isDetecting) == 1)
+            {
+                return;
+            }
 
-            for (int i = 0; i < samples.Length; i++)
+            // If an incoming chunk is huge, keep only the newest tail to avoid ballooning memory/latency.
+            var startIndex = samples.Length + Volatile.Read(ref _queuedSamples) > _maxQueuedSamples * 2
+                ? Math.Max(0, samples.Length - _maxQueuedSamples)
+                : 0;
+
+            for (int i = startIndex; i < samples.Length; i++)
             {
                 _audioQueue.Enqueue(samples[i]);
+                Interlocked.Increment(ref _queuedSamples);
+            }
+
+            // Bound the queue to avoid unbounded latency/memory.
+            while (Volatile.Read(ref _queuedSamples) > _maxQueuedSamples && _audioQueue.TryDequeue(out _))
+            {
+                Interlocked.Decrement(ref _queuedSamples);
             }
 
             if (Interlocked.Exchange(ref _isDetecting, 1) == 0)
             {
-                _ = runner.RunAsync(ProcessAudioQueue);
+                _ = runner.RunAsync(ProcessAudioQueue, policy: ExecutionPolicy.Always);
             }
         }
 
@@ -225,6 +247,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     while (count < batchSize && _audioQueue.TryDequeue(out float sample))
                     {
                         batch[count++] = sample;
+                        Interlocked.Decrement(ref _queuedSamples);
                     }
 
                     if (count > 0)
@@ -235,12 +258,17 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                UnityEngine.Debug.LogException(ex);
+                SherpaLog.Exception(ex);
             }
             finally
             {
                 ArrayPool<float>.Shared.Return(batch);
                 Volatile.Write(ref _isDetecting, 0);
+                // If new data arrived mid-drain, kick off another pass without letting the queue grow unchecked.
+                if (!_audioQueue.IsEmpty && !ct.IsCancellationRequested && Interlocked.CompareExchange(ref _isDetecting, 1, 0) == 0)
+                {
+                    _ = runner.RunAsync(ProcessAudioQueue, cancellationToken: ct, policy: ExecutionPolicy.Always);
+                }
             }
 
             return Task.CompletedTask;
@@ -374,7 +402,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
             if (string.IsNullOrEmpty(tokensFilePath) || !File.Exists(tokensFilePath))
             {
-                UnityEngine.Debug.LogWarning($"KeywordSpotting: Tokens file '{tokensFilePath}' is missing. Custom keywords will be ignored.");
+                SherpaLog.Warning($"KeywordSpotting: Tokens file '{tokensFilePath}' is missing. Custom keywords will be ignored.");
                 _registedKeywords = Array.Empty<string>();
                 _keywordsPayload = null;
                 return;
@@ -401,7 +429,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                     if (tokens == null || tokens.Count == 0)
                     {
-                        UnityEngine.Debug.LogWarning($"KeywordSpotting: Unable to tokenize keyword '{keyword}'. It will be skipped.");
+                        SherpaLog.Warning($"KeywordSpotting: Unable to tokenize keyword '{keyword}'. It will be skipped.");
                         continue;
                     }
 
@@ -412,7 +440,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 }
                 catch (Exception ex)
                 {
-                    UnityEngine.Debug.LogWarning($"KeywordSpotting: Exception while processing keyword '{keyword}'. It will be skipped. {ex.Message}");
+                    SherpaLog.Warning($"KeywordSpotting: Exception while processing keyword '{keyword}'. It will be skipped. {ex.Message}");
                 }
             }
 
@@ -629,7 +657,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 return value;
             }
 
-            UnityEngine.Debug.LogWarning($"Keyword '{keyword}' has invalid boosting score {value}. Using default {DefaultBoostingScore}.");
+            SherpaLog.Warning($"Keyword '{keyword}' has invalid boosting score {value}. Using default {DefaultBoostingScore}.");
             return DefaultBoostingScore;
         }
 
@@ -642,11 +670,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
             if (value <= 0f)
             {
-                UnityEngine.Debug.LogWarning($"Keyword '{keyword}' has invalid trigger threshold {value}. Using default {DefaultTriggerThreshold}.");
+                SherpaLog.Warning($"Keyword '{keyword}' has invalid trigger threshold {value}. Using default {DefaultTriggerThreshold}.");
                 return DefaultTriggerThreshold;
             }
 
-            UnityEngine.Debug.LogWarning($"Keyword '{keyword}' trigger threshold {value} is above 1.0. Clamping to 1.0.");
+            SherpaLog.Warning($"Keyword '{keyword}' trigger threshold {value} is above 1.0. Clamping to 1.0.");
             return 1f;
         }
 
@@ -688,6 +716,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         {
             lock (_lockObject)
             {
+                while (_audioQueue.TryDequeue(out _)) { }
                 _stream?.Dispose();
                 _stream = null;
                 _keywordSpotter?.Dispose();

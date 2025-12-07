@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 {
@@ -36,43 +37,68 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         private readonly SemaphoreSlim _concurrencyLimiter;
         private readonly Timer _cleanupTimer;
         private readonly int _mainThreadId;
+        private int _totalTasksStarted;
+        private int _completedTasks;
+        private long _totalDurationTicks;
+        private double _lastDurationMs;
+        private static int s_profilingEnabled;
 
         private CancellationTokenSource _globalCts = new();
         private volatile bool _disposed;
 
         // Configuration
         private readonly int _maxConcurrentTasks;
-        private const int DefaultMaxConcurrentTasks = 50;
-        private const int CleanupIntervalMs = 30000; // 30 seconds
+        private const int CleanupIntervalMs = 10000; // 10 seconds
 
-        public TaskRunner(int maxConcurrentTasks = DefaultMaxConcurrentTasks)
+        public TaskRunner(int maxConcurrentTasks = 0)
         {
-            if (maxConcurrentTasks <= 0)
-            {
-                throw new ArgumentException("Max concurrent tasks must be positive", nameof(maxConcurrentTasks));
-            }
-
-            _maxConcurrentTasks = maxConcurrentTasks;
+            _maxConcurrentTasks = maxConcurrentTasks > 0
+                ? maxConcurrentTasks
+                : ComputeAdaptiveConcurrency();
             _mainContext = SynchronizationContext.Current ?? new SynchronizationContext();
             _mainThreadId = Thread.CurrentThread.ManagedThreadId;
-            _concurrencyLimiter = new SemaphoreSlim(maxConcurrentTasks, maxConcurrentTasks);
+            _concurrencyLimiter = new SemaphoreSlim(_maxConcurrentTasks, _maxConcurrentTasks);
 
             // Periodic cleanup of completed tasks
             _cleanupTimer = new Timer(CleanupCompletedTasks, null,
                 TimeSpan.FromMilliseconds(CleanupIntervalMs),
                 TimeSpan.FromMilliseconds(CleanupIntervalMs));
-
-            // Auto-cleanup on Unity quit
-            if (IsUnityContext())
-            {
-                UnityEngine.Application.quitting += Dispose;
-            }
         }
 
         /// <summary>
         /// Gets the number of currently active tasks
         /// </summary>
         public int ActiveTaskCount => _activeTasks.Count;
+
+        /// <summary>
+        /// Gets the configured concurrency limit for this runner.
+        /// </summary>
+        public int MaxConcurrentTasks => _maxConcurrentTasks;
+
+        /// <summary>
+        /// Returns a snapshot of current task metrics for diagnostics/profiling.
+        /// </summary>
+        public TaskRunnerMetrics GetMetrics()
+        {
+            if (!ProfilingEnabled)
+            {
+                return default;
+            }
+
+            var completed = Volatile.Read(ref _completedTasks);
+            var totalStarted = Volatile.Read(ref _totalTasksStarted);
+            var durationTicks = Interlocked.Read(ref _totalDurationTicks);
+            var avgMs = completed > 0
+                ? TimeSpan.FromTicks(durationTicks / Math.Max(1, completed)).TotalMilliseconds
+                : 0d;
+
+            return new TaskRunnerMetrics(
+                ActiveTaskCount,
+                totalStarted,
+                completed,
+                avgMs,
+                Volatile.Read(ref _lastDurationMs));
+        }
 
         /// <summary>
         /// Gets whether the runner has been disposed
@@ -96,6 +122,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             // Decide whether to offload to a background thread
             Task<T> task;
+            var profiling = ProfilingEnabled;
+            if (profiling)
+            {
+                Interlocked.Increment(ref _totalTasksStarted);
+            }
             if (ShouldOffload(policy))
             {
                 task = Task.Run(() => ExecuteWithCleanup(asyncFunc, onComplete, linkedCts.Token), linkedCts.Token);
@@ -210,6 +241,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         {
             Exception capturedException = null;
             T result = default(T);
+            var profiling = ProfilingEnabled;
+            Stopwatch sw = null;
+            if (profiling)
+            {
+                sw = Stopwatch.StartNew();
+            }
 
             try
             {
@@ -231,6 +268,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             finally
             {
+                if (profiling && sw != null)
+                {
+                    sw.Stop();
+                    var elapsedMs = sw.Elapsed.TotalMilliseconds;
+                    Interlocked.Add(ref _totalDurationTicks, sw.ElapsedTicks);
+                    Interlocked.Exchange(ref _lastDurationMs, elapsedMs);
+                    Interlocked.Increment(ref _completedTasks);
+                }
                 SafeReleaseSemaphore();
 
                 if (onComplete != null)
@@ -364,7 +409,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     try
                     {
-                        UnityEngine.Debug.LogException(ex);
+                        SherpaLog.Exception(ex);
                     }
                     catch
                     {
@@ -374,7 +419,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch
             {
-                try { UnityEngine.Debug.LogException(ex); } catch { }
+                try { SherpaLog.Exception(ex); } catch { }
             }
         }
 
@@ -415,6 +460,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             { throw new ObjectDisposedException(nameof(TaskRunner)); }
         }
 
+        private static bool ProfilingEnabled =>
+            Interlocked.CompareExchange(ref s_profilingEnabled, 0, 0) != 0;
+
+        public static bool IsProfilingEnabled => ProfilingEnabled;
+
+        public static void SetProfilingEnabled(bool enabled)
+        {
+            Interlocked.Exchange(ref s_profilingEnabled, enabled ? 1 : 0);
+        }
+
         private static void ValidateInput<T>(T input, string paramName) where T : class
         {
             if (input == null)
@@ -427,14 +482,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             { throw new ArgumentException("Interval must be positive", nameof(interval)); }
         }
 
+        private static int ComputeAdaptiveConcurrency()
+        {
+            try
+            {
+                var adaptive = ThreadingUtils.GetAdaptiveThreadCount(minimum: 1);
+                return Math.Clamp(adaptive * 2, 2, 24);
+            }
+            catch
+            {
+                return 8;
+            }
+        }
+
         public void Dispose()
         {
             if (_disposed) { return; }
 
             _disposed = true;
-
-            if (IsUnityContext())
-            { UnityEngine.Application.quitting -= Dispose; }
 
             _cleanupTimer?.Dispose();
             _globalCts?.Cancel();

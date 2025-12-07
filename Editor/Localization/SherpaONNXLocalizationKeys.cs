@@ -12,6 +12,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string FilterAll = "common.filter.all";
             internal const string LabelCategory = "common.label.category";
             internal const string LabelLanguage = "common.label.language";
+            internal const string LabelSearch = "common.label.search";
             internal const string ButtonClear = "common.button.clear";
             internal const string ButtonRefresh = "common.button.refresh";
             internal const string ButtonRescan = "common.button.rescan";
@@ -68,6 +69,13 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string LanguageTooltip = "settings.language.tooltip";
             internal const string RuntimeHelp = "settings.runtimeDefaults.help";
             internal const string RuntimeHelpMissing = "settings.runtimeDefaults.helpMissing";
+            internal const string LoggingTitle = "settings.logging.title";
+            internal const string LoggingEnabledLabel = "settings.logging.enabled.label";
+            internal const string LoggingEnabledTooltip = "settings.logging.enabled.tooltip";
+            internal const string LoggingLevelLabel = "settings.logging.level.label";
+            internal const string LoggingLevelTooltip = "settings.logging.level.tooltip";
+            internal const string LoggingTraceLabel = "settings.logging.traceStacks.label";
+            internal const string LoggingTraceTooltip = "settings.logging.traceStacks.tooltip";
 
             internal const string FetchLatestLabel = "settings.fetchLatest.label";
             internal const string FetchLatestTooltip = "settings.fetchLatest.tooltip";
@@ -135,6 +143,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string NotificationDeleteFailed = "models.notification.deleteFailed";
             internal const string NotificationDownloadFailed = "models.notification.downloadFailed";
             internal const string NotificationCanceled = "models.notification.canceled";
+            internal const string ContextRescanStatus = "models.context.rescanStatus";
 
             internal const string LabelLanguageList = "models.label.languageList";
             internal const string LabelCategoryPrefix = "models.label.categoryPrefix";
@@ -354,6 +363,99 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
                 internal const string EventIdentified = "inspectors.sli.event.identified";
                 internal const string EventFailed = "inspectors.sli.event.failed";
             }
+        }
+
+        internal static class Profiler
+        {
+            internal const string WindowTitle = "profiler.window.title";
+            internal const string Header = "profiler.header";
+            internal const string TabOverview = "profiler.tab.overview";
+            internal const string TabModules = "profiler.tab.modules";
+            internal const string TabLogs = "profiler.tab.logs";
+            internal const string TabPerformance = "profiler.tab.performance";
+            internal const string ColumnModelId = "profiler.column.modelId";
+            internal const string ColumnModule = "profiler.column.module";
+            internal const string ColumnReady = "profiler.column.ready";
+            internal const string ColumnInit = "profiler.column.init";
+            internal const string ColumnDisposed = "profiler.column.disposed";
+            internal const string ColumnRunner = "profiler.column.runner";
+            internal const string ColumnTasks = "profiler.column.tasks";
+            internal const string Empty = "profiler.empty";
+            internal const string ButtonRefresh = "profiler.button.refresh";
+            internal const string TooltipRefresh = "profiler.tooltip.refresh";
+            internal const string TooltipCopyDiagnostics = "profiler.tooltip.copyDiagnostics";
+            internal const string ToggleLive = "profiler.toggle.live";
+            internal const string LabelUpdated = "profiler.label.updated";
+            internal const string LabelUnknown = "profiler.label.unknown";
+            internal const string StatusModules = "profiler.status.modules";
+            internal const string StatusErrors = "profiler.status.errors";
+            internal const string StatusLogs = "profiler.status.logs";
+            internal const string StatusLoggingOn = "profiler.status.loggingOn";
+            internal const string StatusLoggingOff = "profiler.status.loggingOff";
+            internal const string StatusReady = "profiler.status.ready";
+            internal const string StatusInitializing = "profiler.status.initializing";
+            internal const string StatusError = "profiler.status.error";
+            internal const string StatusDisposed = "profiler.status.disposed";
+            internal const string StatusPending = "profiler.status.pending";
+            internal const string OverviewTitle = "profiler.overview.title";
+            internal const string StatActiveModules = "profiler.stat.activeModules";
+            internal const string StatPending = "profiler.stat.pending";
+            internal const string StatErrors = "profiler.stat.errors";
+            internal const string StatActiveTasks = "profiler.stat.activeTasks";
+            internal const string StatCompletedTasks = "profiler.stat.completedTasks";
+            internal const string StatAvgDuration = "profiler.stat.avgDuration";
+            internal const string MetricTotalStarted = "profiler.metric.totalStarted";
+            internal const string MetricCompleted = "profiler.metric.completed";
+            internal const string MetricAvgDuration = "profiler.metric.avgDuration";
+            internal const string MetricLastDuration = "profiler.metric.lastDuration";
+            internal const string IssuesTitle = "profiler.issues.title";
+            internal const string IssuesNone = "profiler.issues.none";
+            internal const string IssuesUnknown = "profiler.issues.unknown";
+            internal const string IssueModelFile = "profiler.issues.modelFile";
+            internal const string ButtonCopy = "profiler.button.copy";
+            internal const string ButtonReveal = "profiler.button.reveal";
+            internal const string ToastCopied = "profiler.toast.copied";
+            internal const string ToastNoModules = "profiler.toast.noModules";
+            internal const string ToastCopiedDiagnostics = "profiler.toast.copiedDiagnostics";
+            internal const string ToastNoLogs = "profiler.toast.noLogs";
+            internal const string ToastCopiedLogs = "profiler.toast.copiedLogs";
+            internal const string ActivityTitle = "profiler.activity.title";
+            internal const string ActivityPast = "profiler.activity.past";
+            internal const string ActivityNow = "profiler.activity.now";
+            internal const string ModulesHeader = "profiler.modules.header";
+            internal const string ModulesEmptyTitle = "profiler.modules.emptyTitle";
+            internal const string ModulesEmptyBody = "profiler.modules.emptyBody";
+            internal const string LogLevelLabel = "profiler.log.level";
+            internal const string LogToggleAutoScroll = "profiler.log.toggle.autoScroll";
+            internal const string LogTogglePause = "profiler.log.toggle.pause";
+            internal const string LogToggleStacks = "profiler.log.toggle.stacks";
+            internal const string LogCopy = "profiler.log.copy";
+            internal const string LogClear = "profiler.log.clear";
+            internal const string LogLevelError = "profiler.log.level.error";
+            internal const string LogLevelWarn = "profiler.log.level.warn";
+            internal const string LogLevelInfo = "profiler.log.level.info";
+            internal const string LogLevelVerbose = "profiler.log.level.verbose";
+            internal const string LogLevelTrace = "profiler.log.level.trace";
+            internal const string LoggingDisabledTitle = "profiler.log.disabled.title";
+            internal const string LoggingDisabledBody = "profiler.log.disabled.body";
+            internal const string LogEmptyTitle = "profiler.log.empty.title";
+            internal const string LogEmptyBody = "profiler.log.empty.body";
+            internal const string PerformanceTitle = "profiler.performance.title";
+            internal const string PerformanceDurationTitle = "profiler.performance.duration.title";
+            internal const string PerformanceDurationAxis = "profiler.performance.duration.axis";
+            internal const string PerformanceVolumeTitle = "profiler.performance.volume.title";
+            internal const string PerformanceVolumeAxis = "profiler.performance.volume.axis";
+            internal const string PerformanceTableTitle = "profiler.performance.table.title";
+            internal const string PerformanceEmptyTitle = "profiler.performance.empty.title";
+            internal const string PerformanceEmptyBody = "profiler.performance.empty.body";
+            internal const string PerformanceColumnModule = "profiler.performance.column.module";
+            internal const string PerformanceColumnRuns = "profiler.performance.column.runs";
+            internal const string PerformanceColumnCompleted = "profiler.performance.column.completed";
+            internal const string PerformanceColumnAvg = "profiler.performance.column.avg";
+            internal const string PerformanceColumnLast = "profiler.performance.column.last";
+            internal const string PerformanceColumnActive = "profiler.performance.column.active";
+            internal const string PerformanceColumnScore = "profiler.performance.column.score";
+            internal const string PerformanceMaxLabel = "profiler.performance.maxLabel";
         }
     }
 }

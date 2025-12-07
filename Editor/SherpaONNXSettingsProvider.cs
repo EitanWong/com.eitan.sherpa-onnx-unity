@@ -189,6 +189,39 @@ namespace Eitan.SherpaONNXUnity.Editor
                     runtimeHelp.style.marginTop = 6;
                     section.Add(runtimeHelp);
                 }));
+
+            paddedContainer.Add(CreateSectionCard(
+                SherpaONNXL10n.Settings.LoggingTitle,
+                "Logging",
+                section =>
+                {
+                    var loggingEnabledField = CreatePropertyField(
+                        SherpaONNXRuntimeSettings.LoggingEnabledPropertyName,
+                        SherpaONNXL10n.Settings.LoggingEnabledLabel,
+                        "Enable SherpaONNX logging",
+                        SherpaONNXL10n.Settings.LoggingEnabledTooltip,
+                        "Master switch for SherpaONNX logs in play mode and builds.");
+                    section.Add(loggingEnabledField);
+
+                    var loggingDetails = new VisualElement();
+                    loggingDetails.style.marginLeft = 4;
+                    loggingDetails.Add(CreatePropertyField(
+                        SherpaONNXRuntimeSettings.LoggingLevelPropertyName,
+                        SherpaONNXL10n.Settings.LoggingLevelLabel,
+                        "Minimum log level",
+                        SherpaONNXL10n.Settings.LoggingLevelTooltip,
+                        "Trace emits detailed call stacks for initialization and model calls."));
+
+                    loggingDetails.Add(CreatePropertyField(
+                        SherpaONNXRuntimeSettings.LoggingTraceStacksPropertyName,
+                        SherpaONNXL10n.Settings.LoggingTraceLabel,
+                        "Trace level includes call stacks",
+                        SherpaONNXL10n.Settings.LoggingTraceTooltip,
+                        "When enabled, every Trace entry prints the managed call stack to simplify debugging."));
+
+                    section.Add(loggingDetails);
+                    ApplyLoggingVisibility(loggingDetails, loggingEnabledField);
+                }));
         }
 
         private VisualElement CreateLanguageField()
@@ -250,6 +283,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 EnsureRuntimeSettingsObject();
                 _runtimeSettingsObject.Update();
                 DrawRuntimeDefaultsIMGUI();
+                DrawLoggingSettingsIMGUI();
                 _runtimeSettingsObject.ApplyModifiedProperties();
                 EditorGUILayout.Space(4);
             }
@@ -366,6 +400,24 @@ namespace Eitan.SherpaONNXUnity.Editor
             field.Bind(_runtimeSettingsObject);
             field.style.marginBottom = 4;
             return field;
+        }
+
+        private void ApplyLoggingVisibility(VisualElement loggingDetails, VisualElement toggleField)
+        {
+            if (loggingDetails == null || toggleField == null)
+            {
+                return;
+            }
+
+            void SyncVisibility()
+            {
+                var prop = _runtimeSettingsObject?.FindProperty(SherpaONNXRuntimeSettings.LoggingEnabledPropertyName);
+                var enabled = prop != null && prop.boolValue;
+                loggingDetails.style.display = enabled ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+
+            toggleField.RegisterCallback<SerializedPropertyChangeEvent>(_ => SyncVisibility());
+            SyncVisibility();
         }
 
         private VisualElement CreateVersionInfoRow(string labelKey, string labelFallback, string rawValue)
@@ -506,10 +558,44 @@ namespace Eitan.SherpaONNXUnity.Editor
                                 "Settings are stored under any Resources folder so they ship with builds.\nCurrent asset: {0}"),
                             string.IsNullOrEmpty(_runtimeSettingsAssetPath)
                                 ? SherpaONNXLocalization.Tr(
-                                    SherpaONNXL10n.Settings.RuntimeHelpMissing,
-                                    "Asset will be created automatically.")
-                                : _runtimeSettingsAssetPath),
-                        MessageType.None);
+                            SherpaONNXL10n.Settings.RuntimeHelpMissing,
+                            "Asset will be created automatically.")
+                        : _runtimeSettingsAssetPath),
+                    MessageType.None);
+                });
+        }
+
+        private void DrawLoggingSettingsIMGUI()
+        {
+            DrawIMGUISection(
+                SherpaONNXL10n.Settings.LoggingTitle,
+                "Logging",
+                () =>
+                {
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.LoggingEnabledPropertyName,
+                        SherpaONNXL10n.Settings.LoggingEnabledLabel,
+                        "Enable SherpaONNX logging",
+                        SherpaONNXL10n.Settings.LoggingEnabledTooltip,
+                        "Master switch for SherpaONNX logs in play mode and builds.");
+
+                    var enabledProp = _runtimeSettingsObject.FindProperty(SherpaONNXRuntimeSettings.LoggingEnabledPropertyName);
+                    var loggingEnabled = enabledProp != null && enabledProp.boolValue;
+
+                    EditorGUI.BeginDisabledGroup(!loggingEnabled);
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.LoggingLevelPropertyName,
+                        SherpaONNXL10n.Settings.LoggingLevelLabel,
+                        "Minimum log level",
+                        SherpaONNXL10n.Settings.LoggingLevelTooltip,
+                        "Trace emits detailed call stacks for initialization and model calls.");
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.LoggingTraceStacksPropertyName,
+                        SherpaONNXL10n.Settings.LoggingTraceLabel,
+                        "Trace level includes call stacks",
+                        SherpaONNXL10n.Settings.LoggingTraceTooltip,
+                        "When enabled, every Trace entry prints the managed call stack.");
+                    EditorGUI.EndDisabledGroup();
                 });
         }
 
@@ -566,6 +652,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             card.style.paddingLeft = 4;
             card.style.paddingRight = 4;
         }
+
 
         private void DrawSettingsHeaderIMGUI()
         {

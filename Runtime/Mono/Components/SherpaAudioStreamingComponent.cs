@@ -2,6 +2,8 @@
 
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
+    using System;
+    using System.Threading.Tasks;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
@@ -28,8 +30,18 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Tooltip("Start or stop the audio capture automatically based on module readiness.")]
         private bool startCaptureWhenReady = true;
 
+        [SerializeField]
+        [Tooltip("Process incoming chunks on a background worker instead of the main thread.")]
+        private bool processChunksInBackground;
+
+        [SerializeField]
+        [Tooltip("Log when chunks are dropped because the module is not initialized yet.")]
+        private bool warnOnDroppedWhileUnready = true;
+
         private SherpaAudioInputSource boundInput;
         private bool captureStarted;
+        private int droppedWhileUnready;
+        private float lastDropLogTime;
 
         /// <summary>
         /// Gets the currently bound input (null when unbound).
@@ -50,6 +62,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             {
                 BindInput(audioInput);
             }
+
+            droppedWhileUnready = 0;
+            lastDropLogTime = 0f;
         }
 
         /// <summary>
@@ -230,10 +245,53 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             if (!CanProcessChunk(samples, sampleRate))
             {
+                MaybeLogDroppedChunk();
+                return;
+            }
+
+            if (processChunksInBackground)
+            {
+                var clone = new float[samples.Length];
+                Array.Copy(samples, clone, samples.Length);
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        OnAudioChunkReceived(clone, sampleRate);
+                    }
+                    catch (Exception ex)
+                    {
+                        SherpaLog.Error($"[{GetType().Name}] Failed to process audio chunk on background thread: {ex.Message}");
+                    }
+                });
                 return;
             }
 
             OnAudioChunkReceived(samples, sampleRate);
+        }
+
+        private void MaybeLogDroppedChunk()
+        {
+            if (!warnOnDroppedWhileUnready || !RequiresReadyModuleForCapture)
+            {
+                return;
+            }
+
+            if (IsInitialized)
+            {
+                return;
+            }
+
+            droppedWhileUnready++;
+            var now = Time.realtimeSinceStartup;
+            if (now - lastDropLogTime < 1f)
+            {
+                return;
+            }
+
+            lastDropLogTime = now;
+            SherpaLog.Warning($"[{GetType().Name}] Dropped {droppedWhileUnready} chunks while waiting for module initialization. Consider enabling startCaptureWhenReady or increasing initialization speed.");
+            droppedWhileUnready = 0;
         }
     }
 }

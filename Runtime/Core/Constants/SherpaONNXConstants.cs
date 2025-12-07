@@ -83,7 +83,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache read failed ({cachePath}): {ex.Message}");
+                SherpaLog.Warning($"SherpaONNX checksum cache read failed ({cachePath}): {ex.Message}");
                 return false;
             }
         }
@@ -113,7 +113,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache write failed ({cachePath}): {ex.Message}");
+                SherpaLog.Warning($"SherpaONNX checksum cache write failed ({cachePath}): {ex.Message}");
             }
         }
 
@@ -195,7 +195,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             catch (Exception ex)
             {
                 errors.Add(ex.Message);
-                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache enumeration failed ({cacheDirectory}): {ex.Message}");
+                SherpaLog.Warning($"SherpaONNX checksum cache enumeration failed ({cacheDirectory}): {ex.Message}");
                 return new SherpaChecksumCacheClearResult(
                     cacheDirectory,
                     directoryFound: true,
@@ -218,7 +218,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 {
                     failed++;
                     errors.Add($"{file}: {ex.Message}");
-                    UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache delete failed ({file}): {ex.Message}");
+                    SherpaLog.Warning($"SherpaONNX checksum cache delete failed ({file}): {ex.Message}");
                 }
             }
 
@@ -255,7 +255,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             catch (Exception ex)
             {
                 errors?.Add($"{directory}: {ex.Message}");
-                UnityEngine.Debug.LogWarning($"SherpaONNX checksum cache cleanup failed ({directory}): {ex.Message}");
+                SherpaLog.Warning($"SherpaONNX checksum cache cleanup failed ({directory}): {ex.Message}");
             }
         }
 
@@ -469,7 +469,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"ApplyGithubProxyIfAny failed: {ex.GetType().Name}: {ex.Message}");
+                SherpaLog.Warning($"ApplyGithubProxyIfAny failed: {ex.GetType().Name}: {ex.Message}");
                 return rawUrl;
             }
 
@@ -512,6 +512,88 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             return proxy;
         }
 
+        /// <summary>
+        /// Attempts to populate the downloadFileHash for a model using checksum.txt (cache first, optional fetch).
+        /// Returns true if a hash was found and assigned.
+        /// </summary>
+        public static bool TryPopulateDownloadHash(SherpaONNXModelMetadata metadata)
+        {
+            if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
+            {
+                return false;
+            }
+
+            var moduleType = metadata.moduleType;
+            var tag = GetReleaseTagByModuleType(moduleType);
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                return false;
+            }
+
+            // Helper to search for the hash in a checksum.txt content
+            bool TryResolveFromContent(string content)
+            {
+                var parsed = ParseChecksumContent(content, moduleType, tag);
+                if (parsed == null || parsed.Length == 0)
+                {
+                    return false;
+                }
+
+                foreach (var entry in parsed)
+                {
+                    if (entry != null && string.Equals(entry.modelId, metadata.modelId, StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(entry.downloadFileHash))
+                    {
+                        metadata.downloadFileHash = entry.downloadFileHash;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            // 1) Try cache
+            if (TryReadChecksumCache(tag, allowExpired: true, out var cachedContent) &&
+                !string.IsNullOrWhiteSpace(cachedContent) &&
+                TryResolveFromContent(cachedContent))
+            {
+                return true;
+            }
+
+            // 2) Optionally fetch if allowed
+            if (!ShouldFetchLatestManifest())
+            {
+                return false;
+            }
+
+            var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/checksum.txt";
+            var url = ApplyGithubProxyIfAny(rawUrl);
+            try
+            {
+                var (ok, content) = TryHttpGetTextAsync(url, 20000).GetAwaiter().GetResult();
+                if (!ok || string.IsNullOrWhiteSpace(content))
+                {
+                    // Fallback to direct URL if proxied failed
+                    if (!string.Equals(url, rawUrl, StringComparison.OrdinalIgnoreCase))
+                    {
+                        (ok, content) = TryHttpGetTextAsync(rawUrl, 20000).GetAwaiter().GetResult();
+                    }
+                }
+
+                if (ok && !string.IsNullOrWhiteSpace(content))
+                {
+                    WriteChecksumCache(tag, content);
+                    return TryResolveFromContent(content);
+                }
+            }
+            catch
+            {
+                // Ignore network errors; will proceed without hash.
+            }
+
+            return false;
+        }
+
         private static bool TryHttpGetTextWithProxyFallback(string rawUrl, out string text, int timeoutMs = 20000)
         {
             text = string.Empty;
@@ -549,7 +631,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                         if ((DateTime.UtcNow - start).TotalMilliseconds > timeoutMs)
                         {
                             uwr.Abort();
-                            UnityEngine.Debug.LogWarning($"TryHttpGetText timeout: {url}");
+                            SherpaLog.Warning($"TryHttpGetText timeout: {url}");
                             return false;
                         }
                         Thread.Sleep(10);
@@ -560,7 +642,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     if (uwr.isNetworkError || uwr.isHttpError)
 #endif
                     {
-                        UnityEngine.Debug.LogWarning($"TryHttpGetText HTTP error: {uwr.error} ({url})");
+                        SherpaLog.Warning($"TryHttpGetText HTTP error: {uwr.error} ({url})");
                         return false;
                     }
                     text = uwr.downloadHandler.text ?? string.Empty;
@@ -569,7 +651,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"TryHttpGetText exception: {ex.GetType().Name}: {ex.Message}");
+                SherpaLog.Warning($"TryHttpGetText exception: {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }
@@ -596,7 +678,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                             catch (TaskCanceledException)
                             {
                                 uwr.Abort();
-                                UnityEngine.Debug.LogWarning($"TryHttpGetTextAsync timeout: {url}");
+                                SherpaLog.Warning($"TryHttpGetTextAsync timeout: {url}");
                                 return (false, string.Empty);
                             }
                         }
@@ -607,7 +689,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     if (uwr.isNetworkError || uwr.isHttpError)
 #endif
                     {
-                        UnityEngine.Debug.LogWarning($"TryHttpGetTextAsync HTTP error: {uwr.error} ({url})");
+                        SherpaLog.Warning($"TryHttpGetTextAsync HTTP error: {uwr.error} ({url})");
                         return (false, string.Empty);
                     }
                     return (true, uwr.downloadHandler.text ?? string.Empty);
@@ -615,7 +697,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"TryHttpGetTextAsync exception: {ex.GetType().Name}: {ex.Message}");
+                SherpaLog.Warning($"TryHttpGetTextAsync exception: {ex.GetType().Name}: {ex.Message}");
                 return (false, string.Empty);
             }
         }
@@ -838,7 +920,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
 
             if (!fetchAllowed)
             {
-                UnityEngine.Debug.Log($"FetchModelsAsync({moduleType}) skipped network fetch because {SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest}=false and no cache was present.");
+                SherpaLog.Info($"FetchModelsAsync({moduleType}) skipped network fetch because {SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest}=false and no cache was present.");
                 return Array.Empty<SherpaONNXModelMetadata>();
             }
 
@@ -866,7 +948,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogWarning($"FetchModelsAsync({moduleType}) failed: {ex.GetType().Name}: {ex.Message}");
+                SherpaLog.Warning($"FetchModelsAsync({moduleType}) failed: {ex.GetType().Name}: {ex.Message}");
                 return Array.Empty<SherpaONNXModelMetadata>();
             }
         }

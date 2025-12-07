@@ -7,11 +7,12 @@ A Unity package providing offline speech recognition (ASR), text-to-speech (TTS)
 - **Offline Speech Recognition**: Real-time and batch ASR processing without internet connectivity
 - **Text-to-Speech**: High-quality offline TTS synthesis
 - **Voice Activity Detection (VAD)**: Detect speech segments in audio streams
-- **Speaker Diarization**: Identify and separate different speakers
+- **Punctuation & Post-processing**: Adds punctuation and sentence casing for English output
 - **Audio Enhancement**: Noise reduction and audio quality improvement
-- **Cross-Platform Support**: Windows, macOS, Linux, Android, and iOS
-- **Model Management**: Automatic model downloading, verification, and loading
+- **Model Management**: Automatic model downloading, verification, hashing, and loading
 - **Unity Integration**: Seamless integration with Unity's audio system
+
+> Note: Speaker diarization and source separation are not yet implemented in the runtime. They remain in the enums for forward compatibility but are not currently exposed as working modules.
 
 ## Requirements
 
@@ -57,6 +58,25 @@ Models are automatically managed through the `SherpaONNXModelRegistry`. Supporte
 - **SherpaONNXModule**: Base class for all functionality modules
 - **SpeechRecognition**: Handles ASR operations
 - **VoiceActivityDetection**: VAD functionality
+
+### Threading Model (important)
+
+- Heavy work (manifest fetch, download, decompression, model init) is offloaded to background threads.
+- Callbacks such as ASR/VAD/tts progress may arrive on a background thread. If you touch Unity objects, marshal back to the main thread.
+- Public APIs are safe to call from the main thread; they will offload internally where appropriate.
+
+### Quick usage pattern (threading-aware)
+
+```csharp
+// Main thread
+ThreadingUtils.PrimeUnityInfo();
+var asr = new SpeechRecognition(modelId: "sherpa-onnx-streaming-zipformer-en-2023-02-21");
+await asr.InitializationTask; // does work on a background thread
+
+// Background callback -> marshal to main thread before touching Unity objects
+var text = await asr.SpeechTranscriptionAsync(samples, sampleRate);
+UnityMainThreadDispatcher.Enqueue(() => myTextMesh.text = text);
+```
 
 ### Assembly Structure
 

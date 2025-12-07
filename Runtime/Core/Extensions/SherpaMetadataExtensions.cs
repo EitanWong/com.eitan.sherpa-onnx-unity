@@ -113,20 +113,20 @@ namespace Eitan.SherpaONNXUnity.Runtime
             // Validate inputs
             if (metadata == null)
             {
-                UnityEngine.Debug.LogError("Metadata is null.");
+                SherpaLog.Error("Metadata is null.");
                 return System.Array.Empty<string>();
             }
 
             if (string.IsNullOrWhiteSpace(metadata.modelId))
             {
-                UnityEngine.Debug.LogError("Model ID is empty. Please check the manifest file.");
+                SherpaLog.Error("Model ID is empty. Please check the manifest file.");
                 return System.Array.Empty<string>();
             }
 
             var modelFolderPath = SherpaPathResolver.GetModelRootPath(metadata.modelId);
             if (string.IsNullOrWhiteSpace(modelFolderPath))
             {
-                UnityEngine.Debug.LogError($"Model root path not found for modelId: {metadata.modelId}");
+                SherpaLog.Error($"Model root path not found for modelId: {metadata.modelId}");
                 return System.Array.Empty<string>();
             }
 
@@ -134,7 +134,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
             {
                 if (!System.IO.Directory.Exists(modelFolderPath))
                 {
-                    UnityEngine.Debug.LogError($"Model folder does not exist: {modelFolderPath}");
+                    SherpaLog.Error($"Model folder does not exist: {modelFolderPath}");
                     return System.Array.Empty<string>();
                 }
 
@@ -200,7 +200,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
             catch (System.Exception ex)
             {
-                UnityEngine.Debug.LogError($"Failed to list model files under '{modelFolderPath}': {ex}");
+                SherpaLog.Error($"Failed to list model files under '{modelFolderPath}': {ex}");
                 return System.Array.Empty<string>();
             }
         }
@@ -220,7 +220,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             if (string.IsNullOrEmpty(metadata.modelId))
             {
-                UnityEngine.Debug.LogError("Model ID is empty. Please check the manifest file.");
+                SherpaLog.Error("Model ID is empty. Please check the manifest file.");
                 return null;
             }
 
@@ -311,7 +311,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {
-                UnityEngine.Debug.LogError("Model ID is empty. Please check the manifest file.");
+                SherpaLog.Error("Model ID is empty. Please check the manifest file.");
                 return System.Array.Empty<string>();
             }
 

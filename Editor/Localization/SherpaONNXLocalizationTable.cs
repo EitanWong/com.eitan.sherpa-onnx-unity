@@ -4,6 +4,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
 {
     using System;
     using System.Collections.Generic;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
 
     /// <summary>
@@ -30,7 +31,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to parse SherpaONNX localization JSON: {ex.Message}");
+                SherpaLog.Error($"Failed to parse SherpaONNX localization JSON: {ex.Message}", category: "Localization");
                 return dict;
             }
 

@@ -57,8 +57,8 @@ namespace Eitan.SherpaONNXUnity.Tests
 
             _metadata = new SherpaONNXModelMetadata { modelId = _modelId };
 
-            Debug.Log($"[SetUp] ModelId: {_modelId}\nRoot: {_modelRoot}\nFiles:\n" +
-                      string.Join("\n", Directory.GetFiles(_modelRoot).Select(Path.GetFileName)));
+            SherpaLog.Info($"[SetUp] ModelId: {_modelId}\nRoot: {_modelRoot}\nFiles:\n" +
+                           string.Join("\n", Directory.GetFiles(_modelRoot).Select(Path.GetFileName)));
         }
 
         [TearDown]
@@ -73,7 +73,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[TearDown] Cleanup failed: {ex}");
+                SherpaLog.Warning($"[TearDown] Cleanup failed: {ex}", category: "Tests");
             }
         }
 
@@ -94,7 +94,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             CollectionAssert.Contains(names, "encoder-99.onnx");
             CollectionAssert.Contains(names, "gtcrn-model-int8.onnx");
 
-            Debug.Log("[ListModelFiles:fileNameOnly] Results:\n" + string.Join("\n", names));
+            SherpaLog.Info("[ListModelFiles:fileNameOnly] Results:\n" + string.Join("\n", names), category: "Tests");
         }
 
         [Test]
@@ -118,7 +118,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             var ordered = results.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
             CollectionAssert.AreEqual(expected, ordered);
 
-            Debug.Log("[GetModelFilesByExtensionName] Matched full paths:\n" + string.Join("\n", results));
+            SherpaLog.Info("[GetModelFilesByExtensionName] Matched full paths:\n" + string.Join("\n", results), category: "Tests");
         }
 
         [Test]
@@ -128,7 +128,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             var matches = _metadata.GetModelFilePathByKeywords("tokens", "lexicon");
             Assert.IsNotNull(matches);
             CollectionAssert.IsSubsetOf(new[] { Full("tokens.txt"), Full("en-us.lexicon") }, matches);
-            Debug.Log("[Keywords_Tokens_And_Lexicon] →\n" + string.Join("\n", matches));
+            SherpaLog.Info("[Keywords_Tokens_And_Lexicon] →\n" + string.Join("\n", matches), category: "Tests");
         }
 
         [Test]
@@ -141,7 +141,7 @@ namespace Eitan.SherpaONNXUnity.Tests
                 new[] { Full("some_name-v1.int8.onnx"), Full("offline-tdt.ctc.int8.onnx") },
                 matches
             );
-            Debug.Log("[Keywords_Int8_Finds_Int8_Models] →\n" + string.Join("\n", matches));
+            SherpaLog.Info("[Keywords_Int8_Finds_Int8_Models] →\n" + string.Join("\n", matches), category: "Tests");
         }
 
         [Test]
@@ -159,9 +159,9 @@ namespace Eitan.SherpaONNXUnity.Tests
             StringAssert.EndsWith(Path.DirectorySeparatorChar + "decoder-99.onnx", dec.First());
             StringAssert.EndsWith(Path.DirectorySeparatorChar + "joiner-99.onnx", joi.First());
 
-            Debug.Log("[Keywords_Transducer_Triplet] encoder → " + enc.First());
-            Debug.Log("[Keywords_Transducer_Triplet] decoder → " + dec.First());
-            Debug.Log("[Keywords_Transducer_Triplet] joiner  → " + joi.First());
+            SherpaLog.Info("[Keywords_Transducer_Triplet] encoder → " + enc.First(), category: "Tests");
+            SherpaLog.Info("[Keywords_Transducer_Triplet] decoder → " + dec.First(), category: "Tests");
+            SherpaLog.Info("[Keywords_Transducer_Triplet] joiner  → " + joi.First(), category: "Tests");
         }
 
         [Test]
@@ -171,7 +171,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             var matches = _metadata.GetModelFilePathByKeywords("gtcrn", "model", "int8");
             Assert.IsNotNull(matches);
             StringAssert.EndsWith(Path.DirectorySeparatorChar + "gtcrn-model-int8.onnx", matches.First());
-            Debug.Log("[Keywords_Gtcrn_Model_For_SpeechEnhancement] →\n" + string.Join("\n", matches));
+            SherpaLog.Info("[Keywords_Gtcrn_Model_For_SpeechEnhancement] →\n" + string.Join("\n", matches), category: "Tests");
         }
 
         [Test]
@@ -186,8 +186,8 @@ namespace Eitan.SherpaONNXUnity.Tests
             StringAssert.EndsWith(Path.DirectorySeparatorChar + "whisper-encoder-int8.onnx", enc.First());
             StringAssert.EndsWith(Path.DirectorySeparatorChar + "whisper-decoder-int8.onnx", dec.First());
 
-            Debug.Log("[Keywords_Whisper_For_SLI] encoder → " + enc.First());
-            Debug.Log("[Keywords_Whisper_For_SLI] decoder → " + dec.First());
+            SherpaLog.Info("[Keywords_Whisper_For_SLI] encoder → " + enc.First(), category: "Tests");
+            SherpaLog.Info("[Keywords_Whisper_For_SLI] decoder → " + dec.First(), category: "Tests");
         }
 
         [Test]
@@ -195,7 +195,7 @@ namespace Eitan.SherpaONNXUnity.Tests
         {
             var none = _metadata.GetModelFilePathByKeywords("this-keyword-should-not-exist");
             Assert.IsNull(none);
-            Debug.Log("[Keywords_NoMatch_ReturnsNull] → (null)");
+            SherpaLog.Info("[Keywords_NoMatch_ReturnsNull] → (null)", category: "Tests");
         }
 
         // ---------- helpers ----------

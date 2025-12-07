@@ -1,7 +1,11 @@
 
 namespace Eitan.SherpaONNXUnity.Samples
 {
+    using System;
+
     using System.Linq;
+    using System.Threading;
+
     using System.Threading.Tasks;
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
@@ -41,6 +45,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool moduleRequested;
         private bool modelReady;
         private ModelLoadProgressTracker progressTracker;
+        private CancellationTokenSource manifestCts;
 
         private void Awake()
         {
@@ -60,6 +65,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 recognizer.TranscriptionReadyEvent.AddListener(HandleTranscriptReady);
                 recognizer.InitializationStateChangedEvent.AddListener(HandleRecognizerReadyState);
                 recognizer.FeedbackMessages.AddListener(HandleFeedbackMessage);
+                recognizer.FeedbackReceived += HandleFeedback;
                 if (microphone != null)
                 {
                     recognizer.BindInput(microphone);
@@ -69,9 +75,16 @@ namespace Eitan.SherpaONNXUnity.Samples
 
         private void OnEnable()
         {
-            _ = PopulateModelDropdownAsync();
-            transcriptText.text = "Tap Load Model to start streaming transcription.";
-            statusText.text = "Pick a model to begin.";
+            manifestCts = new CancellationTokenSource();
+            _ = PopulateModelDropdownAsync(manifestCts.Token);
+            if (transcriptText != null)
+            {
+                transcriptText.text = "Tap Load Model to start streaming transcription.";
+            }
+            if (statusText != null)
+            {
+                statusText.text = "Pick a model to begin.";
+            }
             modelReady = false;
             UpdateButtonVisuals();
         }
@@ -88,10 +101,14 @@ namespace Eitan.SherpaONNXUnity.Samples
                 recognizer.TranscriptionReadyEvent.RemoveListener(HandleTranscriptReady);
                 recognizer.InitializationStateChangedEvent.RemoveListener(HandleRecognizerReadyState);
                 recognizer.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+                recognizer.FeedbackReceived -= HandleFeedback;
             }
+
+            manifestCts?.Cancel();
+            manifestCts?.Dispose();
         }
 
-        private async Task PopulateModelDropdownAsync()
+        private async Task PopulateModelDropdownAsync(CancellationToken cancellationToken)
         {
             if (modelDropdown == null)
             {
@@ -108,34 +125,52 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 loadOrUnloadButton.interactable = false;
             }
-
-            var manifest = await SherpaONNXModelRegistry.Instance
-                .GetManifestAsync(SherpaONNXModuleType.SpeechRecognition)
-                .ConfigureAwait(true);
-
-            if (loadOrUnloadButton != null)
+            try
             {
-                loadOrUnloadButton.interactable = true;
+                var manifest = await SherpaONNXModelRegistry.Instance
+                    .GetManifestAsync(SherpaONNXModuleType.SpeechRecognition, cancellationToken)
+                    .ConfigureAwait(true);
+
+                if (loadOrUnloadButton != null)
+                {
+                    loadOrUnloadButton.interactable = true;
+                }
+
+                modelDropdown.options.Clear();
+
+                if (manifest.models == null || manifest.models.Count == 0)
+                {
+                    modelDropdown.options.Add(new Dropdown.OptionData("<no speech models>"));
+                    modelDropdown.interactable = false;
+                    SetStatus("No models available.");
+                    return;
+                }
+
+                var options = manifest.models
+                    .Where(m => !string.IsNullOrWhiteSpace(m.modelId) && SherpaONNXUnity.Runtime.Utilities.SherpaUtils.Model.IsOnlineModel(m.modelId))
+                    .Select(m => new Dropdown.OptionData(m.modelId))
+                    .ToList();
+
+                modelDropdown.AddOptions(options);
+                var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
+                modelDropdown.value = defaultIndex >= 0 ? defaultIndex : 0;
+                modelDropdown.interactable = options.Count > 0;
             }
-
-            modelDropdown.options.Clear();
-
-            if (manifest.models == null || manifest.models.Count == 0)
+            catch (OperationCanceledException)
             {
-                modelDropdown.options.Add(new Dropdown.OptionData("<no speech models>"));
+                // ignore
+            }
+            catch (Exception ex)
+            {
+                modelDropdown.options.Clear();
+                modelDropdown.options.Add(new Dropdown.OptionData("<manifest unavailable>"));
                 modelDropdown.interactable = false;
-                return;
+                SetStatus($"Manifest fetch failed: {ex.Message}");
+                if (loadOrUnloadButton != null)
+                {
+                    loadOrUnloadButton.interactable = false;
+                }
             }
-
-            var options = manifest.models
-                .Where(m => !string.IsNullOrWhiteSpace(m.modelId) && SherpaONNXUnity.Runtime.Utilities.SherpaUtils.Model.IsOnlineModel(m.modelId))
-                .Select(m => new Dropdown.OptionData(m.modelId))
-                .ToList();
-
-            modelDropdown.AddOptions(options);
-            var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
-            modelDropdown.value = defaultIndex >= 0 ? defaultIndex : 0;
-            modelDropdown.interactable = options.Count > 0;
         }
 
         private string SelectedModelId =>
@@ -149,7 +184,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         {
             if (recognizer == null)
             {
-                statusText.text = "SpeechRecognizerComponent reference missing.";
+                SetStatus("SpeechRecognizerComponent reference missing.");
                 return;
             }
 
@@ -158,7 +193,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 var modelId = SelectedModelId;
                 if (string.IsNullOrWhiteSpace(modelId))
                 {
-                    statusText.text = "Select a model first.";
+                    SetStatus("Select a model first.");
                     return;
                 }
 
@@ -171,7 +206,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 }
                 else
                 {
-                    statusText.text = "Model already loading or missing configuration.";
+                    SetStatus("Model already loading or missing configuration.");
                 }
             }
             else
@@ -179,8 +214,11 @@ namespace Eitan.SherpaONNXUnity.Samples
                 recognizer.DisposeModule();
                 moduleRequested = false;
                 modelReady = false;
-                transcriptText.text = string.Empty;
-                statusText.text = "Model disposed.";
+                if (transcriptText != null)
+                {
+                    transcriptText.text = string.Empty;
+                }
+                SetStatus("Model disposed.");
                 progressTracker?.Reset();
                 progressTracker?.SetVisible(false);
             }
@@ -225,7 +263,10 @@ namespace Eitan.SherpaONNXUnity.Samples
             if (ready)
             {
                 DemoUIShared.ShowLoadingComplete(progressTracker, statusText, "Recognizer ready. Speak into the microphone.");
-                transcriptText.text = "Awaiting speech…";
+                if (transcriptText != null)
+                {
+                    transcriptText.text = "Awaiting speech…";
+                }
             }
             else
             {
@@ -243,7 +284,10 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
 
             // 实时更新识别结果 / Update transcript in real time
-            transcriptText.text = transcript;
+            if (transcriptText != null)
+            {
+                transcriptText.text = transcript;
+            }
         }
 
         private void HandleFeedbackMessage(string message)
@@ -252,21 +296,28 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 progressMessageText.text = message;
             }
-            else if (statusText != null)
-            {
-                statusText.text = message;
-            }
+        }
 
-            if (!string.IsNullOrEmpty(message))
-            {
-                progressTracker?.UpdateStage(Stage.Download, message, 0.35f);
-            }
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
         }
 
         private void BeginLoading(string message)
         {
             DemoUIShared.ShowLoading(progressTracker, statusText, message);
-            transcriptText.text = "Preparing…";
+            if (transcriptText != null)
+            {
+                transcriptText.text = "Preparing…";
+            }
+        }
+
+        private void SetStatus(string message)
+        {
+            if (statusText != null)
+            {
+                statusText.text = message;
+            }
         }
 
         public void OpenGithubRepo()

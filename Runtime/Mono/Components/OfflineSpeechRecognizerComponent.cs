@@ -28,6 +28,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Tooltip("Automatically subscribe to the assigned VAD source on enable.")]
         private bool autoBindVoiceActivitySource = true;
 
+        [Header("Lifecycle")]
+        [SerializeField]
+        [Tooltip("Start module initialization immediately when constructed. Disable to configure first, then call StartModuleInitialization manually.")]
+        private bool startModuleImmediately = true;
+
+        [Header("Queue")]
+        [SerializeField]
+        [Tooltip("Maximum pending segments to buffer. Oldest is dropped when the limit is exceeded (0 = unbounded).")]
+        private int maxPendingSegments = 32;
+
         [Header("Events")]
         [SerializeField]
         private UnityEvent<string> onTranscriptReady = new UnityEvent<string>();
@@ -51,15 +61,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private CancellationTokenSource processingCts;
         private VoiceActivityDetectionComponent boundSource;
         private bool drainingQueue;
+        private int droppedSegments;
+        private float lastDropLog;
 
         protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
-            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter);
+            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter, startImmediately: startModuleImmediately);
         }
 
         private void OnEnable()
         {
             processingCts = new CancellationTokenSource();
+            droppedSegments = 0;
+            lastDropLog = 0f;
             if (Application.isPlaying && autoBindVoiceActivitySource)
             {
                 BindVoiceActivitySource(voiceActivitySource);
@@ -111,6 +125,20 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             HandleSpeechSegment(samples, sampleRate);
         }
 
+        /// <summary>
+        /// Starts module initialization when startModuleImmediately is disabled.
+        /// </summary>
+        public Task StartModuleInitializationAsync(CancellationToken cancellationToken = default)
+        {
+            if (Module == null && !TryLoadModule())
+            {
+                RaiseError("Failed to load offline speech recognizer module.");
+                return Task.CompletedTask;
+            }
+
+            return Module?.StartInitialization(cancellationToken) ?? Task.CompletedTask;
+        }
+
         public async Task<string> TranscribeClipAsync(AudioClip clip, CancellationToken cancellationToken = default)
         {
             if (clip == null)
@@ -126,8 +154,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             var data = new float[clip.samples * clip.channels];
             clip.GetData(data, 0);
             var mono = DownmixToMono(data, clip.channels);
-            var text = await module.SpeechTranscriptionAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(true);
-            return text ?? string.Empty;
+            var result = await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
+            return result.Status == SpeechRecognition.TranscriptionStatus.Success ? result.Text ?? string.Empty : string.Empty;
         }
 
         private void HandleSpeechSegment(float[] samples, int sampleRate)
@@ -144,24 +172,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         private void EnqueueSegment(AudioChunk chunk)
         {
-            lock (queueLock)
-            {
-                pendingSegments.Enqueue(chunk);
-                if (drainingQueue)
-                {
-                    return;
-                }
-
-                drainingQueue = true;
-            }
-
-            _ = DrainQueueAsync();
+            EnqueueWithBackPressure(chunk);
         }
 
         private async Task DrainQueueAsync()
         {
             while (true)
             {
+                if (processingCts != null && processingCts.IsCancellationRequested)
+                {
+                    ClearQueue();
+                    return;
+                }
+
                 AudioChunk chunk;
                 lock (queueLock)
                 {
@@ -174,7 +197,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                     chunk = pendingSegments.Dequeue();
                 }
 
-                await TranscribeChunkAsync(chunk).ConfigureAwait(true);
+                await TranscribeChunkAsync(chunk).ConfigureAwait(false);
             }
         }
 
@@ -187,16 +210,29 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             if (!EnsureModuleReady(out var module))
             {
+                ClearQueue();
                 return;
             }
 
             try
             {
                 var token = processingCts?.Token ?? CancellationToken.None;
-                var text = await module.SpeechTranscriptionAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(true);
-                if (!string.IsNullOrWhiteSpace(text))
+                if (token.IsCancellationRequested)
                 {
-                    onTranscriptReady?.Invoke(text.Trim());
+                    return;
+                }
+                var result = await module.TranscribeAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(false);
+                if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
+                {
+                    var text = result.Text.Trim();
+                    DispatchToUnity(() => onTranscriptReady?.Invoke(text));
+                }
+                else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
+                {
+                    SherpaLog.Error($"[OfflineSpeechRecognizerComponent] Transcription failed: {result.Error.Message}");
+                    var message = result.Error.Message;
+                    DispatchToUnity(() => onTranscriptionFailed?.Invoke(message));
+                    RaiseError(result.Error.Message);
                 }
             }
             catch (OperationCanceledException)
@@ -205,8 +241,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[OfflineSpeechRecognizerComponent] Transcription failed: {ex.Message}");
-                onTranscriptionFailed?.Invoke(ex.Message);
+                SherpaLog.Error($"[OfflineSpeechRecognizerComponent] Transcription failed: {ex.Message}");
+                var message = ex.Message;
+                DispatchToUnity(() => onTranscriptionFailed?.Invoke(message));
+                RaiseError(ex.Message);
             }
         }
 
@@ -217,6 +255,50 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 pendingSegments.Clear();
                 drainingQueue = false;
             }
+        }
+
+        private void EnqueueWithBackPressure(AudioChunk chunk)
+        {
+            bool dropped = false;
+            lock (queueLock)
+            {
+                if (maxPendingSegments > 0 && pendingSegments.Count >= maxPendingSegments)
+                {
+                    pendingSegments.Dequeue(); // drop oldest to bound latency
+                    droppedSegments++;
+                    dropped = true;
+                }
+
+                pendingSegments.Enqueue(chunk);
+                if (!drainingQueue)
+                {
+                    drainingQueue = true;
+                    _ = DrainQueueAsync();
+                }
+            }
+
+            if (dropped)
+            {
+                MaybeLogDroppedSegments();
+            }
+        }
+
+        private void MaybeLogDroppedSegments()
+        {
+            if (droppedSegments <= 0)
+            {
+                return;
+            }
+
+            var now = Time.realtimeSinceStartup;
+            if (now - lastDropLog < 1f)
+            {
+                return;
+            }
+
+            SherpaLog.Warning($"[OfflineSpeechRecognizerComponent] Dropped {droppedSegments} pending segment(s) due to back-pressure (maxPendingSegments={maxPendingSegments}).");
+            lastDropLog = now;
+            droppedSegments = 0;
         }
 
         private static float[] DownmixToMono(float[] data, int channels)

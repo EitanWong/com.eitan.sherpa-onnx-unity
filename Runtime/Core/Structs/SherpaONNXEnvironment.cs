@@ -246,6 +246,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
             public const string AutoDownloadModels = "SherpaONNX.AutoDownloadModels";   // bool, default true
             public const string ChecksumCacheDirectory = "SherpaONNX.ChecksumCacheDirectory"; // optional override path
             public const string ChecksumCacheTtlSeconds = "SherpaONNX.ChecksumCacheTtlSeconds"; // int, default 3600 (1h)
+            public const string LoggingEnabled = "SherpaONNX.Logging.Enabled"; // bool, default true
+            public const string LoggingLevel = "SherpaONNX.Logging.Level";     // string enum name, default Info
+            public const string LoggingTraceStacks = "SherpaONNX.Logging.TraceStacks"; // bool, default true
         }
     }
 }

@@ -108,6 +108,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             taggingComponent.TaggingFailedEvent.AddListener(HandleTaggingFailed);
             taggingComponent.InitializationStateChangedEvent.AddListener(HandleInitializationChanged);
             taggingComponent.FeedbackMessages.AddListener(HandleFeedbackMessage);
+            taggingComponent.FeedbackReceived += HandleFeedback;
         }
 
         private void UnbindComponentEvents()
@@ -121,6 +122,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             taggingComponent.TaggingFailedEvent.RemoveListener(HandleTaggingFailed);
             taggingComponent.InitializationStateChangedEvent.RemoveListener(HandleInitializationChanged);
             taggingComponent.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+            taggingComponent.FeedbackReceived -= HandleFeedback;
         }
 
         private async Task PopulateDropdownAsync()
@@ -258,15 +260,11 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 progressMessageText.text = message;
             }
-            else if (statusText != null)
-            {
-                statusText.text = message;
-            }
+        }
 
-            if (!string.IsNullOrEmpty(message))
-            {
-                progressTracker?.UpdateStage(Stage.Download, message, 0.35f);
-            }
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
         }
 
         private void UpdateLoadButtonUI()

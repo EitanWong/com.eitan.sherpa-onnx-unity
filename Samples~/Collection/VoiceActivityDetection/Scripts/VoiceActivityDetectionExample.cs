@@ -1,5 +1,7 @@
 namespace Eitan.SherpaONNXUnity.Samples
 {
+    using System;
+
     using System.Linq;
     using System.Threading;
 
@@ -38,6 +40,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool modelRequested;
         private bool modelReady;
         private ModelLoadProgressTracker progressTracker;
+        private CancellationTokenSource manifestCts;
 
         private void Awake()
         {
@@ -66,7 +69,8 @@ namespace Eitan.SherpaONNXUnity.Samples
 
         private void OnEnable()
         {
-            _ = PopulateDropdownAsync();
+            manifestCts = new CancellationTokenSource();
+            _ = PopulateDropdownAsync(manifestCts.Token);
             statusText.text = "Load a VAD model.";
             segmentText.text = "Tap Load Model to start voice activity detection.";
             modelReady = false;
@@ -86,9 +90,12 @@ namespace Eitan.SherpaONNXUnity.Samples
                 voiceActivity.SpeechSegmentReady -= HandleSegmentReady;
                 voiceActivity.InitializationStateChangedEvent.RemoveListener(HandleReadyStateChanged);
             }
+
+            manifestCts?.Cancel();
+            manifestCts?.Dispose();
         }
 
-        private async Task PopulateDropdownAsync()
+        private async Task PopulateDropdownAsync(CancellationToken cancellationToken)
         {
             if (modelDropdown == null)
             {
@@ -99,25 +106,42 @@ namespace Eitan.SherpaONNXUnity.Samples
             modelDropdown.captionText.text = "Loading VAD models…";
             modelDropdown.interactable = false;
 
-            var manifest = await SherpaONNXModelRegistry.Instance
-                .GetManifestAsync(SherpaONNXModuleType.VoiceActivityDetection)
-                .ConfigureAwait(true);
-
-            if (manifest.models == null || manifest.models.Count == 0)
+            try
             {
-                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
-                return;
+                var manifest = await SherpaONNXModelRegistry.Instance
+                    .GetManifestAsync(SherpaONNXModuleType.VoiceActivityDetection, cancellationToken)
+                    .ConfigureAwait(true);
+
+                if (manifest.models == null || manifest.models.Count == 0)
+                {
+                    modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
+                    return;
+                }
+
+                var options = manifest.models
+                    .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                    .Select(m => new Dropdown.OptionData(m.modelId))
+                    .ToList();
+
+                modelDropdown.AddOptions(options);
+                var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
+                modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
+                modelDropdown.interactable = options.Count > 0;
             }
-
-            var options = manifest.models
-                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
-                .Select(m => new Dropdown.OptionData(m.modelId))
-                .ToList();
-
-            modelDropdown.AddOptions(options);
-            var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
-            modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
-            modelDropdown.interactable = options.Count > 0;
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                modelDropdown.options.Clear();
+                modelDropdown.options.Add(new Dropdown.OptionData("<manifest unavailable>"));
+                modelDropdown.interactable = false;
+                statusText.text = $"Manifest fetch failed: {ex.Message}";
+                if (loadOrUnloadButton != null)
+                {
+                    loadOrUnloadButton.interactable = false;
+                }
+            }
         }
 
         private string SelectedModelId =>

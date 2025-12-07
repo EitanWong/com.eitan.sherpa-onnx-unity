@@ -363,7 +363,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 if (generatedAudio == null)
                 {
-                    Debug.LogWarning("TTS generation returned no audio.");
+                    SherpaLog.Warning("TTS generation returned no audio.");
                     return null;
                 }
 
@@ -426,7 +426,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 if (generatedAudio == null)
                 {
-                    Debug.LogWarning("TTS generation returned no audio.");
+                    SherpaLog.Warning("TTS generation returned no audio.");
                     return null;
                 }
 
@@ -489,7 +489,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 if (generatedAudio == null)
                 {
-                    Debug.LogWarning("TTS generation returned no audio.");
+                    SherpaLog.Warning("TTS generation returned no audio.");
                     return null;
                 }
 
@@ -545,7 +545,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 if (generatedAudio == null)
                 {
-                    Debug.LogWarning("TTS generation returned no audio.");
+                    SherpaLog.Warning("TTS generation returned no audio.");
                     return null;
                 }
 
@@ -635,7 +635,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                SherpaLog.Exception(ex);
             }
         }
     }

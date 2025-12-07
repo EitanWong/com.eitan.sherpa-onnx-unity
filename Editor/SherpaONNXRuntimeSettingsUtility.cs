@@ -87,7 +87,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 sb.Append(" • ").AppendLine(entry.Path);
             }
 
-            Debug.LogError(sb.ToString().TrimEnd());
+            SherpaLog.Error(sb.ToString().TrimEnd(), category: "Settings");
         }
 
         private static void EnsureResourcesFolder()

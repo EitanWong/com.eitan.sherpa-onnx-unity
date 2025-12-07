@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +7,7 @@ using Eitan.SherpaONNXUnity.Runtime;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 {
-    internal readonly struct ModelFileCriteria
+    public readonly struct ModelFileCriteria
     {
         private readonly Func<SherpaONNXModelMetadata, string[]> _candidateResolver;
 
@@ -85,8 +86,25 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         }
     }
 
-    internal static class ModelFileResolver
+    public static class ModelFileResolver
     {
+        public readonly struct ResolverFailure
+        {
+            public ResolverFailure(string modelId, string message, DateTime timestamp)
+            {
+                ModelId = modelId;
+                Message = message;
+                Timestamp = timestamp;
+            }
+
+            public string ModelId { get; }
+            public string Message { get; }
+            public DateTime Timestamp { get; }
+        }
+
+        private const int MaxTrackedFailures = 32;
+        private static readonly ConcurrentQueue<ResolverFailure> s_RecentFailures = new ConcurrentQueue<ResolverFailure>();
+
         private static readonly Dictionary<string, long> s_DefaultMinFileSizes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
         {
             [".onnx"] = 1024,
@@ -107,19 +125,29 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             SherpaONNXModelMetadata metadata,
             out string resolvedPath,
             Action<string> onFallback = null,
+            bool recordFailures = true,
             params ModelFileCriteria[] criteria)
         {
             resolvedPath = null;
 
+            void Notify(string message)
+            {
+                if (recordFailures)
+                {
+                    RecordResolverFailure(metadata?.modelId, message);
+                }
+                onFallback?.Invoke(message);
+            }
+
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {
-                onFallback?.Invoke("Metadata is null or modelId is empty.");
+                Notify("Metadata is null or modelId is empty.");
                 return false;
             }
 
             if (criteria == null || criteria.Length == 0)
             {
-                onFallback?.Invoke("No model file criteria specified.");
+                Notify("No model file criteria specified.");
                 return false;
             }
 
@@ -136,19 +164,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     if (ValidateCandidate(candidate, criterion.ExpectDirectory, criterion.MinSizeBytes, criterion.MinEntryCount, out var failureReason))
                     {
                         resolvedPath = candidate;
+                        ClearFailuresForModel(metadata.modelId);
                         return true;
                     }
 
                     if (!string.IsNullOrEmpty(candidate))
                     {
-                        onFallback?.Invoke($"Rejected candidate '{candidate}': {failureReason}");
+                        Notify($"Rejected candidate '{candidate}': {failureReason}");
                     }
                 }
             }
 
             if (resolvedPath == null)
             {
-                onFallback?.Invoke($"No valid model file found for {metadata.modelId}.");
+                Notify($"No valid model file found for {metadata.modelId}.");
             }
 
             return false;
@@ -160,7 +189,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             Action<string> onFallback = null,
             params ModelFileCriteria[] criteria)
         {
-            if (TryResolveFirstValidPath(metadata, out var path, onFallback, criteria))
+            if (TryResolveFirstValidPath(metadata, out var path, onFallback, recordFailures: true, criteria))
             {
                 return path;
             }
@@ -205,7 +234,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 };
             }
 
-            return TryResolveFirstValidPath(metadata, out var path, fallbackAction ?? onFallback, criteria) ? path : null;
+            return TryResolveFirstValidPath(metadata, out var path, fallbackAction ?? onFallback, recordFailures: false, criteria) ? path : null;
         }
 
         public static string ResolveOptionalByKeywords(
@@ -315,6 +344,49 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
             return 1;
+        }
+
+        public static IReadOnlyList<ResolverFailure> GetRecentFailures()
+        {
+            return s_RecentFailures.ToArray();
+        }
+
+        private static void RecordResolverFailure(string modelId, string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            s_RecentFailures.Enqueue(new ResolverFailure(modelId, message, DateTime.UtcNow));
+
+            while (s_RecentFailures.Count > MaxTrackedFailures && s_RecentFailures.TryDequeue(out _))
+            {
+                // Trim oldest entries.
+            }
+        }
+
+        private static void ClearFailuresForModel(string modelId)
+        {
+            if (string.IsNullOrWhiteSpace(modelId) || s_RecentFailures.IsEmpty)
+            {
+                return;
+            }
+
+            var survivors = new List<ResolverFailure>(s_RecentFailures.Count);
+
+            while (s_RecentFailures.TryDequeue(out var failure))
+            {
+                if (!string.Equals(failure.ModelId, modelId, StringComparison.OrdinalIgnoreCase))
+                {
+                    survivors.Add(failure);
+                }
+            }
+
+            for (int i = 0; i < survivors.Count; i++)
+            {
+                s_RecentFailures.Enqueue(survivors[i]);
+            }
         }
     }
 }

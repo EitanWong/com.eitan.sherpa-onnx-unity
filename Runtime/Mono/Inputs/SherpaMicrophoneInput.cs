@@ -4,6 +4,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
 {
     using System;
     using System.Collections.Generic;
+    using Eitan.SherpaONNXUnity.Runtime;
+
     using UnityEngine;
     using UnityEngine.Events;
 
@@ -61,7 +63,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
         private string activeDeviceName;
         private int microphoneChannels = 1;
         private int microphoneSampleFrames;
-        private float[] microphoneRingBuffer;
+
+        // Reusable buffers to avoid per-frame allocations.
+        private float[] microphoneSegmentBuffer;
+        private float[] chunkBuffer;
+
         private int chunkFrameCount;
         private int lastReadSampleFrame;
         private bool microphoneWarmupPending;
@@ -109,7 +115,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning("[SherpaMicrophoneInput] Capture is only supported in Play Mode.");
+                SherpaLog.Warning("[SherpaMicrophoneInput] Capture is only supported in Play Mode.");
                 return false;
             }
 
@@ -121,7 +127,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
             var device = ResolveMicrophoneDevice(preferredDevice);
             if (string.IsNullOrEmpty(device))
             {
-                Debug.LogWarning("[SherpaMicrophoneInput] No microphone devices detected.");
+                SherpaLog.Warning("[SherpaMicrophoneInput] No microphone devices detected.");
                 return false;
             }
 
@@ -131,14 +137,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
             microphoneClip = Microphone.Start(device, true, bufferLength, requestedSampleRate);
             if (microphoneClip == null)
             {
-                Debug.LogError($"[SherpaMicrophoneInput] Failed to start microphone '{device}'.");
+                SherpaLog.Error($"[SherpaMicrophoneInput] Failed to start microphone '{device}'.");
                 return false;
             }
 
             activeDeviceName = device;
             microphoneChannels = Mathf.Max(1, microphoneClip.channels);
             microphoneSampleFrames = microphoneClip.samples;
-            microphoneRingBuffer = new float[microphoneSampleFrames * microphoneChannels];
+            EnsureChunkBuffer();
             lastReadSampleFrame = 0;
             microphoneWarmupPending = true;
 
@@ -155,7 +161,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
 
             microphoneClip = null;
             activeDeviceName = null;
-            microphoneRingBuffer = null;
+            microphoneSegmentBuffer = null;
+            chunkBuffer = null;
             microphoneSampleFrames = 0;
             lastReadSampleFrame = 0;
             microphoneWarmupPending = false;
@@ -227,49 +234,43 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
                 return;
             }
 
-            microphoneClip.GetData(microphoneRingBuffer, 0);
-
             while (framesAvailable >= chunkFrameCount)
             {
-                var payload = ExtractChunk(lastReadSampleFrame);
+                ExtractChunkIntoBuffer(lastReadSampleFrame, chunkBuffer);
                 lastReadSampleFrame = (lastReadSampleFrame + chunkFrameCount) % microphoneSampleFrames;
                 framesAvailable -= chunkFrameCount;
-                EmitChunk(payload);
+                EmitChunk(chunkBuffer);
             }
         }
 
-        private float[] ExtractChunk(int startFrame)
+        private void EnsureChunkBuffer()
         {
-            var chunk = new float[chunkFrameCount];
-            if (microphoneRingBuffer == null)
+            if (chunkBuffer == null || chunkBuffer.Length != chunkFrameCount)
             {
-                return chunk;
+                chunkBuffer = new float[chunkFrameCount];
+            }
+        }
+
+        private void ExtractChunkIntoBuffer(int startFrame, float[] destination)
+        {
+            if (destination == null || destination.Length < chunkFrameCount)
+            {
+                return;
             }
 
-            if (!downmixToMono || microphoneChannels <= 1)
-            {
-                for (int i = 0; i < chunk.Length; i++)
-                {
-                    int frameIndex = (startFrame + i) % microphoneSampleFrames;
-                    int rawIndex = frameIndex * microphoneChannels;
-                    chunk[i] = microphoneRingBuffer[rawIndex];
-                }
-                return chunk;
-            }
+            int framesRemaining = chunkFrameCount;
+            int destOffset = 0;
+            int cursor = startFrame;
 
-            for (int i = 0; i < chunk.Length; i++)
+            while (framesRemaining > 0)
             {
-                int frameIndex = (startFrame + i) % microphoneSampleFrames;
-                int rawIndex = frameIndex * microphoneChannels;
-                float sum = 0f;
-                for (int ch = 0; ch < microphoneChannels; ch++)
-                {
-                    sum += microphoneRingBuffer[rawIndex + ch];
-                }
-                chunk[i] = sum / microphoneChannels;
-            }
+                int framesToRead = Mathf.Min(framesRemaining, microphoneSampleFrames - cursor);
+                ReadAndDownmix(cursor, framesToRead, destination, destOffset);
 
-            return chunk;
+                cursor = (cursor + framesToRead) % microphoneSampleFrames;
+                destOffset += framesToRead;
+                framesRemaining -= framesToRead;
+            }
         }
 
         private void EmitChunk(float[] samples)
@@ -279,8 +280,79 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Inputs
                 return;
             }
 
-            onChunkReady?.Invoke(samples, requestedSampleRate);
-            ChunkReady?.Invoke(samples, requestedSampleRate);
+            var payload = new float[samples.Length];
+            Array.Copy(samples, payload, samples.Length);
+
+            onChunkReady?.Invoke(payload, requestedSampleRate);
+
+            var listenerPayload = new float[samples.Length];
+            Array.Copy(samples, listenerPayload, samples.Length);
+            ChunkReady?.Invoke(listenerPayload, requestedSampleRate);
+        }
+
+        private void ReadAndDownmix(int startFrame, int frames, float[] destination, int destOffsetFrames)
+        {
+            if (frames <= 0)
+            {
+                return;
+            }
+
+            var (buffer, rented) = AcquireSegmentBuffer(frames);
+
+            try
+            {
+                microphoneClip.GetData(buffer, startFrame);
+                DownmixInto(buffer, frames, destination, destOffsetFrames);
+            }
+            finally
+            {
+                if (rented)
+                {
+                    System.Buffers.ArrayPool<float>.Shared.Return(buffer);
+                }
+            }
+        }
+
+        private void DownmixInto(float[] interleaved, int frames, float[] destination, int destOffsetFrames)
+        {
+            if (!downmixToMono || microphoneChannels <= 1)
+            {
+                for (int i = 0; i < frames; i++)
+                {
+                    destination[destOffsetFrames + i] = interleaved[i * microphoneChannels];
+                }
+                return;
+            }
+
+            for (int frame = 0; frame < frames; frame++)
+            {
+                int rawIndex = frame * microphoneChannels;
+                float sum = 0f;
+                for (int ch = 0; ch < microphoneChannels; ch++)
+                {
+                    sum += interleaved[rawIndex + ch];
+                }
+
+                destination[destOffsetFrames + frame] = sum / microphoneChannels;
+            }
+        }
+
+        private (float[] buffer, bool rented) AcquireSegmentBuffer(int frames)
+        {
+            int requiredSamples = Mathf.Max(1, frames) * microphoneChannels;
+
+            if (frames == chunkFrameCount)
+            {
+                if (microphoneSegmentBuffer == null || microphoneSegmentBuffer.Length != requiredSamples)
+                {
+                    microphoneSegmentBuffer = new float[requiredSamples];
+                }
+
+                return (microphoneSegmentBuffer, false);
+            }
+
+            var rented = System.Buffers.ArrayPool<float>.Shared.Rent(requiredSamples);
+            return (rented, true);
         }
 
         private static string ResolveMicrophoneDevice(string preference)

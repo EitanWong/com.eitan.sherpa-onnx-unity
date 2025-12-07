@@ -45,6 +45,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Min(1)]
         private int generationSteps = 4;
 
+        [Header("Concurrency")]
+        [SerializeField]
+        [Tooltip("Reject new requests while a generation is in progress instead of silently ignoring them.")]
+        private bool rejectConcurrentRequests = true;
+
         [Header("Events")]
         [SerializeField]
         private UnityEvent onGenerationStarted = new UnityEvent();
@@ -57,6 +62,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         private CancellationTokenSource sharedCts;
         private CancellationTokenSource activeGenerationCts;
+        private bool isGenerating;
 
         /// <summary>Invoked when a synthesis request starts.</summary>
         public UnityEvent GenerationStartedEvent => onGenerationStarted;
@@ -148,6 +154,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// </summary>
         public void Generate(string text, string promptText, AudioClip promptClip)
         {
+            if (isGenerating)
+            {
+                if (rejectConcurrentRequests)
+                {
+                    NotifyBusy();
+                    return;
+                }
+            }
             _ = GenerateAsync(text, promptText, promptClip);
         }
 
@@ -156,6 +170,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// </summary>
         public void GenerateWithDefaults(string text)
         {
+            if (isGenerating)
+            {
+                if (rejectConcurrentRequests)
+                {
+                    NotifyBusy();
+                    return;
+                }
+            }
             _ = GenerateAsync(text, defaultPromptText, defaultPromptClip);
         }
 
@@ -197,6 +219,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             var linked = CancellationTokenSource.CreateLinkedTokenSource(sharedCts?.Token ?? CancellationToken.None, cancellationToken);
             activeGenerationCts = linked;
+            isGenerating = true;
 
             onGenerationStarted?.Invoke();
 
@@ -208,11 +231,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                     promptClip,
                     speedOverride ?? speechRate,
                     stepsOverride ?? generationSteps,
-                    linked.Token).ConfigureAwait(true);
+                    linked.Token).ConfigureAwait(false);
 
                 if (clip != null)
                 {
-                    HandleClipReady(clip);
+                    DispatchToUnity(() => HandleClipReady(clip));
                 }
                 else
                 {
@@ -233,6 +256,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             finally
             {
                 CleanupActiveGenerationCts(linked);
+                isGenerating = false;
             }
         }
 
@@ -246,6 +270,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             activeGenerationCts.Cancel();
             CleanupActiveGenerationCts(activeGenerationCts);
+            isGenerating = false;
         }
 
         private void HandleClipReady(AudioClip clip)
@@ -262,8 +287,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         private void ReportFailure(string message)
         {
-            Debug.LogError($"[ZeroShotSpeechSynthesisComponent] {message}");
-            onGenerationFailed?.Invoke(message);
+            SherpaLog.Error($"[ZeroShotSpeechSynthesisComponent] {message}");
+            DispatchToUnity(() => onGenerationFailed?.Invoke(message));
+            RaiseError(message);
         }
 
         private void CleanupActiveGenerationCts(CancellationTokenSource cts)
@@ -275,6 +301,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             activeGenerationCts.Dispose();
             activeGenerationCts = null;
+        }
+
+        private void NotifyBusy()
+        {
+            const string message = "Generation request ignored because another synthesis is already in progress.";
+            SherpaLog.Warning($"[ZeroShotSpeechSynthesisComponent] {message}");
+            DispatchToUnity(() => onGenerationFailed?.Invoke(message));
+            RaiseError(message);
         }
     }
 }

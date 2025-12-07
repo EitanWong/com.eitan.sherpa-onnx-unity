@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 {
@@ -297,6 +298,77 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Removes model artifacts (model directory and download artifacts like .download/.metadata/.chunks) safely.
+        /// Used when a model needs to be re-downloaded after corruption.
+        /// </summary>
+        public static void DeleteModelArtifacts(string modelDirectory, string downloadFilePath)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(downloadFilePath))
+                {
+                    Delete(downloadFilePath);
+                    Delete(downloadFilePath + ".download");
+                    Delete(downloadFilePath + ".download.metadata");
+                    Delete(downloadFilePath + ".chunks");
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(modelDirectory))
+                {
+                    Delete(modelDirectory);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        /// <summary>
+        /// Validates that the provided model files exist and are non-empty. Returns false if any are missing or too small.
+        /// </summary>
+        public static bool ValidateModelFiles(IEnumerable<string> filePaths, long minSizeBytes = 4096)
+        {
+            if (filePaths == null)
+            {
+                return false;
+            }
+
+            var allOk = true;
+
+            foreach (var path in filePaths)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var fileInfo = new FileInfo(path);
+                    if (!fileInfo.Exists || fileInfo.Length < minSizeBytes)
+                    {
+                        allOk = false;
+                        SherpaLog.Warning($"Model file invalid or too small: {path} (size={fileInfo.Length} bytes)");
+                    }
+                }
+                catch
+                {
+                    allOk = false;
+                }
+            }
+
+            return allOk;
         }
 
         /// <summary>

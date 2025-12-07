@@ -76,8 +76,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[PunctuationComponent] Failed to add punctuation: {ex.Message}");
+                SherpaLog.Error($"[PunctuationComponent] Failed to add punctuation: {ex.Message}");
                 onPunctuationFailed?.Invoke(ex.Message);
+                RaiseError(ex.Message);
                 return string.Empty;
             }
         }
