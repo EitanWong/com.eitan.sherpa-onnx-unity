@@ -6,6 +6,7 @@ namespace Eitan.SherpaONNXUnity.Editor
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEditor.Build;
     using UnityEditor.Build.Reporting;
@@ -113,14 +114,14 @@ namespace Eitan.SherpaONNXUnity.Editor
                     bool sourceHasContent = AssetDatabase.IsValidFolder(src) && !IsAssetFolderEmpty(src);
                     if (backupHasContent && sourceHasContent)
                     {
-                        Debug.LogWarning($"[StreamingAssetsIgnore] Both source and backup have content for '{sub}'. Will MERGE into backup to avoid data loss.");
+                        SherpaLog.Warning($"[StreamingAssetsIgnore] Both source and backup have content for '{sub}'. Will MERGE into backup to avoid data loss.");
                         AppendConflictLog(sub, src, existingBackup);
                     }
 
                     var dst = FixedBackupAssetPathFor(sub);
                     MoveOrMergeAssetFolder(src, dst);
                     movedAny = true;
-                    Debug.Log($"[StreamingAssetsIgnore] Moved: {src} -> {dst}");
+                    SherpaLog.Info($"[StreamingAssetsIgnore] Moved: {src} -> {dst}");
                 }
             }
             finally
@@ -135,14 +136,14 @@ namespace Eitan.SherpaONNXUnity.Editor
                 var envOv = GetEnvIncludeModelsDesktopOverride();
                 if (envOv.HasValue && IsDesktop(report.summary.platform))
                 {
-                    Debug.Log($"[StreamingAssetsIgnore] CI override SHERPA_INCLUDE_MODELS_DESKTOP={(envOv.Value ? "ON" : "OFF")} (takes precedence over Project Settings).");
+                    SherpaLog.Info($"[StreamingAssetsIgnore] CI override SHERPA_INCLUDE_MODELS_DESKTOP={(envOv.Value ? "ON" : "OFF")} (takes precedence over Project Settings).");
                 }
                 AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-                Debug.Log($"[StreamingAssetsIgnore] Will restore after build. Platform={report.summary.platform}");
+                SherpaLog.Info($"[StreamingAssetsIgnore] Will restore after build. Platform={report.summary.platform}");
             }
             else
             {
-                Debug.Log("[StreamingAssetsIgnore] Nothing to move.");
+                SherpaLog.Info("[StreamingAssetsIgnore] Nothing to move.");
             }
         }
 
@@ -203,7 +204,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                     if (Directory.Exists(bak) || AssetDatabase.IsValidFolder(bak))
                     {
                         MoveOrMergeAssetFolder(bak, dst);
-                        Debug.Log($"[StreamingAssetsIgnore] Restored: {bak} -> {dst}");
+                        SherpaLog.Info($"[StreamingAssetsIgnore] Restored: {bak} -> {dst}");
                         restoredAny = true;
                     }
                 }
@@ -219,7 +220,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             {
                 SessionState.SetBool(kSessionMovedKey, false);
                 AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-                Debug.Log($"[StreamingAssetsIgnore] Restore finished ({reason}).");
+                SherpaLog.Info($"[StreamingAssetsIgnore] Restore finished ({reason}).");
             }
         }
 
@@ -262,7 +263,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[StreamingAssetsIgnore] Filesystem move (restore) failed: {ex.Message}. Will attempt merge.");
+                    SherpaLog.Warning($"[StreamingAssetsIgnore] Filesystem move (restore) failed: {ex.Message}. Will attempt merge.");
                     // Fall through to merge logic below.
                 }
             }
@@ -301,7 +302,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[StreamingAssetsIgnore] Filesystem move fallback failed: {ex.Message}. Will MERGE instead. src={sourceAssetPath} dst={targetAssetPath}");
+                    SherpaLog.Warning($"[StreamingAssetsIgnore] Filesystem move fallback failed: {ex.Message}. Will MERGE instead. src={sourceAssetPath} dst={targetAssetPath}");
                     // fall through to merge logic below
                 }
             }
@@ -334,7 +335,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                         }
                         else
                         {
-                            Debug.LogWarning($"[StreamingAssetsIgnore] MoveAsset fast-path failed: {err}. Will MERGE instead. src={sourceAssetPath} dst={targetAssetPath}");
+                            SherpaLog.Warning($"[StreamingAssetsIgnore] MoveAsset fast-path failed: {err}. Will MERGE instead. src={sourceAssetPath} dst={targetAssetPath}");
                         }
                     }
                     else
@@ -342,7 +343,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                         // ValidateMoveAsset returned a reason it can't move as a whole
                         // e.g., target exists with content, source under VC lock, etc.
                         // We'll fall back to a merge.
-                        // (Optional) Debug: Debug.Log($"[StreamingAssetsIgnore] ValidateMoveAsset blocked fast move: {validate}");
+                        // (Optional) Debug: SherpaLog.Info($"[StreamingAssetsIgnore] ValidateMoveAsset blocked fast move: {validate}");
                     }
                 }
             }
@@ -513,11 +514,11 @@ namespace Eitan.SherpaONNXUnity.Editor
 
 
                 File.AppendAllText(ConflictLogPath, sb.ToString());
-                Debug.Log($"[StreamingAssetsIgnore] Conflict details appended to: {ConflictLogPath}");
+                SherpaLog.Info($"[StreamingAssetsIgnore] Conflict details appended to: {ConflictLogPath}");
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[StreamingAssetsIgnore] Failed to write conflict log: {ex.Message}");
+                SherpaLog.Warning($"[StreamingAssetsIgnore] Failed to write conflict log: {ex.Message}");
             }
         }
 
@@ -738,7 +739,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
             if (AssetDatabase.IsValidFolder(hiddenRoot) || Directory.Exists(hiddenRoot))
             {
-                Debug.LogWarning($"[StreamingAssetsIgnore] CleanupBackupRoot: '{hiddenRoot}' could not be fully removed. It may be held open by the OS or contain locked files.");
+                SherpaLog.Warning($"[StreamingAssetsIgnore] CleanupBackupRoot: '{hiddenRoot}' could not be fully removed. It may be held open by the OS or contain locked files.");
             }
         }
         #endregion

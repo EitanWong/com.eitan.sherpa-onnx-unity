@@ -26,9 +26,44 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Tooltip("Avoid emitting duplicate transcripts when the recognizer returns the same value repeatedly.")]
         private bool deduplicateStreamingResults = true;
 
+        [Header("Lifecycle")]
+        [SerializeField]
+        [Tooltip("Start module initialization immediately when constructed. Disable to configure first, then call StartRecognizerAsync/StartRecognizer manually.")]
+        private bool startModuleImmediately = true;
+
         [Header("Transcription Events")]
         [SerializeField]
         private UnityEvent<string> onTranscriptionReady = new UnityEvent<string>();
+
+        [Header("Streaming")]
+        [SerializeField]
+        [Tooltip("Maximum pending audio chunks to keep before dropping the oldest. Prevents unbounded latency.")]
+        private int maxPendingChunks = 8;
+
+        [SerializeField]
+        [Tooltip("Maximum concurrent transcription tasks allowed before dropping new streaming requests.")]
+        private int maxInFlightTranscriptions = 2;
+
+        [SerializeField]
+        [Tooltip("Drop incoming audio when the recognizer is busy to keep latency low.")]
+        private bool dropIfRecognizerBusy = true;
+
+        [Header("Endpointing (online models only)")]
+        [SerializeField]
+        [Tooltip("Override default endpointing rules for online models.")]
+        private bool overrideEndpointRules = false;
+
+        [SerializeField]
+        [Min(0f)]
+        private float rule1MinTrailingSilence = 2.4f;
+
+        [SerializeField]
+        [Min(0f)]
+        private float rule2MinTrailingSilence = 1.2f;
+
+        [SerializeField]
+        [Min(0f)]
+        private float rule3MinUtteranceLength = 30f;
 
         /// <summary>
         /// Allows scripts to subscribe to transcription updates without relying on the inspector.
@@ -41,11 +76,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private CancellationTokenSource streamingCancellation;
         private bool drainingQueue;
         private string lastTranscript = string.Empty;
+        private int droppedChunks;
+        private float lastDropLog;
 
         protected override void OnEnable()
         {
             base.OnEnable();
             streamingCancellation = new CancellationTokenSource();
+            droppedChunks = 0;
+            lastDropLog = 0f;
         }
 
         protected override void OnDisable()
@@ -59,7 +98,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
-            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter);
+            SpeechRecognition.Options options = null;
+            if (overrideEndpointRules)
+            {
+                options = new SpeechRecognition.Options
+                {
+                    Rule1MinTrailingSilence = rule1MinTrailingSilence,
+                    Rule2MinTrailingSilence = rule2MinTrailingSilence,
+                    Rule3MinUtteranceLength = rule3MinUtteranceLength
+                };
+            }
+
+            var maxInFlight = Mathf.Max(1, maxInFlightTranscriptions);
+            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter, startImmediately: startModuleImmediately, options: options, maxPendingTranscriptions: maxInFlight, dropIfBusy: dropIfRecognizerBusy);
         }
 
         /// <summary>
@@ -68,6 +119,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         public void FeedSamples(float[] samples, int sampleRate)
         {
             if (samples == null || samples.Length == 0 || sampleRate <= 0)
+            {
+                return;
+            }
+
+            if (!CanProcessChunk(samples, sampleRate))
             {
                 return;
             }
@@ -95,8 +151,22 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             var data = new float[clip.samples * clip.channels];
             clip.GetData(data, 0);
             var mono = DownmixToMono(data, clip.channels);
-            var text = await module.SpeechTranscriptionAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
-            return text ?? string.Empty;
+            var result = await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
+            return result.Status == SpeechRecognition.TranscriptionStatus.Success ? result.Text ?? string.Empty : string.Empty;
+        }
+
+        /// <summary>
+        /// Starts module initialization when startModuleImmediately is disabled.
+        /// </summary>
+        public Task StartRecognizerAsync(CancellationToken cancellationToken = default)
+        {
+            if (Module == null && !TryLoadModule())
+            {
+                RaiseError("Failed to load speech recognition module.");
+                return Task.CompletedTask;
+            }
+
+            return Module?.StartInitialization(cancellationToken) ?? Task.CompletedTask;
         }
 
         /// <summary>
@@ -104,19 +174,42 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// </summary>
         private void EnqueueChunk(AudioChunk chunk)
         {
-            if (Module == null || !Module.Initialized)
+            if (Module == null)
             {
                 return;
             }
 
+            if (!Module.InitializationStarted && !startModuleImmediately)
+            {
+                // Kick off initialization lazily for delayed-start scenarios.
+                _ = Module.StartInitialization();
+            }
+
+            if (!Module.Initialized)
+            {
+                return;
+            }
+
+            bool dropped = false;
             lock (queueLock)
             {
+                if (maxPendingChunks > 0 && pendingChunks.Count >= maxPendingChunks)
+                {
+                    pendingChunks.Dequeue(); // Drop oldest to keep latency bounded.
+                    droppedChunks++;
+                    dropped = true;
+                }
                 pendingChunks.Enqueue(chunk);
                 if (drainingQueue)
                 {
                     return;
                 }
                 drainingQueue = true;
+            }
+
+            if (dropped)
+            {
+                MaybeLogDroppedChunks();
             }
 
             _ = DrainQueueAsync();
@@ -126,6 +219,18 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             while (true)
             {
+                if (streamingCancellation != null && streamingCancellation.IsCancellationRequested)
+                {
+                    ClearQueue();
+                    return;
+                }
+
+                if (Module == null)
+                {
+                    ClearQueue();
+                    return;
+                }
+
                 AudioChunk chunk;
                 lock (queueLock)
                 {
@@ -143,13 +248,30 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                     continue;
                 }
 
+                if (!EnsureModuleReady(out var module))
+                {
+                    ClearQueue();
+                    return;
+                }
+
                 try
                 {
                     var token = streamingCancellation?.Token ?? default;
-                    var text = await Module.SpeechTranscriptionAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(true);
-                    if (!string.IsNullOrWhiteSpace(text))
+                    var result = await module.TranscribeAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(false);
+
+                    if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                     {
-                        PublishTranscript(text.Trim());
+                        var text = result.Text.Trim();
+                        DispatchToUnity(() => PublishTranscript(text));
+                    }
+                    else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
+                    {
+                        SherpaLog.Error($"[SpeechRecognizerComponent] Transcription failed: {result.Error.Message}");
+                        RaiseError(result.Error.Message);
+                    }
+                    else if (result.Status == SpeechRecognition.TranscriptionStatus.Disposed)
+                    {
+                        return;
                     }
                 }
                 catch (OperationCanceledException)
@@ -158,7 +280,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[SpeechRecognizerComponent] Transcription failed: {ex.Message}");
+                    SherpaLog.Error($"[SpeechRecognizerComponent] Transcription failed: {ex.Message}");
+                    RaiseError(ex.Message);
                 }
             }
         }
@@ -187,7 +310,27 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 drainingQueue = false;
             }
 
+            MaybeLogDroppedChunks();
+
             lastTranscript = string.Empty;
+        }
+
+        private void MaybeLogDroppedChunks()
+        {
+            if (droppedChunks <= 0)
+            {
+                return;
+            }
+
+            var now = Time.realtimeSinceStartup;
+            if (now - lastDropLog < 1f)
+            {
+                return;
+            }
+
+            SherpaLog.Warning($"[SpeechRecognizerComponent] Dropped {droppedChunks} audio chunk(s) due to back-pressure (maxPendingChunks={maxPendingChunks}).");
+            droppedChunks = 0;
+            lastDropLog = now;
         }
 
         private static float[] DownmixToMono(float[] data, int channels)

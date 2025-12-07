@@ -69,7 +69,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogException(ex);
+                    SherpaLog.Exception(ex);
                 }
             }, action);
         }
@@ -738,6 +738,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         private readonly int _timeoutSeconds;
         private readonly string _userAgent;
         private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(2);
+        private volatile bool _wasCancelled;
+        private volatile bool _cancelFeedbackSent;
 
         private readonly object _stateLock = new object();
         private readonly AsyncManualResetEvent _pauseSignal = new AsyncManualResetEvent(true);
@@ -799,6 +801,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
         }
 
+        public bool WasCanceled => _wasCancelled;
+
         public async Task<bool> DownloadAsync(string url, string filePath, CancellationToken cancellationToken = default)
         {
             if (_isDisposed) { throw new ObjectDisposedException(nameof(SherpaFileDownloader)); }
@@ -806,6 +810,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             if (string.IsNullOrEmpty(filePath)) { throw new ArgumentNullException(nameof(filePath)); }
 
             EnsureWritablePath(filePath);
+            SherpaLog.Verbose($"[SherpaFileDownloader] Start download {( _modelMetadata?.modelId ?? "<unknown>")} from {url} -> {filePath}", category: "Download");
 
             using var linkedUserCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _manualCancellationSource.Token);
             var userToken = linkedUserCancellation.Token;
@@ -824,6 +829,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     {
                         await FinalizeDownloadAsync().ConfigureAwait(false);
                         ReportProgress();
+                        SherpaLog.Info($"[SherpaFileDownloader] Download complete for {_modelMetadata?.modelId ?? "<unknown>"} ({_finalFilePath})", category: "Download");
                         return true;
                     }
 
@@ -855,12 +861,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (OperationCanceledException)
             {
-                ReportProgress();
+                _wasCancelled = true;
+                ReportCancellationFeedback();
+                SherpaLog.Warning($"[SherpaFileDownloader] Download canceled for {_modelMetadata?.modelId ?? "<unknown>"} ({url})", category: "Download");
                 return false;
             }
             catch (Exception ex)
             {
                 ReportProgress(ex.ToString());
+                SherpaLog.Exception(ex, category: "Download", message: $"[SherpaFileDownloader] Download failed for {_modelMetadata?.modelId ?? "<unknown>"} from {url}");
                 return false;
             }
         }
@@ -963,11 +972,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             var shouldRetry = false;
             ChunkDownloadException chunkException = null;
+            var resetChunk = false;
 
             if (exception is ChunkDownloadException downloadException)
             {
                 chunkException = downloadException;
                 shouldRetry = downloadException.IsTransient || downloadException.IsTimeout || downloadException.ResponseCode == 429;
+            }
+            else if (exception is InvalidOperationException ioe &&
+                     ioe.Message.IndexOf("Content-Range mismatch", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // A mismatched range usually means the on-disk chunk is stale or corrupt.
+                // Reset the chunk so the next retry re-downloads it from scratch.
+                resetChunk = true;
+                shouldRetry = true;
             }
             else if (exception is IOException)
             {
@@ -992,11 +1010,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             var delay = GetBackoffDelay(attempt, exception);
             RecordNetworkFailure(exception, chunkException, delay);
 
+            if (resetChunk)
+            {
+                ResetChunkFile(chunk);
+            }
+
             chunk.ErrorMessage = exception.Message;
             chunk.RetryCount = attempt + 1;
             await SaveMetadataAsync().ConfigureAwait(false);
 
-            Debug.LogWarning($"[SherpaFileDownloader] Retrying chunk {chunk.Index} (attempt {chunk.RetryCount}/{_maxRetryAttempts}). Waiting {delay.TotalSeconds:0.##}s. Reason: {exception.Message}");
+            SherpaLog.Warning($"[SherpaFileDownloader] Retrying chunk {chunk.Index} (attempt {chunk.RetryCount}/{_maxRetryAttempts}). Waiting {delay.TotalSeconds:0.##}s. Reason: {exception.Message}");
             await Task.Delay(delay, userToken).ConfigureAwait(false);
             return true;
         }
@@ -1073,7 +1096,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             var expectedLength = chunk.ExpectedLength;
             chunk.Downloaded = Math.Min(chunk.Downloaded, expectedLength);
 
-            // Debug.Log($"[SherpaFileDownloader] Chunk {chunk.Index} result={outcome.Result} code={outcome.ResponseCode} acceptRanges='{outcome.AcceptRanges}' contentRange='{outcome.ContentRange}'");
+            // SherpaLog.Info($"[SherpaFileDownloader] Chunk {chunk.Index} result={outcome.Result} code={outcome.ResponseCode} acceptRanges='{outcome.AcceptRanges}' contentRange='{outcome.ContentRange}'");
 
             if (outcome.Result == UnityWebRequest.Result.Success)
             {
@@ -1081,7 +1104,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     if (outcome.ResponseCode == 206)
                     {
-                        ValidateContentRange(chunk, outcome.ContentRange);
+                        var bytesFromThisRequest = Math.Max(0, outcome.BytesDownloaded);
+                        var previouslyDownloaded = Math.Max(0, chunk.Downloaded - bytesFromThisRequest);
+                        var expectedStart = chunk.Start + previouslyDownloaded;
+                        var expectedEnd = chunk.End;
+
+                        if (bytesFromThisRequest > 0)
+                        {
+                            ValidateContentRange(chunk, outcome.ContentRange, expectedStart, expectedEnd);
+                        }
+
                         chunk.IsCompleted = chunk.Downloaded >= expectedLength;
                         return Task.CompletedTask;
                     }
@@ -1137,14 +1169,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     if (_metadata != null && string.Equals(_metadata.Url, url, StringComparison.OrdinalIgnoreCase))
                     {
                         CalculateDownloadedBytes();
+                        SherpaLog.Trace($"[SherpaFileDownloader] Resuming download {_modelMetadata?.modelId ?? "<unknown>"} from persisted metadata. Bytes={_lastReportedBytes}/{_metadata.TotalSize}", category: "Download");
                         return;
                     }
 
-                    Debug.LogWarning($"Existing download metadata targets '{_metadata?.Url}' which does not match requested '{url}'. Resetting download state.");
+                    SherpaLog.Warning($"Existing download metadata targets '{_metadata?.Url}' which does not match requested '{url}'. Resetting download state.");
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"Failed to load metadata; starting new download. {ex}");
+                    SherpaLog.Warning($"Failed to load metadata; starting new download. {ex}");
                 }
 
                 CleanupDownloadArtifacts(includeMetadata: true);
@@ -1193,6 +1226,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             {
                 SetConcurrency(1);
             }
+
+            SherpaLog.Trace(
+                $"[SherpaFileDownloader] Prepared download {_modelMetadata?.modelId ?? "<unknown>"} size={fileSize} bytes chunks={_metadata.Chunks.Count} range={supportsRange}",
+                category: "Download");
 
             Directory.CreateDirectory(_chunkDirectory);
             CalculateDownloadedBytes();
@@ -1325,6 +1362,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             {
                 throw new InvalidOperationException($"File size mismatch. Expected {_metadata.TotalSize}, actual {fileInfo.Length}.");
             }
+            SherpaLog.Verbose($"[SherpaFileDownloader] Finalizing file {_finalFilePath} ({fileInfo.Length} bytes)", category: "Download");
 
             if (File.Exists(_finalFilePath))
             {
@@ -1334,6 +1372,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             File.Move(_tempFilePath, _finalFilePath);
 
             CleanupDownloadArtifacts(includeMetadata: true);
+            SherpaLog.Trace($"[SherpaFileDownloader] Cleanup complete for {_finalFilePath}", category: "Download");
         }
 
         private void ReportProgress(string errorMessage = null)
@@ -1383,16 +1422,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             ReportProgress();
         }
 
-        private void ValidateContentRange(ChunkInfo chunk, string contentRange)
+        private void ReportCancellationFeedback()
+        {
+            if (_cancelFeedbackSent) { return; }
+            _cancelFeedbackSent = true;
+            Feedback?.Invoke(new CancelFeedback(_modelMetadata, message: "Download canceled."));
+        }
+
+        private void ValidateContentRange(ChunkInfo chunk, string contentRange, long expectedStart, long expectedEnd)
         {
             if (!TryParseContentRange(contentRange, out var start, out var end, out var total))
             {
                 throw new InvalidOperationException($"Invalid Content-Range header: {contentRange}");
             }
 
-            if (start != chunk.Start || end != chunk.End || total != _metadata.TotalSize)
+            if (start != expectedStart || end != expectedEnd || total != _metadata.TotalSize)
             {
-                throw new InvalidOperationException($"Content-Range mismatch for chunk {chunk.Index}. Expected {chunk.Start}-{chunk.End}/{_metadata.TotalSize}, got {contentRange}");
+                throw new InvalidOperationException(
+                    $"Content-Range mismatch for chunk {chunk.Index}. Expected {expectedStart}-{expectedEnd}/{_metadata.TotalSize}, got {contentRange}");
             }
         }
 
@@ -1461,7 +1508,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[SherpaFileDownloader] Failed to delete file '{path}': {ex.Message}");
+                SherpaLog.Warning($"[SherpaFileDownloader] Failed to delete file '{path}': {ex.Message}");
             }
         }
 
@@ -1487,7 +1534,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     var trimmedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                     if (string.Equals(trimmedFull, trimmedRoot, StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.LogWarning($"[SherpaFileDownloader] Refusing to delete root directory '{path}'.");
+                        SherpaLog.Warning($"[SherpaFileDownloader] Refusing to delete root directory '{path}'.");
                         return;
                     }
                 }
@@ -1523,7 +1570,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[SherpaFileDownloader] Failed to delete directory '{path}': {ex.Message}");
+                SherpaLog.Warning($"[SherpaFileDownloader] Failed to delete directory '{path}': {ex.Message}");
             }
         }
 
@@ -1665,7 +1712,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"[SherpaFileDownloader] Unable to inspect chunk file '{chunkPath}': {ex.Message}");
+                        SherpaLog.Warning($"[SherpaFileDownloader] Unable to inspect chunk file '{chunkPath}': {ex.Message}");
                     }
                 }
 
@@ -1680,7 +1727,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"[SherpaFileDownloader] Failed to trim chunk file '{chunkPath}' to expected length: {ex.Message}");
+                        SherpaLog.Warning($"[SherpaFileDownloader] Failed to trim chunk file '{chunkPath}' to expected length: {ex.Message}");
                         lengthOnDisk = expected;
                     }
                 }
@@ -1795,7 +1842,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogException(ex);
+                    SherpaLog.Exception(ex);
                 }
             }
         }
@@ -1853,7 +1900,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                SherpaLog.Exception(ex);
             }
 
             Cancel();
@@ -1864,7 +1911,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                SherpaLog.Exception(ex);
             }
         }
 
@@ -2078,7 +2125,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             if (switched)
             {
-                Debug.LogWarning($"[SherpaFileDownloader] {reason} Switching to sequential chunk downloads until network stability improves.");
+                SherpaLog.Warning($"[SherpaFileDownloader] {reason} Switching to sequential chunk downloads until network stability improves.");
             }
         }
 
@@ -2094,7 +2141,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 if (newTimeout > current)
                 {
                     _currentTimeoutSeconds = newTimeout;
-                    Debug.LogWarning($"[SherpaFileDownloader] Increasing request timeout to {_currentTimeoutSeconds}s due to network instability.");
+                    SherpaLog.Warning($"[SherpaFileDownloader] Increasing request timeout to {_currentTimeoutSeconds}s due to network instability.");
                 }
             }
         }
@@ -2138,7 +2185,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             if (updated && (candidateUntil - previousUntil) > TimeSpan.FromSeconds(0.5))
             {
-                Debug.LogWarning($"[SherpaFileDownloader] Network instability detected ({reason}). Backing off for {Math.Min(backoff.TotalSeconds, 120):0.##}s.");
+                SherpaLog.Warning($"[SherpaFileDownloader] Network instability detected ({reason}). Backing off for {Math.Min(backoff.TotalSeconds, 120):0.##}s.");
             }
         }
 
@@ -2317,13 +2364,13 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                Debug.LogWarning($"Downloader received invalid URL: {url}");
+                SherpaLog.Warning($"Downloader received invalid URL: {url}");
                 return;
             }
 
             if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             {
-                Debug.LogWarning($"URL '{url}' is not HTTPS. Ensure ATS exceptions are configured if targeting iOS.");
+                SherpaLog.Warning($"URL '{url}' is not HTTPS. Ensure ATS exceptions are configured if targeting iOS.");
             }
         }
 
@@ -2384,6 +2431,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
         public void Cancel()
         {
+            _wasCancelled = true;
             _manualCancellationSource.Cancel();
             _pauseSignal.Set();
         }

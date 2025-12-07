@@ -662,7 +662,7 @@ namespace Eitan.SherpaONNXUnity.Tests
                 if (actual != kv.Value)
                 {
                     fail++;
-                    UnityEngine.Debug.LogError($"[SMOKE][ASR] {kv.Key} => {actual}, EXPECT {kv.Value}");
+                    SherpaLog.Error($"[SMOKE][ASR] {kv.Key} => {actual}, EXPECT {kv.Value}", category: "Tests");
                 }
             }
 
@@ -682,13 +682,14 @@ namespace Eitan.SherpaONNXUnity.Tests
                 if (actual != kv.Value)
                 {
                     fail++;
-                    UnityEngine.Debug.LogError($"[SMOKE][MOD] {kv.Key} => {actual}, EXPECT {kv.Value}");
+                    SherpaLog.Error($"[SMOKE][MOD] {kv.Key} => {actual}, EXPECT {kv.Value}", category: "Tests");
                 }
             }
 
-            UnityEngine.Debug.Log(fail == 0
+            SherpaLog.Info(fail == 0
                 ? "[SMOKE] All Sherpa model mapping cases passed."
-                : $"[SMOKE] {fail} case(s) failed. Check logs above.");
+                : $"[SMOKE] {fail} case(s) failed. Check logs above.",
+                category: "Tests");
         }
     }
 }

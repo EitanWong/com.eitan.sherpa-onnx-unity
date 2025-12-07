@@ -18,6 +18,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         internal const string GithubProxyUrlPropertyName = nameof(_githubProxyUrl);
         internal const string ChecksumCacheDirectoryPropertyName = nameof(_checksumCacheDirectory);
         internal const string ChecksumCacheTtlSecondsPropertyName = nameof(_checksumCacheTtlSeconds);
+        internal const string LoggingEnabledPropertyName = nameof(_loggingEnabled);
+        internal const string LoggingLevelPropertyName = nameof(_loggingLevel);
+        internal const string LoggingTraceStacksPropertyName = nameof(_traceWithStacks);
         internal const string GithubProxyEnvironmentVariable = "SHERPA_ONNX_GITHUB_PROXY";
 
         [SerializeField]
@@ -39,6 +42,18 @@ namespace Eitan.SherpaONNXUnity.Runtime
         [SerializeField]
         [Tooltip("Cache lifetime for fetched checksum.txt content, in seconds. Use 0 to disable caching entirely.")]
         private int _checksumCacheTtlSeconds = 3600;
+
+        [SerializeField]
+        [Tooltip("Master switch for SherpaONNX logging output (runtime and editor play mode).")]
+        private bool _loggingEnabled = false;
+
+        [SerializeField]
+        [Tooltip("Minimum log level to emit. Trace will include detailed call stacks for initialization and model calls.")]
+        private SherpaLogLevel _loggingLevel = SherpaLogLevel.Info;
+
+        [SerializeField]
+        [Tooltip("When enabled, Trace level entries include managed call stacks for every log message.")]
+        private bool _traceWithStacks = true;
 
         internal static SherpaONNXRuntimeSettings LoadFromResources()
         {
@@ -71,7 +86,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             if (valid.Count > 1)
             {
-                Debug.LogError($"Multiple {nameof(SherpaONNXRuntimeSettings)} assets detected under Resources. Please keep only one asset to avoid ambiguity.");
+                SherpaLog.Error($"Multiple {nameof(SherpaONNXRuntimeSettings)} assets detected under Resources. Please keep only one asset to avoid ambiguity.", category: "Settings");
             }
 
             valid.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
@@ -91,6 +106,14 @@ namespace Eitan.SherpaONNXUnity.Runtime
             SherpaONNXEnvironment.Set(
                 SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
                 ttl.ToString(CultureInfo.InvariantCulture));
+
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.LoggingEnabled, _loggingEnabled);
+            SherpaONNXEnvironment.Set(
+                SherpaONNXEnvironment.BuiltinKeys.LoggingLevel,
+                _loggingLevel.ToString());
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.LoggingTraceStacks, _traceWithStacks);
+
+            SherpaLog.Configure(_loggingLevel, _loggingEnabled, _traceWithStacks);
         }
 
         private static void SetBool(string key, bool value) =>
@@ -169,6 +192,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 // Allow environment-only configuration even when no asset exists yet.
                 SherpaONNXRuntimeSettings.ApplyGithubProxyValue(SherpaONNXRuntimeSettings.ResolveProxyValue(string.Empty));
             }
+
+            // Always honor environment overrides for logging even when no asset exists.
+            SherpaLog.ConfigureFromEnvironment();
         }
     }
 }

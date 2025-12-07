@@ -1,5 +1,7 @@
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 {
+    using System;
+    using System.Threading;
     using UnityEngine;
 
     /// <summary>
@@ -11,12 +13,19 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         private const int MaxDesktopThreads = 16;
         private const int MaxMobileThreads = 6;
 
+        private static readonly object PrimeLock = new object();
+        private static bool s_Primed;
+        private static int s_CachedCores = -1;
+        private static int s_CachedMemoryMb = -1;
+        private static bool s_CachedIsMobile;
+        private static bool s_CachedIsBatch;
+        private static bool s_CachedIsEditor;
+
         public static int GetAdaptiveThreadCount(int minimum = 1, int? maximumOverride = null)
         {
-            int logicalCores = Mathf.Max(1, UnityEngine.Device.SystemInfo.processorCount);
-            bool isMobile = Application.isMobilePlatform;
-            bool isBatchMode = Application.isBatchMode;
-            int memoryMb = Mathf.Max(0, UnityEngine.Device.SystemInfo.systemMemorySize);
+            // Avoid invoking Unity SystemInfo off the main thread. If we have not been primed, fall back to
+            // Environment values which are safe everywhere.
+            GetPlatformSnapshot(out int logicalCores, out int memoryMb, out bool isMobile, out bool isBatchMode, out _);
 
             int reservedCores = isMobile
                 ? Mathf.Max(1, Mathf.CeilToInt(logicalCores * 0.45f))
@@ -50,6 +59,87 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
             return Mathf.Clamp(recommended, minimum, logicalCores);
+        }
+
+        /// <summary>
+        /// Call on the Unity main thread (e.g., in Awake) to capture thread-safe SystemInfo values.
+        /// </summary>
+        public static void PrimeUnityInfo()
+        {
+            if (s_Primed)
+            {
+                return;
+            }
+
+            lock (PrimeLock)
+            {
+                if (s_Primed)
+                {
+                    return;
+                }
+
+                try
+                {
+                    s_CachedCores = Mathf.Max(1, UnityEngine.SystemInfo.processorCount);
+                    s_CachedMemoryMb = Mathf.Max(0, UnityEngine.SystemInfo.systemMemorySize);
+                    s_CachedIsMobile = Application.isMobilePlatform;
+                    s_CachedIsBatch = Application.isBatchMode;
+                    s_CachedIsEditor = Application.isEditor;
+                }
+                catch (Exception ex)
+                {
+                    s_CachedCores = Math.Max(1, Environment.ProcessorCount);
+                    s_CachedMemoryMb = -1;
+                    s_CachedIsMobile = false;
+                    s_CachedIsBatch = false;
+                    s_CachedIsEditor = false;
+
+                    try
+                    {
+                        SherpaLog.Warning($"[ThreadingUtils] Failed to prime Unity SystemInfo, falling back to Environment: {ex.Message}");
+                    }
+                    catch
+                    {
+                        // Ignore logging errors when not in Unity context.
+                    }
+                }
+                finally
+                {
+                    s_Primed = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves platform info without touching Unity SystemInfo unless it has been primed on the main thread.
+        /// </summary>
+        public static void GetPlatformSnapshot(out int logicalCores, out int memoryMb, out bool isMobile, out bool isBatchMode, out bool isEditor)
+        {
+            if (!s_Primed && IsUnityMainThread())
+            {
+                // Safe to prime when invoked from main thread.
+                PrimeUnityInfo();
+            }
+
+            logicalCores = s_Primed ? s_CachedCores : Math.Max(1, Environment.ProcessorCount);
+            memoryMb = s_Primed ? s_CachedMemoryMb : 0;
+            isMobile = s_Primed && s_CachedIsMobile;
+            isBatchMode = s_Primed && s_CachedIsBatch;
+            isEditor = s_Primed && s_CachedIsEditor;
+        }
+
+        private static bool IsUnityMainThread()
+        {
+            var ctx = SynchronizationContext.Current;
+            if (ctx == null)
+            {
+                return false;
+            }
+
+            // Avoid referencing UnitySynchronizationContext directly (it's internal); compare by name.
+            var typeName = ctx.GetType().Name;
+            return string.Equals(typeName, "UnitySynchronizationContext", StringComparison.Ordinal) ||
+                   string.Equals(typeName, "UnitySynchronizationContext", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

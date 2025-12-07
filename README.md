@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.2** (2025-11-23)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.3** (2025-12-08)
 
 </div>
 
@@ -35,12 +35,25 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.2-exp.2 (2025-11-23)
+## 🆕 What's New in v0.1.2-exp.3 (2025-12-08)
 
 ### 🚀 Highlights
-- **Drop-in Components & Localization**: New localized inspectors, menu entries, and Mono components for ASR, VAD, punctuation, keyword spotting, audio tagging, speech enhancement, TTS, and zero-shot TTS with shared microphone streaming.
-- **New Samples**: Added Audio Tagging and Zero-Shot Speech Synthesis scenes with prompt assets and updated demo scripts/progress UI.
-- **Runtime Refresh & Config API**: Plugins moved to `Runtime/Plugins`, model resolvers now cover newer ASR/TTS/audio-tagging families, and `SherpaONNXUnityAPI` gained helpers (e.g., `SetAutoDownloadModels`, `SetFetchLatestManifest`, checksum cache controls) so issue #4’s download toggle can be applied at runtime.
+- **Codebase Restructure & Stability Improvements**
+  Major refactoring across multiple subsystems to improve readability, maintainability, and overall architectural robustness.
+
+- **Performance Enhancements**
+  Core modules were optimized to reduce overhead and improve overall runtime responsiveness.
+
+- **Updated Sherpa-ONNX Native Library**
+  Upgraded to **v1.12.19**, bringing enhanced compatibility and alignment with the latest upstream improvements.
+
+- **Editor Window Improvements**
+  Editor UI rendering and interaction performance have been improved for a smoother workflow.
+  Additional UI refinements deliver a more polished and consistent editing experience.
+
+- **New SherpaONNX Profiler Tool**
+  A dedicated editor utility for **real-time module performance monitoring** and **activity tracing** of Sherpa ONNX components.
+  Includes an integrated logging system to assist with debugging, diagnostics, and performance analysis.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

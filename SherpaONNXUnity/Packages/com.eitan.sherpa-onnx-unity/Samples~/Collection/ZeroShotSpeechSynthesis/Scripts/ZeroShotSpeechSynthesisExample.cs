@@ -1,10 +1,13 @@
 namespace Eitan.SherpaONNXUnity.Samples
 {
+    using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
+    using UnityEngine.EventSystems; // 新增
     using UnityEngine.UI;
     using static UnityEngine.UI.Dropdown;
     using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
@@ -46,6 +49,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool modelRequested;
         private Color defaultButtonColor = Color.white;
         private ModelLoadProgressTracker progressTracker;
+        private CancellationTokenSource manifestCts;
 
         private void Awake()
         {
@@ -61,6 +65,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             ttsComponent.GenerationFailedEvent.AddListener(OnGenerationFailed);
             ttsComponent.InitializationStateChangedEvent.AddListener(OnInitializationChanged);
             ttsComponent.FeedbackMessages.AddListener(HandleFeedbackMessage);
+            ttsComponent.FeedbackReceived += HandleFeedback;
 
             if (loadOrUnloadButton != null)
             {
@@ -99,7 +104,8 @@ namespace Eitan.SherpaONNXUnity.Samples
             contentInputField.text = "Welcome to the zero-shot speech synthesis demo";
 
             RefreshPromptList();
-            _ = PopulateDropdownAsync();
+            manifestCts = new CancellationTokenSource();
+            _ = PopulateDropdownAsync(manifestCts.Token);
             UpdateLoadButtonUI();
         }
 
@@ -112,6 +118,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 ttsComponent.GenerationFailedEvent.RemoveListener(OnGenerationFailed);
                 ttsComponent.InitializationStateChangedEvent.RemoveListener(OnInitializationChanged);
                 ttsComponent.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+                ttsComponent.FeedbackReceived -= HandleFeedback;
             }
 
             if (loadOrUnloadButton != null)
@@ -128,9 +135,89 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 speedSlider.onValueChanged.RemoveListener(OnSpeedSliderChanged);
             }
+
+            // 清理 PromptItem 事件绑定
+            CleanupPromptItems();
+
+            manifestCts?.Cancel();
+            manifestCts?.Dispose();
         }
 
-        private async Task PopulateDropdownAsync()
+        /// <summary>
+        /// 清理所有 PromptItem 的事件绑定
+        /// </summary>
+        private void CleanupPromptItems()
+        {
+            foreach (var item in promptItems)
+            {
+                ClearItemClickBindings(item);
+            }
+        }
+
+        /// <summary>
+        /// 清理单个 PromptItem 的点击事件绑定
+        /// </summary>
+        private void ClearItemClickBindings(PromptItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+
+            if (item.Button != null)
+            {
+                item.Button.onClick.RemoveAllListeners();
+            }
+
+            if (item.EventTrigger != null)
+            {
+                item.EventTrigger.triggers.Clear();
+            }
+        }
+
+        /// <summary>
+        /// 为 PromptItem 绑定点击事件，优先使用 Button，否则 fallback 到 EventTrigger
+        /// /// </summary>
+        private void BindClickEvent(PromptItem item, int index)
+        {
+            if (item == null || item.Go == null)
+            {
+                return;
+            }
+
+            // 先清理旧的绑定
+
+            ClearItemClickBindings(item);
+
+            // 优先使用 Button
+            if (item.Button != null)
+            {
+                item.Button.onClick.AddListener(() => SetSelectedPrompt(index));
+                return;
+            }
+
+            // Fallback: 使用 EventTrigger
+            if (item.EventTrigger == null)
+            {
+                item.EventTrigger = item.Go.GetComponent<EventTrigger>();
+            }
+
+            // 如果还是没有 EventTrigger，则添加一个
+            if (item.EventTrigger == null)
+            {
+                item.EventTrigger = item.Go.AddComponent<EventTrigger>();
+            }
+
+            var entry = new EventTrigger.Entry
+            {
+                eventID = EventTriggerType.PointerClick
+            };
+            entry.callback.AddListener(_ => SetSelectedPrompt(index));
+            item.EventTrigger.triggers.Add(entry);
+        }
+
+        private async Task PopulateDropdownAsync(CancellationToken cancellationToken)
         {
             if (modelDropdown == null)
             {
@@ -140,38 +227,52 @@ namespace Eitan.SherpaONNXUnity.Samples
             modelDropdown.options.Clear();
             modelDropdown.captionText.text = "Fetching model manifest from GitHub…";
             loadOrUnloadButton.gameObject.SetActive(false);
-            var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis);
-            loadOrUnloadButton.gameObject.SetActive(true);
-
-            modelDropdown.options.Clear();
-            var options = new List<OptionData>();
-            if (manifest.models != null && manifest.models.Count > 0)
+            try
             {
-                var preferred = manifest.Filter(m => m.modelId.StartsWith("sherpa-onnx-zipvoice"));
-                IEnumerable<SherpaONNXModelMetadata> source =
-                    (preferred != null && preferred.Length > 0)
-                        ? (IEnumerable<SherpaONNXModelMetadata>)preferred
-                        : manifest.models;
+                var manifest = await SherpaONNXModelRegistry.Instance.GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis, cancellationToken);
+                loadOrUnloadButton.gameObject.SetActive(true);
 
-                foreach (var model in source)
+                modelDropdown.options.Clear();
+                var options = new List<OptionData>();
+                if (manifest.models != null && manifest.models.Count > 0)
                 {
-                    if (!string.IsNullOrWhiteSpace(model.modelId))
+                    var preferred = manifest.Filter(m => m.modelId.StartsWith("sherpa-onnx-zipvoice"));
+                    IEnumerable<SherpaONNXModelMetadata> source =
+                        (preferred != null && preferred.Length > 0)
+                            ? (IEnumerable<SherpaONNXModelMetadata>)preferred
+                            : manifest.models;
+
+                    foreach (var model in source)
                     {
-                        options.Add(new OptionData(model.modelId));
+                        if (!string.IsNullOrWhiteSpace(model.modelId))
+                        {
+                            options.Add(new OptionData(model.modelId));
+                        }
                     }
                 }
+                if (options.Count == 0)
+                {
+                    modelDropdown.options.Add(new OptionData("<no models>"));
+                    modelDropdown.interactable = false;
+                }
+                else
+                {
+                    modelDropdown.AddOptions(options);
+                    var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
+                    modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
+                    modelDropdown.interactable = options.Count > 0;
+                }
             }
-            if (options.Count == 0)
+            catch (OperationCanceledException)
             {
-                modelDropdown.options.Add(new OptionData("<no models>"));
+            }
+            catch (Exception ex)
+            {
+                modelDropdown.options.Clear();
+                modelDropdown.options.Add(new OptionData("<manifest unavailable>"));
                 modelDropdown.interactable = false;
-            }
-            else
-            {
-                modelDropdown.AddOptions(options);
-                var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
-                modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
-                modelDropdown.interactable = options.Count > 0;
+                statusText.text = $"Manifest fetch failed: {ex.Message}";
+                loadOrUnloadButton.gameObject.SetActive(false);
             }
         }
 
@@ -281,15 +382,11 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 progressMessageText.text = message;
             }
-            else if (statusText != null)
-            {
-                statusText.text = message;
-            }
+        }
 
-            if (!string.IsNullOrEmpty(message))
-            {
-                progressTracker?.UpdateStage(Stage.Download, message, 0.35f);
-            }
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
         }
 
         private void OnInitializationChanged(bool ready)
@@ -373,6 +470,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 return;
             }
 
+            // 创建或复用 PromptItem
             while (promptItems.Count < prompts.Length)
             {
                 var go = Instantiate(promptTemplate, promptRoot);
@@ -383,6 +481,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                     Image = go.GetComponentInChildren<RawImage>(true),
                     Label = go.GetComponentInChildren<Text>(true),
                     Button = go.GetComponent<Button>(),
+                    EventTrigger = go.GetComponent<EventTrigger>(), // 新增：获取 EventTrigger
                     Outline = go.GetComponent<Outline>() ?? go.AddComponent<Outline>()
                 };
                 promptItems.Add(item);
@@ -399,6 +498,8 @@ namespace Eitan.SherpaONNXUnity.Samples
 
                 if (!active)
                 {
+                    // 清理不活跃项的事件绑定
+                    ClearItemClickBindings(item);
                     continue;
                 }
 
@@ -413,12 +514,8 @@ namespace Eitan.SherpaONNXUnity.Samples
                     item.Label.text = item.Data.name;
                 }
 
-                if (item.Button != null)
-                {
-                    item.Button.onClick.RemoveAllListeners();
-                    var capturedIndex = i;
-                    item.Button.onClick.AddListener(() => SetSelectedPrompt(capturedIndex));
-                }
+                // 使用改进后的方法绑定点击事件
+                BindClickEvent(item, i);
 
                 if (item.Outline != null)
                 {
@@ -463,7 +560,6 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
         }
 
-
         public void OpenGithubRepo()
         {
             Application.OpenURL("https://github.com/EitanWong/com.eitan.sherpa-onnx-unity");
@@ -476,6 +572,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             public RawImage Image;
             public Text Label;
             public Button Button;
+            public EventTrigger EventTrigger; // 新增：用于无 Button 时的点击事件
             public Outline Outline;
             public ZeroShotPrompt Data;
         }

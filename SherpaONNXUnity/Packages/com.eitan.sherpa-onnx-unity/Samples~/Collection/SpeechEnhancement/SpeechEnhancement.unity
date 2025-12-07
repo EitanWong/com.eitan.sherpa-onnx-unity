@@ -802,7 +802,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 844595732}
+  m_Material: {fileID: 1379662566}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -1207,43 +1207,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 698925324}
   m_CullTransparentMesh: 1
---- !u!21 &844595732
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: UI/Easy Progress Bar
-  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _BorderSize: 0.15
-    - _FillAmount: 1
-    - _Gradient: 1
-    - _Roundness: 1
-    m_Colors:
-    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
-    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
-    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
-    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &873079504
 GameObject:
   m_ObjectHideFlags: 0
@@ -1863,6 +1826,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1340148028}
   m_CullTransparentMesh: 1
+--- !u!21 &1379662566
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: UI/Easy Progress Bar
+  m_Shader: {fileID: 4800000, guid: 9eb7065988fb74ffa9ef640f759b4d2c, type: 3}
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BorderSize: 0.15
+    - _FillAmount: 1
+    - _Gradient: 1
+    - _Roundness: 1
+    m_Colors:
+    - _BackColor: {r: 0.16470589, g: 0.16470589, b: 0.16470589, a: 1}
+    - _EndColor: {r: 0, g: 1, b: 1, a: 1}
+    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Size: {r: 865.0507, g: 40.265503, b: 0, a: 0}
+    - _StartColor: {r: 0, g: 0.39231157, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &1423503238
 GameObject:
   m_ObjectHideFlags: 0
@@ -1873,7 +1873,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1423503241}
   - component: {fileID: 1423503240}
-  - component: {fileID: 1423503239}
   m_Layer: 0
   m_Name: Speech Enhancer
   m_TagString: Untagged
@@ -1881,44 +1880,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1423503239
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1423503238}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f551a8b603b14f84a7dc5fc70ed0d50a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  modelId: 
-  sampleRate: 16000
-  loadOnAwake: 1
-  disposeOnDestroy: 1
-  logFeedbackToConsole: 1
-  onInitializationStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-    m_CallsDirty: 1
-  onFeedbackMessage:
-    m_PersistentCalls:
-      m_Calls: []
-    m_CallsDirty: 1
-  isReady: 0
-  targetAudioSource: {fileID: 0}
-  clipReference: {fileID: 0}
-  enhanceOnEnable: 0
-  duplicateClip: 1
-  onClipEnhanced:
-    m_PersistentCalls:
-      m_Calls: []
-    m_CallsDirty: 1
-  onEnhancementFailed:
-    m_PersistentCalls:
-      m_Calls: []
-    m_CallsDirty: 1
 --- !u!114 &1423503240
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1940,6 +1901,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   onFeedbackMessage:
+    m_PersistentCalls:
+      m_Calls: []
+  onError:
     m_PersistentCalls:
       m_Calls: []
   playbackAudioSource: {fileID: 1905868304}

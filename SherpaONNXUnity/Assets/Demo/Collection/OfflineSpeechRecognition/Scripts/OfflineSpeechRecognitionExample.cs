@@ -10,6 +10,10 @@ namespace Eitan.SherpaONNXUnity.Samples
     using UnityEngine.UI;
     using UnityEngine.Events;
     using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
+    using System.Threading;
+    using System;
+
+
 
     /// <summary>
     /// Push-to-record offline transcription demo with progress UI.
@@ -44,9 +48,11 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool moduleRequested;
         private bool isRecording;
         private int recordingSampleRate = 16000;
+        private CancellationTokenSource operationCts;
         private string lastTranscript;
         private UnityAction<string> failureHandler;
         private ModelLoadProgressTracker progressTracker;
+        private CancellationTokenSource manifestCts;
 
         private void Awake()
         {
@@ -73,12 +79,16 @@ namespace Eitan.SherpaONNXUnity.Samples
                 offlineRecognizer.TranscriptReadyEvent.AddListener(HandleTranscriptReady);
                 offlineRecognizer.TranscriptionFailedEvent.AddListener(failureHandler);
                 offlineRecognizer.InitializationStateChangedEvent.AddListener(HandleRecognizerReadyState);
+                offlineRecognizer.FeedbackMessages.AddListener(HandleFeedbackMessage);
+                offlineRecognizer.FeedbackReceived += HandleFeedback;
             }
         }
 
         private void OnEnable()
         {
-            _ = PopulateSpeechModelsAsync();
+            operationCts = new CancellationTokenSource();
+            manifestCts = new CancellationTokenSource();
+            _ = PopulateSpeechModelsAsync(manifestCts.Token);
             ClearTranscript("Load a model, then tap Record to capture speech.");
             UpdateLoadButtonLabel();
             UpdateRecordButtonState(false);
@@ -101,12 +111,19 @@ namespace Eitan.SherpaONNXUnity.Samples
                 offlineRecognizer.TranscriptReadyEvent.RemoveListener(HandleTranscriptReady);
                 offlineRecognizer.TranscriptionFailedEvent.RemoveListener(failureHandler);
                 offlineRecognizer.InitializationStateChangedEvent.RemoveListener(HandleRecognizerReadyState);
+                offlineRecognizer.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+                offlineRecognizer.FeedbackReceived -= HandleFeedback;
             }
 
             UnsubscribeMicrophone();
+
+            manifestCts?.Cancel();
+            manifestCts?.Dispose();
+            operationCts?.Cancel();
+            operationCts?.Dispose();
         }
 
-        private async Task PopulateSpeechModelsAsync()
+        private async Task PopulateSpeechModelsAsync(CancellationToken cancellationToken)
         {
             if (modelDropdown == null)
             {
@@ -124,36 +141,54 @@ namespace Eitan.SherpaONNXUnity.Samples
                 loadOrUnloadButton.interactable = false;
             }
 
-            var manifest = await SherpaONNXModelRegistry.Instance
-                .GetManifestAsync(SherpaONNXModuleType.SpeechRecognition)
-                .ConfigureAwait(true);
-
-            if (loadOrUnloadButton != null)
+            try
             {
-                loadOrUnloadButton.interactable = true;
-            }
+                var manifest = await SherpaONNXModelRegistry.Instance
+                    .GetManifestAsync(SherpaONNXModuleType.SpeechRecognition, cancellationToken)
+                    .ConfigureAwait(true);
 
-            modelDropdown.options.Clear();
-            if (manifest.models == null || manifest.models.Count == 0)
-            {
-                modelDropdown.options.Add(new Dropdown.OptionData("<no offline models>"));
-                modelDropdown.interactable = false;
-                return;
-            }
-
-            var options = new List<Dropdown.OptionData>();
-            foreach (var model in manifest.models)
-            {
-                if (!SherpaONNXUnityAPI.IsOnlineModel(model.modelId))
+                if (loadOrUnloadButton != null)
                 {
-                    options.Add(new Dropdown.OptionData(model.modelId));
+                    loadOrUnloadButton.interactable = true;
+                }
+
+                modelDropdown.options.Clear();
+                if (manifest.models == null || manifest.models.Count == 0)
+                {
+                    modelDropdown.options.Add(new Dropdown.OptionData("<no offline models>"));
+                    modelDropdown.interactable = false;
+                    statusText.text = "No offline models available.";
+                    return;
+                }
+
+                var options = new List<Dropdown.OptionData>();
+                foreach (var model in manifest.models)
+                {
+                    if (!SherpaONNXUnityAPI.IsOnlineModel(model.modelId))
+                    {
+                        options.Add(new Dropdown.OptionData(model.modelId));
+                    }
+                }
+
+                modelDropdown.AddOptions(options);
+                var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
+                modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
+                modelDropdown.interactable = options.Count > 0;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                modelDropdown.options.Clear();
+                modelDropdown.options.Add(new Dropdown.OptionData("<manifest unavailable>"));
+                modelDropdown.interactable = false;
+                statusText.text = $"Manifest fetch failed: {ex.Message}";
+                if (loadOrUnloadButton != null)
+                {
+                    loadOrUnloadButton.interactable = false;
                 }
             }
-
-            modelDropdown.AddOptions(options);
-            var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
-            modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
-            modelDropdown.interactable = options.Count > 0;
         }
 
         private string SelectedSpeechModelId =>
@@ -188,6 +223,8 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
             else
             {
+                // Cancel any in-flight operations before disposing
+                operationCts?.Cancel();
                 offlineRecognizer.DisposeModule();
                 moduleRequested = false;
                 isRecording = false;
@@ -196,6 +233,8 @@ namespace Eitan.SherpaONNXUnity.Samples
                 statusText.text = "Module disposed.";
                 progressTracker?.Reset();
                 progressTracker?.SetVisible(false);
+                operationCts?.Dispose();
+                operationCts = new CancellationTokenSource();
             }
 
             UpdateLoadButtonLabel();
@@ -320,7 +359,7 @@ namespace Eitan.SherpaONNXUnity.Samples
 
             try
             {
-                var transcript = await offlineRecognizer.TranscribeClipAsync(clip).ConfigureAwait(true);
+                var transcript = await offlineRecognizer.TranscribeClipAsync(clip, operationCts?.Token ?? CancellationToken.None).ConfigureAwait(true);
                 if (string.IsNullOrWhiteSpace(transcript))
                 {
                     statusText.text = "No transcript returned.";
@@ -431,6 +470,19 @@ namespace Eitan.SherpaONNXUnity.Samples
         private void CompleteLoading(string message)
         {
             DemoUIShared.ShowLoadingComplete(progressTracker, statusText, message);
+        }
+
+        private void HandleFeedbackMessage(string message)
+        {
+            if (progressMessageText != null)
+            {
+                progressMessageText.text = message;
+            }
+        }
+
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
         }
 
         public void OpenGithubRepo()

@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.2** (2025-11-23)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.3** (2025-12-07)
 
 </div>
 
@@ -35,12 +35,25 @@
 
 ---
 
-## 🆕 v0.1.2-exp.2 更新内容 (2025-11-23)
+## 🆕 v0.1.2-exp.3 更新内容 (2025-12-08)
 
-### 🚀 亮点
-- **本地化的组件与检视面板**：新增支持中英文的自定义 Inspector、菜单入口和一组可直接拖拽使用的 Mono 组件，覆盖 ASR、VAD、标点、关键词、音频标签、语音增强、TTS 与零样本 TTS，并共享麦克风输入流。
-- **新增示例**：Audio Tagging 与 Zero-Shot Speech Synthesis 场景，内置提示词资产和更新后的示例脚本/进度 UI。
-- **运行时刷新与配置 API**：原生插件移至 `Runtime/Plugins`，模型解析器覆盖更多 ASR/TTS/音频标签家族，同时 `SherpaONNXUnityAPI` 新增 `SetAutoDownloadModels`、`SetFetchLatestManifest`、校验缓存设置等接口，方便在代码中实现 issue #4 提到的自动下载开关。
+### 🚀 本次更新亮点
+- **代码结构全面优化 & 稳定性增强**
+  对多个子系统进行了大规模重构，提升了代码的可读性、可维护性，并增强了整体架构的鲁棒性。
+
+- **性能优化**
+  优化核心模块以减少开销，整体运行效率进一步提升。
+
+- **更新 Sherpa-ONNX 原生库**
+  升级至 **v1.12.19**，与上游最新版本保持一致，并提升兼容性与功能支持。
+
+- **编辑器窗口优化**
+  提升了编辑器窗口的渲染效率与交互流畅度。
+  对界面细节进行了进一步美化，使整体使用体验更加流畅、统一。
+
+- **新增 SherpaONNX Profiler 工具**
+  面向编辑器的新工具，可用于 **Sherpa ONNX 模块的实时性能监控与活动追踪**。
+  集成日志系统，可用于调试、诊断及性能分析。
 
 [📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

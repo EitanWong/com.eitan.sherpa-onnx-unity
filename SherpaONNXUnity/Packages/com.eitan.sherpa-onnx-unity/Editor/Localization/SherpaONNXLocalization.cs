@@ -5,6 +5,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
     using System;
     using System.Collections.Generic;
     using System.Reflection;
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEngine;
 
@@ -149,7 +150,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             var asset = Resources.Load<TextAsset>(resourceId);
             if (asset == null)
             {
-                Debug.LogWarning($"SherpaONNX localization resource '{resourceId}.json' could not be found. Falling back to English.");
+                SherpaLog.Warning($"SherpaONNX localization resource '{resourceId}.json' could not be found. Falling back to English.", category: "Localization");
                 return null;
             }
 

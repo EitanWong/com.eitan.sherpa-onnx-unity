@@ -2,2102 +2,2504 @@
 
 namespace Eitan.SherpaONNXUnity.Editor
 {
-
+    using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.IO;
-    using System.Threading; // add this right below using System.Threading.Tasks;;
+    using System.Text;
+    using System.Threading;
     using UnityEngine;
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine.Networking;
     using Eitan.SherpaONNXUnity.Runtime;
-    using System;
-    using System.Threading.Tasks;
     using Eitan.SherpaONNXUnity.Editor.Localization;
     using Eitan.SherpaONNXUnity.Runtime.Utilities;
 
-
     /// <summary>
-    /// Lightweight adapter to surface Prepare/download/install/verify progress into the EditorWindow.
-    /// Call Report(progress, message) from any background task to update the UI.
+    /// SherpaONNX Model Manager - A clean, performant editor window for browsing,
+    /// downloading, and managing SherpaONNX models.
     /// </summary>
-    internal sealed class SherpaONNXFeedbackReporterAdapter
+    public sealed class SherpaONNXModelsEditorWindow : EditorWindow
     {
-        private readonly Action<float, string> _onReport;
+        #region Constants
 
-        public SherpaONNXFeedbackReporterAdapter(Action<float, string> onReport)
+        private static class LayoutConstants
         {
-            _onReport = onReport;
+            // Toolbar
+            public const float ToolbarHeight = 22f;
+            public const float SmallButtonWidth = 28f;
+            public const float MediumButtonWidth = 60f;
+
+            // Filter bar
+            public const float SearchFieldMinWidth = 150f;
+            public const float SearchFieldMaxWidth = 300f;
+            public const float FilterDropdownWidth = 120f;
+            public const float FilterLabelWidth = 50f;
+            public const float FilterSpacing = 6f;
+
+            // Model cards
+            public const float CardPadding = 10f;
+            public const float CardMarginBottom = 4f;
+            public const float CardMinHeight = 56f;
+            public const float IconSize = 18f;
+            public const float StatusBadgeWidth = 85f;
+            public const float ActionButtonWidth = 70f;
+            public const float MenuButtonWidth = 24f;
+            public const float RowSpacing = 4f;
+            public const float ElementSpacing = 6f;
+
+            // Progress
+            public const float ProgressBarHeight = 16f;
+
+            // Virtualization
+            public const float VirtualizationBuffer = 200f;
+
+            // Downloads panel
+            public const float DownloadsPanelMaxHeight = 150f;
         }
 
-        public void Report(float progress01, string message)
+        private static class ColorPalette
         {
-            // Clamp and forward to the UI updater
-            _onReport?.Invoke(Mathf.Clamp01(progress01), message ?? string.Empty);
-        }
-    }
-
-    public class SherpaONNXModelsEditorWindow : EditorWindow
-    {
-        private const string FilterAllValue = "All";
-
-        // GUI state
-        private string _searchQuery = string.Empty;
-        private int _selectedCategoryIndex = 0;
-        private int _selectedLanguageIndex = 0;
-        private Vector2 _scrollPosition;
-        private bool isDownloading = false;
-        private bool _needsRepaint = false;
-        private bool _isLoadingManifest = false;
-        private System.Threading.CancellationTokenSource _loadCts;
-        private int _spinnerFrame = 0;
-
-        // Cached popup arrays to avoid ToArray allocations every frame
-        private string[] _categoriesArray = System.Array.Empty<string>();
-        private string[] _languagesArray = System.Array.Empty<string>();
-
-
-        // Background repaint pump so progress stays live even when window loses focus
-        private EditorApplication.CallbackFunction _backgroundRepaintHandler;
-        private double _lastRepaintTime = 0d;
-
-        private SearchField _searchField;
-
-        /// <summary>
-        /// Clears all filter fields and resets UI state.
-        /// </summary>
-        private void ResetFilters()
-        {
-            _searchQuery = string.Empty;
-            _selectedCategoryIndex = 0;
-            _selectedLanguageIndex = 0;
-            GUI.FocusControl(null);
-            _needsRepaint = true;
+            public static readonly Color BadgeDownloaded = new Color(0.18f, 0.55f, 0.18f, 1f);
+            public static readonly Color BadgeNotDownloaded = new Color(0.45f, 0.45f, 0.45f, 1f);
+            public static readonly Color BadgeChecking = new Color(0.65f, 0.50f, 0.12f, 1f);
+            public static readonly Color BadgeFailed = new Color(0.70f, 0.20f, 0.20f, 1f);
+            public static readonly Color MetaTextColor = new Color(0.55f, 0.55f, 0.55f, 1f);
         }
 
-        /// <summary>
-        /// Rebuild cached arrays for popups to avoid per-frame allocations.
-        /// Call whenever _categories/_languages lists change.
-        /// </summary>
-        private void RebuildPopupArrays()
-        {
-            _categoriesArray = BuildDisplayArray(_categories, FormatCategoryFilterLabel);
-            _languagesArray = BuildDisplayArray(_languages, FormatLanguageFilterLabel);
-        }
+        #endregion
 
-        private static string[] BuildDisplayArray(List<string> source, Func<string, string> formatter)
+        #region Cached Styles
+
+        private sealed class StyleCache
         {
-            if (source == null || source.Count == 0)
+            public GUIStyle HeaderLabel;
+            public GUIStyle CardBackground;
+            public GUIStyle ModelNameLabel;
+            public GUIStyle MetaLabel;
+            public GUIStyle BadgeLabel;
+            public GUIStyle ActionButton;
+            public GUIStyle ToolbarSearchField;
+            public GUIStyle FoldoutHeader;
+
+            private bool _isInitialized;
+            private static Texture2D _badgeBackgroundTexture;
+
+            public bool IsInitialized => _isInitialized;
+
+            public void Initialize()
             {
-                return Array.Empty<string>();
+                if (_isInitialized)
+                {
+                    return;
+                }
+
+
+                if (EditorStyles.boldLabel == null)
+                {
+                    return; // Not ready yet
+                }
+
+
+                try
+                {
+                    HeaderLabel = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        fontSize = 12,
+                        padding = new RectOffset(2, 2, 2, 2)
+                    };
+
+                    CardBackground = new GUIStyle("HelpBox")
+                    {
+                        padding = new RectOffset(
+                            (int)LayoutConstants.CardPadding,
+                            (int)LayoutConstants.CardPadding,
+                            (int)LayoutConstants.CardPadding,
+                            (int)LayoutConstants.CardPadding
+                        ),
+                        margin = new RectOffset(0, 0, 0, (int)LayoutConstants.CardMarginBottom)
+                    };
+
+                    ModelNameLabel = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        fontSize = 11,
+                        wordWrap = false,
+                        clipping = TextClipping.Clip,
+                        alignment = TextAnchor.MiddleLeft
+                    };
+
+                    MetaLabel = new GUIStyle(EditorStyles.miniLabel)
+                    {
+                        fontSize = 10,
+                        normal = { textColor = ColorPalette.MetaTextColor },
+                        wordWrap = false,
+                        clipping = TextClipping.Clip
+                    };
+
+                    BadgeLabel = new GUIStyle(EditorStyles.miniLabel)
+                    {
+                        alignment = TextAnchor.MiddleCenter,
+                        fontSize = 9,
+                        fontStyle = FontStyle.Bold,
+                        normal = { textColor = Color.white },
+                        padding = new RectOffset(4, 4, 2, 2)
+                    };
+
+                    ActionButton = new GUIStyle(EditorStyles.miniButton)
+                    {
+                        fontSize = 10,
+                        fixedHeight = 18f,
+                        padding = new RectOffset(6, 6, 2, 2)
+                    };
+
+                    ToolbarSearchField = new GUIStyle("ToolbarSearchTextField");
+
+                    FoldoutHeader = new GUIStyle(EditorStyles.foldoutHeader)
+                    {
+                        fontStyle = FontStyle.Bold
+                    };
+
+                    _isInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[SherpaONNXModelsEditorWindow] Style initialization failed: {ex.Message}");
+                    _isInitialized = false;
+                }
             }
 
-            var result = new string[source.Count];
-            for (var i = 0; i < source.Count; i++)
+            public static Texture2D GetBadgeBackground()
             {
-                var value = source[i];
-                result[i] = formatter != null ? formatter(value) : value;
-            }
-
-            return result;
-        }
-
-        private string FormatCategoryFilterLabel(string value)
-        {
-            if (string.Equals(value, FilterAllValue, StringComparison.Ordinal))
-            {
-                return L(SherpaONNXL10n.Common.FilterAll, "All");
-            }
-
-            if (Enum.TryParse(value, out SherpaONNXModuleType module))
-            {
-                return GetModuleDisplayName(module);
-            }
-
-            return value;
-        }
-
-        private string FormatLanguageFilterLabel(string value)
-        {
-            if (string.Equals(value, FilterAllValue, StringComparison.Ordinal))
-            {
-                return L(SherpaONNXL10n.Common.FilterAll, "All");
-            }
-
-            return GetLanguageDisplayName(value);
-        }
-
-        private string GetModuleDisplayName(SherpaONNXModuleType module)
-        {
-            return module switch
-            {
-                SherpaONNXModuleType.Undefined => L(SherpaONNXL10n.Models.CategoryUndefined, "Undefined"),
-                SherpaONNXModuleType.SpeechRecognition => L(SherpaONNXL10n.Models.CategorySpeechRecognition, "Speech Recognition"),
-                SherpaONNXModuleType.SpeechSynthesis => L(SherpaONNXL10n.Models.CategorySpeechSynthesis, "Speech Synthesis"),
-                SherpaONNXModuleType.SourceSeparation => L(SherpaONNXL10n.Models.CategorySourceSeparation, "Source Separation"),
-                SherpaONNXModuleType.SpeakerIdentification => L(SherpaONNXL10n.Models.CategorySpeakerIdentification, "Speaker Identification"),
-                SherpaONNXModuleType.SpeakerDiarization => L(SherpaONNXL10n.Models.CategorySpeakerDiarization, "Speaker Diarization"),
-                SherpaONNXModuleType.SpokenLanguageIdentification => L(SherpaONNXL10n.Models.CategorySpokenLanguageId, "Spoken Language Identification"),
-                SherpaONNXModuleType.AudioTagging => L(SherpaONNXL10n.Models.CategoryAudioTagging, "Audio Tagging"),
-                SherpaONNXModuleType.VoiceActivityDetection => L(SherpaONNXL10n.Models.CategoryVad, "Voice Activity Detection"),
-                SherpaONNXModuleType.KeywordSpotting => L(SherpaONNXL10n.Models.CategoryKeywordSpotting, "Keyword Spotting"),
-                SherpaONNXModuleType.AddPunctuation => L(SherpaONNXL10n.Models.CategoryAddPunctuation, "Add Punctuation"),
-                SherpaONNXModuleType.SpeechEnhancement => L(SherpaONNXL10n.Models.CategorySpeechEnhancement, "Speech Enhancement"),
-                _ => module.ToString()
-            };
-        }
-
-        private string GetLanguageDisplayName(string code)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                return L(SherpaONNXL10n.Common.LanguageOther, "Other");
-            }
-
-            switch (code.ToLowerInvariant())
-            {
-                case "other": return L(SherpaONNXL10n.Common.LanguageOther, "Other");
-                case "chinese": return L(SherpaONNXL10n.Common.LanguageChinese, "Chinese");
-                case "cantonese": return L(SherpaONNXL10n.Common.LanguageCantonese, "Cantonese");
-                case "english": return L(SherpaONNXL10n.Common.LanguageEnglish, "English");
-                case "japanese": return L(SherpaONNXL10n.Common.LanguageJapanese, "Japanese");
-                case "korean": return L(SherpaONNXL10n.Common.LanguageKorean, "Korean");
-                case "thai": return L(SherpaONNXL10n.Common.LanguageThai, "Thai");
-                case "vietnamese": return L(SherpaONNXL10n.Common.LanguageVietnamese, "Vietnamese");
-                case "russian": return L(SherpaONNXL10n.Common.LanguageRussian, "Russian");
-                case "french": return L(SherpaONNXL10n.Common.LanguageFrench, "French");
-                case "spanish": return L(SherpaONNXL10n.Common.LanguageSpanish, "Spanish");
-                case "german": return L(SherpaONNXL10n.Common.LanguageGerman, "German");
-                case "dutch": return L(SherpaONNXL10n.Common.LanguageDutch, "Dutch");
-                case "danish": return L(SherpaONNXL10n.Common.LanguageDanish, "Danish");
-                case "czech": return L(SherpaONNXL10n.Common.LanguageCzech, "Czech");
-                case "catalan": return L(SherpaONNXL10n.Common.LanguageCatalan, "Catalan");
-                case "arabic": return L(SherpaONNXL10n.Common.LanguageArabic, "Arabic");
-                case "italian": return L(SherpaONNXL10n.Common.LanguageItalian, "Italian");
-                case "portuguese": return L(SherpaONNXL10n.Common.LanguagePortuguese, "Portuguese");
-                case "turkish": return L(SherpaONNXL10n.Common.LanguageTurkish, "Turkish");
-                case "polish": return L(SherpaONNXL10n.Common.LanguagePolish, "Polish");
-                case "swedish": return L(SherpaONNXL10n.Common.LanguageSwedish, "Swedish");
-                case "norwegian": return L(SherpaONNXL10n.Common.LanguageNorwegian, "Norwegian");
-                case "indonesian": return L(SherpaONNXL10n.Common.LanguageIndonesian, "Indonesian");
-                case "malay": return L(SherpaONNXL10n.Common.LanguageMalay, "Malay");
-                case "hindi": return L(SherpaONNXL10n.Common.LanguageHindi, "Hindi");
-                case "urdu": return L(SherpaONNXL10n.Common.LanguageUrdu, "Urdu");
-                case "persian": return L(SherpaONNXL10n.Common.LanguagePersian, "Persian");
-                case "hebrew": return L(SherpaONNXL10n.Common.LanguageHebrew, "Hebrew");
-                default: return code;
+                if (_badgeBackgroundTexture == null)
+                {
+                    _badgeBackgroundTexture = new Texture2D(1, 1);
+                    _badgeBackgroundTexture.SetPixel(0, 0, Color.white);
+                    _badgeBackgroundTexture.Apply();
+                    _badgeBackgroundTexture.hideFlags = HideFlags.DontSave;
+                }
+                return _badgeBackgroundTexture;
             }
         }
 
-        private string FormatLanguageList(List<string> languages)
+        #endregion
+
+        #region Cached Icons
+
+        private sealed class IconCache
         {
-            if (languages == null || languages.Count == 0)
+            private GUIContent _refresh;
+            private GUIContent _menu;
+            private GUIContent _folder;
+            private GUIContent _download;
+            private GUIContent _delete;
+            private GUIContent _microphone;
+            private GUIContent _audioSource;
+            private GUIContent _audioMixer;
+            private GUIContent _scriptableObject;
+
+            private bool _isInitialized;
+            public bool IsInitialized => _isInitialized;
+
+            public GUIContent Refresh => _refresh;
+            public GUIContent Menu => _menu;
+            public GUIContent Folder => _folder;
+            public GUIContent Download => _download;
+            public GUIContent Delete => _delete;
+            public GUIContent Microphone => _microphone;
+            public GUIContent AudioSource => _audioSource;
+            public GUIContent AudioMixer => _audioMixer;
+            public GUIContent ScriptableObject => _scriptableObject;
+
+            public void Initialize()
             {
-                return GetLanguageDisplayName("other");
+                if (_isInitialized)
+                {
+                    return;
+                }
+
+
+                _refresh = LoadIcon("d_Refresh", "Refresh");
+                _menu = LoadIcon("d__Menu", "_Menu", "≡");
+                _folder = LoadIcon("d_Folder Icon", "Folder Icon");
+                _download = LoadIcon("CloudConnect", "CloudConnect", "↓");
+                _delete = LoadIcon("d_TreeEditor.Trash", "TreeEditor.Trash");
+                _microphone = LoadIcon("d_Microphone Icon", "Microphone Icon");
+                _audioSource = LoadIcon("d_AudioSource Icon", "AudioSource Icon");
+                _audioMixer = LoadIcon("d_Audio Mixer", "Audio Mixer");
+                _scriptableObject = LoadIcon("d_ScriptableObject Icon", "ScriptableObject Icon");
+
+                _isInitialized = true;
             }
 
-            return string.Join(", ", languages.Select(GetLanguageDisplayName));
-        }
-
-        private string GetPhaseDisplayName(DownloadPhase phase)
-        {
-            return phase switch
+            private static GUIContent LoadIcon(string darkIconName, string lightIconName, string fallbackText = "•")
             {
-                DownloadPhase.Download => L(SherpaONNXL10n.Models.StatusDownloadPhase, "Download"),
-                DownloadPhase.Install => L(SherpaONNXL10n.Models.StatusInstallPhase, "Install"),
-                DownloadPhase.Verify => L(SherpaONNXL10n.Models.StatusVerifyPhase, "Verify"),
-                _ => string.Empty
-            };
+                // Try dark theme icon first
+                var content = EditorGUIUtility.IconContent(darkIconName);
+                if (content != null && content.image != null)
+                {
+                    return new GUIContent(content.image);
+                }
+
+                // Try light theme icon
+                content = EditorGUIUtility.IconContent(lightIconName);
+                if (content != null && content.image != null)
+                {
+                    return new GUIContent(content.image);
+                }
+
+                // Return text fallback
+                return new GUIContent(fallbackText);
+            }
         }
 
+        #endregion
 
-        // Data caches
-        private readonly List<string> _categories = new();
-        private readonly List<string> _languages = new();
-        private readonly List<ModelEntry> _allEntries = new();
-        private readonly List<DownloadTask> _activeDownloads = new();
+        #region Localized Content Cache
 
-        // Representation of each model entry in the UI
-        private class ModelEntry
+        private sealed class LocalizedContentCache
         {
-            public string Category;
-            // public string Language;
-            public List<string> Languages = new List<string>();  // 单语种列表（去重）
+            // Window
+            public GUIContent WindowTitle;
+            public GUIContent HeaderTitle;
 
-            public SherpaONNXModelMetadata Metadata;
-            public bool? IsDownloaded; // null = checking, true = downloaded, false = not downloaded
-            public bool Expanded;
-            public bool VerifyFailed;      // set when post-install verification fails
-            public string VerifyMessage;   // optional message for the UI
+            // Toolbar
+            public GUIContent RefreshTooltip;
+            public GUIContent RescanButton;
+            public GUIContent ClearButton;
 
-            // Minimal layout snapshot computed during Layout
-            public bool ProgressVisible;
-            public float HelpHeight;
+            // Filters
+            public GUIContent SearchPlaceholder;
+            public GUIContent CategoryLabel;
+            public GUIContent LanguageLabel;
+            public GUIContent FilterAll;
+
+            // Actions
+            public GUIContent DownloadButton;
+            public GUIContent RedownloadButton;
+            public GUIContent DeleteButton;
+            public GUIContent CancelButton;
+            public GUIContent RevealButton;
+
+            // Context menu
+            public GUIContent CopyModelIdItem;
+            public GUIContent CopyUrlItem;
+            public GUIContent RescanStatusItem;
+
+            // Status badges
+            public GUIContent StatusReady;
+            public GUIContent StatusNotDownloaded;
+            public GUIContent StatusChecking;
+            public GUIContent StatusFailed;
+
+            // Sections
+            public GUIContent ActiveDownloadsHeader;
+
+            // Messages
+            public GUIContent NoModelsMessage;
+            public GUIContent LoadingMessage;
+
+            // Dialogs
+            public string DeleteDialogTitle;
+            public string DeleteDialogConfirm;
+            public string DeleteDialogCancel;
+
+            private bool _isBuilt;
+            public bool IsBuilt => _isBuilt;
+
+            public void Build()
+            {
+                WindowTitle = new GUIContent(Tr(SherpaONNXL10n.Models.WindowTitle, "SherpaONNX Models"));
+                HeaderTitle = new GUIContent(Tr(SherpaONNXL10n.Models.Header, "Model Manager"));
+
+                RefreshTooltip = new GUIContent(string.Empty, Tr(SherpaONNXL10n.Common.TooltipRefresh, "Reload manifest from server"));
+                RescanButton = new GUIContent(Tr(SherpaONNXL10n.Common.ButtonRescan, "Rescan"));
+                ClearButton = new GUIContent(Tr(SherpaONNXL10n.Common.ButtonClear, "Clear"));
+
+                SearchPlaceholder = new GUIContent(Tr(SherpaONNXL10n.Common.LabelSearch, "Search..."));
+                CategoryLabel = new GUIContent(Tr(SherpaONNXL10n.Common.LabelCategory, "Category"));
+                LanguageLabel = new GUIContent(Tr(SherpaONNXL10n.Common.LabelLanguage, "Language"));
+                FilterAll = new GUIContent(Tr(SherpaONNXL10n.Common.FilterAll, "All"));
+
+                DownloadButton = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonDownload, "Download"));
+                RedownloadButton = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonRedownload, "Retry"));
+                DeleteButton = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonDelete, "Delete"));
+                CancelButton = new GUIContent(Tr(SherpaONNXL10n.Common.ButtonCancel, "Cancel"));
+                RevealButton = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonReveal, "Reveal"));
+
+                CopyModelIdItem = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonCopyName, "Copy Model ID"));
+                CopyUrlItem = new GUIContent(Tr(SherpaONNXL10n.Models.ButtonCopyUrl, "Copy Download URL"));
+                RescanStatusItem = new GUIContent(Tr(SherpaONNXL10n.Models.ContextRescanStatus, "Rescan Status"));
+
+                StatusReady = new GUIContent(Tr(SherpaONNXL10n.Models.StatusDownloaded, "Ready"));
+                StatusNotDownloaded = new GUIContent(Tr(SherpaONNXL10n.Models.StatusNotDownloaded, "Not Downloaded"));
+                StatusChecking = new GUIContent(Tr(SherpaONNXL10n.Models.StatusChecking, "Checking..."));
+                StatusFailed = new GUIContent(Tr(SherpaONNXL10n.Models.StatusVerifyFailed, "Failed"));
+
+                ActiveDownloadsHeader = new GUIContent(Tr(SherpaONNXL10n.Models.LabelActiveDownloads, "Active Downloads"));
+
+                NoModelsMessage = new GUIContent(Tr(SherpaONNXL10n.Models.HelpNoMatches, "No models match the current filters."));
+                LoadingMessage = new GUIContent(Tr(SherpaONNXL10n.Models.LoadingRemote, "Loading model manifest..."));
+
+                DeleteDialogTitle = Tr(SherpaONNXL10n.Models.DialogDeleteTitle, "Delete Model");
+                DeleteDialogConfirm = Tr(SherpaONNXL10n.Models.DialogDeleteConfirm, "Delete");
+                DeleteDialogCancel = Tr(SherpaONNXL10n.Models.DialogDeleteCancel, "Cancel");
+
+                _isBuilt = true;
+            }
+
+            private static string Tr(string key, string fallback)
+            {
+                try
+                {
+                    return SherpaONNXLocalization.Tr(key, fallback);
+                }
+                catch
+                {
+                    return fallback;
+                }
+            }
+        }
+
+        #endregion
+
+        #region Data Models
+
+        private enum ModelStatus
+        {
+            Unknown,
+            Checking,
+            Downloaded,
+            NotDownloaded,
+            Failed
         }
 
         private enum DownloadPhase
         {
             None,
-            Download,
-            Install,
-            Verify
+            Downloading,
+            Extracting,
+            Verifying,
+            Completed,
+            Failed,
+            Canceled
         }
 
-        // Representation of an active download
-        private class DownloadTask
+        private sealed class ModelEntry
         {
             public SherpaONNXModelMetadata Metadata;
-            public float Progress;
-            public string Status;
+            public ModelStatus Status = ModelStatus.Unknown;
+            public List<string> Languages;
+            public string StatusMessage;
+            public float CachedCardHeight;
+            public bool IsHeightValid;
+
+            public string ModelId => Metadata?.modelId ?? string.Empty;
+            public SherpaONNXModuleType ModuleType => Metadata?.moduleType ?? SherpaONNXModuleType.Undefined;
+            public string DownloadUrl => Metadata?.downloadUrl ?? string.Empty;
+            public bool HasDownloadUrl => !string.IsNullOrEmpty(DownloadUrl);
+        }
+
+        private sealed class DownloadOperation : IDisposable
+        {
+            public SherpaONNXModelMetadata Metadata;
             public DownloadPhase Phase;
-
-            // NEW: cancellation & plumbing
-            public CancellationTokenSource Cts = new CancellationTokenSource();
-            public UnityWebRequest Request;
-            public EditorApplication.CallbackFunction UpdateHandler;
-            public string DestPath;
-            public string ModuleDir;
+            public float Progress;
+            public string StatusText;
+            public CancellationTokenSource CancellationSource;
+            public UnityWebRequest WebRequest;
+            public string ArchivePath;
+            public string TempArchivePath;
+            public string ModuleDirectory;
             public bool IsCompressed;
-            public bool IsCanceled;
-        }
-        [MenuItem("Window/SherpaONNX/Model Manager")]
-        private static void ShowWindow()
-        {
-            var window = GetWindow<SherpaONNXModelsEditorWindow>();
-            window.UpdateWindowTitle();
-            window.Show();
-        }
 
-        // [MenuItem("Window/SherpaONNX/Reset Registry")]
-        // private static void ResetRegistryMenu()
-        // {
-        //     // Clear registry state and open the window with a forced refresh
-        //     SherpaONNXModelRegistry.Instance.Uninitialize();
-        //     var window = GetWindow<SherpaONNXModelsEditorWindow>();
-        //     window.titleContent = new GUIContent("SherpaONNX Models");
-        //     window.Show();
-        //     window.ForceRefreshManifest();
-        // }
+            private EditorApplication.CallbackFunction _updateCallback;
+            private bool _isDisposed;
 
-        private void OnEnable()
-        {
-            // Keep the window repainting on scene changes and while unfocused
-            autoRepaintOnSceneChange = true;
+            public bool IsCanceled => CancellationSource?.IsCancellationRequested ?? true;
 
-            UpdateWindowTitle();
-            SherpaONNXLocalization.LanguageChanged += OnLanguageChanged;
+            public bool IsActive => Phase != DownloadPhase.None &&
+                                    Phase != DownloadPhase.Completed &&
+                                    Phase != DownloadPhase.Failed &&
+                                    Phase != DownloadPhase.Canceled;
 
-            // Ensure data is fresh when (re)opening
-            RefreshData();
+            public string ModelId => Metadata?.modelId ?? "Unknown";
 
-            // Install a lightweight background repaint pump.
-            // This runs even when the EditorWindow is not focused, so progress bars keep moving.
-            if (_backgroundRepaintHandler == null)
+            public void SetUpdateCallback(EditorApplication.CallbackFunction callback)
             {
-                _backgroundRepaintHandler = () =>
+                RemoveUpdateCallback();
+                _updateCallback = callback;
+                if (_updateCallback != null)
                 {
-                    // If any download is active or a repaint was requested, refresh at ~15 FPS
-                    if (_needsRepaint || _activeDownloads.Count > 0)
-                    {
-                        double now = EditorApplication.timeSinceStartup;
-                        if (now - _lastRepaintTime >= (1.0 / 15.0))
-                        {
-                            _lastRepaintTime = now;
-                            // Clear the flag *before* repaint to avoid missing rapid updates
-                            _needsRepaint = false;
-                            Repaint();
-                        }
-                    }
-                };
-                EditorApplication.update += _backgroundRepaintHandler;
-            }
-            // Auto-refresh when the registry finishes initializing
-            SherpaONNXModelRegistry.Instance.Initialized += OnRegistryInitialized;
-        }
-        private void OnDisable()
-        {
-            // Remove the background update pump
-            if (_backgroundRepaintHandler != null)
-            {
-                try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
-                _backgroundRepaintHandler = null;
-            }
-            try { SherpaONNXModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
-            try { SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
-            try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
-            CancelAllActiveOperations();
-        }
-        private void OnDestroy()
-        {
-            if (_backgroundRepaintHandler != null)
-            {
-                try { EditorApplication.update -= _backgroundRepaintHandler; } catch { }
-                _backgroundRepaintHandler = null;
-            }
-            try { SherpaONNXModelRegistry.Instance.Initialized -= OnRegistryInitialized; } catch { }
-            try { SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged; } catch { }
-            try { _loadCts?.Cancel(); _loadCts?.Dispose(); _loadCts = null; } catch { }
-            CancelAllActiveOperations();
-        }
-
-        private void OnLanguageChanged()
-        {
-            UpdateWindowTitle();
-            RebuildPopupArrays();
-            _needsRepaint = true;
-        }
-
-        private void UpdateWindowTitle()
-        {
-            titleContent = new GUIContent(L(SherpaONNXL10n.Models.WindowTitle, "SherpaONNX Models"));
-        }
-        /// <summary>
-        /// Clears caches and repopulates the list of models, categories and languages.
-        /// </summary>
-        private void RefreshData()
-        {
-            _allEntries.Clear();
-            _categories.Clear();
-            _languages.Clear();
-
-            // The "All" option at index 0
-            _categories.Add(FilterAllValue);
-            _languages.Add(FilterAllValue);
-            _categories.AddRange(Enum.GetNames(typeof(SherpaONNXModuleType)));
-            RebuildPopupArrays();
-
-            var reg = SherpaONNXModelRegistry.Instance;
-            SherpaONNXModelManifest manifest;
-            if (!reg.TryGetManifest(out manifest))
-            {
-                // Still initializing – show spinner and wait asynchronously (on MAIN thread)
-                _isLoadingManifest = true;
-                _loadCts?.Cancel();
-                _loadCts = new System.Threading.CancellationTokenSource();
-                var token = _loadCts.Token;
-
-                // Schedule the async wait from the main thread to avoid creating UnityWebRequest off-thread
-                EditorApplication.delayCall += async () =>
-                {
-                    try
-                    {
-                        var mf = await reg.WaitForManifestAsync(token);
-                        if (token.IsCancellationRequested)
-                        {
-                            return;
-                        }
-
-
-                        _isLoadingManifest = false;
-                        BuildFromManifest(mf);
-                        RebuildPopupArrays();
-                        KickoffDownloadStatusScan();
-                        _needsRepaint = true;
-                    }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex)
-                    {
-                        _isLoadingManifest = false;
-                        ShowNotification(new GUIContent(string.Format(
-                            L(SherpaONNXL10n.Models.NotificationManifestLoadFailed, "Manifest load failed: {0}"),
-                            ex.Message)));
-                        _needsRepaint = true;
-                    }
-                };
-
-                _needsRepaint = true; // keep the spinner animating
-                return;
-            }
-
-            // Already initialized – build immediately
-            BuildFromManifest(manifest);
-            RebuildPopupArrays();
-            KickoffDownloadStatusScan();
-        }
-
-        /// <summary>
-        /// Hard refresh: Uninitialize registry, clear local UI caches, show spinner, and re-fetch manifest on main thread.
-        /// Also triggers a full rescan when finished.
-        /// </summary>
-        private void ForceRefreshManifest()
-        {
-            // Stop any ongoing downloads/progress UI first
-            CancelAllActiveOperations();
-
-            // Reset UI caches and filters
-            _allEntries.Clear();
-            _categories.Clear();
-            _languages.Clear();
-
-            // Rebuild base dropdown items ("All" + categories)
-            _categories.Add(FilterAllValue);
-            _languages.Add(FilterAllValue);
-            _categories.AddRange(Enum.GetNames(typeof(SherpaONNXModuleType)));
-            RebuildPopupArrays();
-
-            // Enter loading state and keep spinner alive
-            _isLoadingManifest = true;
-            _needsRepaint = true;
-
-            // Reset any previous load waits
-            try { _loadCts?.Cancel(); } catch { }
-            try { _loadCts?.Dispose(); } catch { }
-            _loadCts = new System.Threading.CancellationTokenSource();
-            var token = _loadCts.Token;
-
-            // Clear the registry so any in-flight init won't pollute new state
-            var reg = SherpaONNXModelRegistry.Instance;
-            reg.Uninitialize();
-
-            // Kick the async re-fetch from the main thread to respect UnityWebRequest threading rules
-            EditorApplication.delayCall += async () =>
-            {
-                try
-                {
-                    var mf = await reg.WaitForManifestAsync(token);
-                    if (token.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    _isLoadingManifest = false;
-                    BuildFromManifest(mf);
-                    RebuildPopupArrays();
-                    KickoffDownloadStatusScan(); // full rescan after refresh
-                    _needsRepaint = true;
+                    EditorApplication.update += _updateCallback;
                 }
-                catch (OperationCanceledException)
-                {
-                    // silent: user navigated away / another refresh issued
-                }
-                catch (Exception ex)
-                {
-                    _isLoadingManifest = false;
-                    ShowNotification(new GUIContent(string.Format(
-                        L(SherpaONNXL10n.Models.NotificationManifestReloadFailed, "Manifest reload failed: {0}"),
-                        ex.Message)));
-                    _needsRepaint = true;
-                }
-            };
-        }
-
-        private void BuildFromManifest(SherpaONNXModelManifest manifest)
-        {
-            if (manifest == null || manifest.models == null)
-            {
-                return;
             }
 
-
-            foreach (var metadata in manifest.models)
+            public void RemoveUpdateCallback()
             {
-                var langs = ParseLanguages(metadata.modelId);
-                var entry = new ModelEntry
+                if (_updateCallback != null)
                 {
-                    Category = metadata.moduleType.ToString(),
-                    Metadata = metadata,
-                    Languages = langs,
-                    VerifyFailed = false,
-                    VerifyMessage = string.Empty,
-                };
-                _allEntries.Add(entry);
+                    EditorApplication.update -= _updateCallback;
+                    _updateCallback = null;
+                }
+            }
 
-                // Populate language dropdown: single languages only, skip "other"
-                foreach (var lang in langs)
+            public void Dispose()
+            {
+                if (_isDisposed)
                 {
-                    if (string.IsNullOrEmpty(lang) || lang == "other")
+                    return;
+                }
+
+
+                _isDisposed = true;
+
+                RemoveUpdateCallback();
+
+                try { CancellationSource?.Cancel(); } catch { }
+                try { CancellationSource?.Dispose(); } catch { }
+                CancellationSource = null;
+
+                try { WebRequest?.Abort(); } catch { }
+                try { WebRequest?.Dispose(); } catch { }
+                WebRequest = null;
+            }
+        }
+
+        private sealed class FilterState
+        {
+            public string SearchQuery = string.Empty;
+            public int CategoryIndex;
+            public int LanguageIndex;
+
+            private string[] _categoryValues = Array.Empty<string>();
+            private string[] _languageValues = Array.Empty<string>();
+            private GUIContent[] _categoryDisplays = Array.Empty<GUIContent>();
+            private GUIContent[] _languageDisplays = Array.Empty<GUIContent>();
+
+            public GUIContent[] CategoryDisplays => _categoryDisplays;
+            public GUIContent[] LanguageDisplays => _languageDisplays;
+            public string SelectedCategory => CategoryIndex > 0 && CategoryIndex < _categoryValues.Length
+                ? _categoryValues[CategoryIndex] : null;
+            public string SelectedLanguage => LanguageIndex > 0 && LanguageIndex < _languageValues.Length
+                ? _languageValues[LanguageIndex] : null;
+
+            public bool HasActiveFilters => !string.IsNullOrEmpty(SearchQuery) || CategoryIndex > 0 || LanguageIndex > 0;
+
+            public void RebuildOptions(
+                List<ModelEntry> allModels,
+                Func<SherpaONNXModuleType, string> categoryFormatter,
+                Func<string, string> languageFormatter,
+                string allLabel)
+            {
+                // Build category list
+                var categoryList = new List<string> { string.Empty };
+                var categoryDisplayList = new List<GUIContent> { new GUIContent(allLabel) };
+
+                var moduleTypes = (SherpaONNXModuleType[])Enum.GetValues(typeof(SherpaONNXModuleType));
+                foreach (var moduleType in moduleTypes)
+                {
+                    if (moduleType == SherpaONNXModuleType.Undefined)
                     {
                         continue;
                     }
 
 
-                    if (!_languages.Contains(lang))
+                    categoryList.Add(moduleType.ToString());
+                    categoryDisplayList.Add(new GUIContent(categoryFormatter(moduleType)));
+                }
+
+                _categoryValues = categoryList.ToArray();
+                _categoryDisplays = categoryDisplayList.ToArray();
+
+                // Build language list from actual model data
+                var languageSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in allModels)
+                {
+                    if (entry.Languages == null)
                     {
-                        _languages.Add(lang);
+                        continue;
                     }
 
-                }
-            }
-            // Rebuild cached popup arrays after languages list may have grown
-            RebuildPopupArrays();
-        }
 
-        private void OnInspectorUpdate()
-        {
-            if (_needsRepaint)
-            {
-                _needsRepaint = false;
-                Repaint();
-            }
-        }
-
-        private void KickoffDownloadStatusScan()
-        {
-            foreach (var entry in _allEntries)
-            {
-                entry.VerifyFailed = false;
-                entry.VerifyMessage = string.Empty;
-                entry.IsDownloaded = null; // mark as checking
-                var meta = entry.Metadata;
-                Task.Run(async () =>
-                {
-                    bool ok = false;
-                    try
+                    foreach (var lang in entry.Languages)
                     {
-                        ok = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(meta);
+                        if (!string.IsNullOrEmpty(lang) && lang != "other")
+                        {
+                            languageSet.Add(lang);
+                        }
                     }
-                    catch
-                    {
-                        ok = false;
-                    }
-                    entry.IsDownloaded = ok;
-                    _needsRepaint = true;
-                });
-            }
-        }
-        private void SetVerifyFailed(SherpaONNXModelMetadata meta, bool failed, string message = null)
-        {
-            var entry = _allEntries.FirstOrDefault(e => e.Metadata == meta);
-            if (entry == null) { return; }
-
-            entry.VerifyFailed = failed;
-            entry.VerifyMessage = failed
-                ? (message ?? L(SherpaONNXL10n.Models.StatusVerifyFailedMessage, "Verification failed. Please re-download."))
-                : string.Empty;
-            _needsRepaint = true;
-        }
-        private void RescanSingle(SherpaONNXModelMetadata meta)
-        {
-            var entry = _allEntries.FirstOrDefault(e => e.Metadata == meta);
-            if (entry == null)
-            {
-                return;
-            }
-            entry.VerifyFailed = false;
-            entry.VerifyMessage = string.Empty;
-            entry.IsDownloaded = null;
-            Task.Run(async () =>
-            {
-                bool ok = false;
-                try
-                {
-                    ok = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(meta);
                 }
-                catch
-                {
-                    ok = false;
-                }
-                entry.IsDownloaded = ok;
-                _needsRepaint = true;
-            });
-        }
 
-        /// <summary>
-        /// Deletes the model folder for a given metadata.
-        /// </summary>
-        private bool DeleteModelFolder(SherpaONNXModelMetadata meta, string modelDirOverride = null)
-        {
-            try
+                var languageList = new List<string> { string.Empty };
+                var languageDisplayList = new List<GUIContent> { new GUIContent(allLabel) };
+
+                var sortedLanguages = new List<string>(languageSet);
+                sortedLanguages.Sort(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var lang in sortedLanguages)
+                {
+                    languageList.Add(lang);
+                    languageDisplayList.Add(new GUIContent(languageFormatter(lang)));
+                }
+
+                _languageValues = languageList.ToArray();
+                _languageDisplays = languageDisplayList.ToArray();
+
+                // Clamp current indices
+                CategoryIndex = Mathf.Clamp(CategoryIndex, 0, Mathf.Max(0, _categoryValues.Length - 1));
+                LanguageIndex = Mathf.Clamp(LanguageIndex, 0, Mathf.Max(0, _languageValues.Length - 1));
+            }
+
+            public void Reset()
             {
-                string moduleRoot = SherpaPathResolver.GetModuleRootPath(meta.moduleType);
-                string modelDir = modelDirOverride ?? Path.Combine(moduleRoot, meta.modelId);
-                if (!Directory.Exists(modelDir))
+                SearchQuery = string.Empty;
+                CategoryIndex = 0;
+                LanguageIndex = 0;
+                GUI.FocusControl(null);
+            }
+
+            public bool Matches(ModelEntry entry)
+            {
+                if (entry?.Metadata == null)
                 {
                     return false;
                 }
-                // If inside Assets, delete via AssetDatabase to keep the project in sync
-                string dataPath = Application.dataPath.Replace("\\", "/");
-                string modelDirNorm = modelDir.Replace("\\", "/");
-                if (modelDirNorm.StartsWith(dataPath, StringComparison.OrdinalIgnoreCase))
+
+                // Category filter
+
+                var selectedCategory = SelectedCategory;
+                if (!string.IsNullOrEmpty(selectedCategory))
                 {
-                    string relative = "Assets" + modelDirNorm.Substring(dataPath.Length);
-                    if (AssetDatabase.IsValidFolder(relative))
+                    if (entry.ModuleType.ToString() != selectedCategory)
                     {
-                        AssetDatabase.DeleteAsset(relative);
+                        return false;
                     }
-                    else
-                    {
-                        FileUtil.DeleteFileOrDirectory(relative);
-                    }
-                    AssetDatabase.Refresh();
                 }
-                else
+
+                // Language filter
+                var selectedLanguage = SelectedLanguage;
+                if (!string.IsNullOrEmpty(selectedLanguage))
                 {
-                    Directory.Delete(modelDir, recursive: true);
+                    if (entry.Languages == null || !entry.Languages.Contains(selectedLanguage))
+                    {
+                        return false;
+                    }
                 }
+
+                // Search filter
+                if (!string.IsNullOrWhiteSpace(SearchQuery))
+                {
+                    if (entry.ModelId.IndexOf(SearchQuery, StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        return false;
+                    }
+                }
+
                 return true;
             }
-            catch (Exception e)
+        }
+
+        #endregion
+
+        #region State Fields
+
+        // Cached resources
+        private StyleCache _styles;
+        private IconCache _icons;
+        private LocalizedContentCache _content;
+        private SearchField _searchField;
+
+        // Data
+        private readonly List<ModelEntry> _allModels = new List<ModelEntry>();
+        private readonly List<ModelEntry> _filteredModels = new List<ModelEntry>();
+        private readonly List<DownloadOperation> _activeDownloads = new List<DownloadOperation>();
+        private readonly FilterState _filter = new FilterState();
+        private readonly List<string> _languageDisplayBuffer = new List<string>(8);
+        private readonly HashSet<string> _languageCodeSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _languageDisplaySeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // UI state
+        private Vector2 _scrollPosition;
+        private bool _showDownloadsPanel = true;
+        private bool _isLoadingManifest;
+        private bool _needsFilterRebuild = true;
+        private bool _needsRepaint;
+        private double _lastRepaintTime;
+
+        // Async operations
+        private CancellationTokenSource _manifestLoadCts;
+        private EditorApplication.CallbackFunction _repaintPumpCallback;
+
+        // Reusable string builder to avoid allocations
+        private readonly StringBuilder _stringBuilder = new StringBuilder(256);
+        private readonly StringBuilder _languageStringBuilder = new StringBuilder(128);
+        private readonly GUIContent _tempMetaContent = new GUIContent();
+
+        // Initialization tracking
+        private bool _isFullyInitialized;
+
+        #endregion
+
+        #region Window Lifecycle
+
+        [MenuItem("Window/SherpaONNX/Model Manager", priority = 100)]
+        private static void ShowWindow()
+        {
+            var window = GetWindow<SherpaONNXModelsEditorWindow>();
+            window.minSize = new Vector2(450, 350);
+            window.Show();
+        }
+
+        private void OnEnable()
+        {
+            InitializeCaches();
+            InstallRepaintPump();
+            SubscribeToEvents();
+            LoadManifestData();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromEvents();
+            UninstallRepaintPump();
+            CancelManifestLoad();
+            CancelAllDownloads();
+        }
+
+        private void OnDestroy()
+        {
+            OnDisable();
+        }
+
+        private void InitializeCaches()
+        {
+            _styles = new StyleCache();
+            _icons = new IconCache();
+            _content = new LocalizedContentCache();
+            _searchField = new SearchField();
+        }
+
+        private void EnsureInitialized()
+        {
+            if (_styles == null)
             {
-                Debug.LogError($"Failed to delete model '{meta.modelId}': {e.Message}");
-                return false;
+                _styles = new StyleCache();
             }
-        }
 
-        private void OnGUI()
-        {
-            EditorGUILayout.LabelField(
-                L(SherpaONNXL10n.Models.Header, "SherpaONNX Model Manager"),
-                EditorStyles.boldLabel);
-            DrawToolbar();
-
-            var reg = SherpaONNXModelRegistry.Instance;
-            SherpaONNXModelManifest _mfCheck;
-            if (_isLoadingManifest || reg.IsInitializing || !reg.TryGetManifest(out _mfCheck))
+            if (_icons == null)
             {
-                DrawLoadingSpinner(L(SherpaONNXL10n.Models.LoadingRemote, "Fetching model manifest from GitHub…"));
-                return;
+                _icons = new IconCache();
             }
 
-            DrawModelList();
-            DrawActiveDownloads();
-        }
-        private void DrawLoadingSpinner(string message = null)
-        {
-            message ??= L(SherpaONNXL10n.Models.LoadingGeneric, "Fetching model manifest…");
-            _spinnerFrame = (int)(EditorApplication.timeSinceStartup * 10) % 12;
-            var icon = EditorGUIUtility.IconContent($"WaitSpin{_spinnerFrame:00}");
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            if (_content == null)
             {
-                GUILayout.Label(icon, GUILayout.Width(20), GUILayout.Height(20));
-                GUILayout.Label(message, EditorStyles.wordWrappedLabel);
+                _content = new LocalizedContentCache();
             }
-            _needsRepaint = true; // keep the animation running via the repaint pump
-        }
-
-        private void OnRegistryInitialized()
-        {
-            // Ensure main-thread UI update
-            EditorApplication.delayCall += () =>
-            {
-                _isLoadingManifest = false;
-                RefreshData();
-                _needsRepaint = true;
-            };
-        }
-
-        /// <summary>
-        /// Responsive toolbar: adapts to window width, keeps controls readable and structured.
-        /// </summary>
-        private void DrawToolbar()
-        {
-            float viewWidth = EditorGUIUtility.currentViewWidth;
-            bool isNarrow = viewWidth < 680f;
-            bool useOverflow = !isNarrow && viewWidth < 780f; // show overflow dropdown on medium widths
 
             if (_searchField == null)
             {
                 _searchField = new SearchField();
             }
 
-            if (!isNarrow)
+            if (!_styles.IsInitialized)
             {
-                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
-                {
-                    // Search field (toolbar height)
-                    float searchMin = Mathf.Min(180f, viewWidth * 0.60f);
-                    Rect searchRect = GUILayoutUtility.GetRect(
-                        searchMin, 320f,
-                        EditorGUIUtility.singleLineHeight, EditorGUIUtility.singleLineHeight,
-                        EditorStyles.toolbarSearchField,
-                        GUILayout.ExpandWidth(true)
-                    );
-                    _searchQuery = _searchField.OnToolbarGUI(searchRect, _searchQuery);
-                    GUILayout.Space(4);
-
-                    // Category
-                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel);
-                    _selectedCategoryIndex = EditorGUILayout.Popup(
-                        _selectedCategoryIndex,
-                        _categoriesArray,
-                        EditorStyles.toolbarPopup,
-                        GUILayout.MaxWidth(Mathf.Min(260f, viewWidth * 0.25f)),
-                        GUILayout.MinWidth(120f),
-                        GUILayout.ExpandWidth(false));
-
-                    GUILayout.Space(4);
-
-                    // Language
-                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel);
-                    _selectedLanguageIndex = EditorGUILayout.Popup(
-                        _selectedLanguageIndex,
-                        _languagesArray,
-                        EditorStyles.toolbarPopup,
-                        GUILayout.MaxWidth(Mathf.Min(220f, viewWidth * 0.20f)),
-                        GUILayout.MinWidth(100f),
-                        GUILayout.ExpandWidth(false));
-
-                    GUILayout.FlexibleSpace();
-
-                    if (useOverflow)
-                    {
-                        if (EditorGUILayout.DropdownButton(
-                                Lc(SherpaONNXL10n.Models.ToolbarMore, "More"),
-                                FocusType.Passive,
-                                EditorStyles.toolbarDropDown,
-                                GUILayout.Width(60)))
-                        {
-                            var menu = new GenericMenu();
-                            menu.AddItem(
-                                Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
-                                false,
-                                ResetFilters);
-                            menu.AddItem(
-                                Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
-                                false,
-                                ForceRefreshManifest);
-                            menu.AddItem(
-                                Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
-                                false,
-                                KickoffDownloadStatusScan);
-                            var r = GUILayoutUtility.GetLastRect();
-                            menu.DropDown(new Rect(r.x, r.y + r.height, 0, 0));
-                            GUIUtility.ExitGUI();
-                        }
-                    }
-                    else
-                    {
-                        if (GUILayout.Button(
-                                Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
-                                EditorStyles.toolbarButton,
-                                GUILayout.Width(56)))
-                        {
-                            ResetFilters();
-                        }
-
-                        if (GUILayout.Button(
-                                Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
-                                EditorStyles.toolbarButton,
-                                GUILayout.Width(70)))
-                        {
-                            ForceRefreshManifest();
-                        }
-
-                        if (GUILayout.Button(
-                                Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
-                                EditorStyles.toolbarButton,
-                                GUILayout.Width(70)))
-                        {
-                            KickoffDownloadStatusScan();
-                        }
-                    }
-                }
-                EditorGUILayout.Space(3);
-                return;
+                _styles.Initialize();
             }
 
-            // Narrow layout: stacked rows inside a framed group
-            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            if (!_icons.IsInitialized)
             {
-                // Row 1: Search + overflow actions
-                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
-                {
-                    Rect narrowSearchRect = GUILayoutUtility.GetRect(80f, EditorGUIUtility.singleLineHeight, GUILayout.ExpandWidth(true));
-                    _searchQuery = _searchField.OnToolbarGUI(narrowSearchRect, _searchQuery);
-
-                    if (GUILayout.Button(
-                            Lc(SherpaONNXL10n.Common.ButtonClear, "Clear", SherpaONNXL10n.Common.TooltipClearFilters, "Reset search and all filters"),
-                            EditorStyles.toolbarButton,
-                            GUILayout.Width(56)))
-                    {
-                        ResetFilters();
-                    }
-
-                    if (GUILayout.Button(
-                            Lc(SherpaONNXL10n.Common.ButtonRefresh, "Refresh", SherpaONNXL10n.Common.TooltipRefresh, "Force-reload manifest (Uninitialize + re-fetch)"),
-                            EditorStyles.toolbarButton,
-                            GUILayout.Width(70)))
-                    {
-                        ForceRefreshManifest();
-                    }
-
-                    if (GUILayout.Button(
-                            Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipRescan, "Re-check download status for all models"),
-                            EditorStyles.toolbarButton,
-                            GUILayout.Width(70)))
-                    {
-                        KickoffDownloadStatusScan();
-                    }
-                }
-
-                // Row 2: Filters (expand to available width)
-                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
-                {
-                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelCategory, "Category"), EditorStyles.miniLabel, GUILayout.Width(60));
-                    _selectedCategoryIndex = EditorGUILayout.Popup(
-                        _selectedCategoryIndex,
-                        _categoriesArray,
-                        EditorStyles.toolbarPopup,
-                        GUILayout.ExpandWidth(true));
-
-                    GUILayout.Space(6);
-
-                    GUILayout.Label(L(SherpaONNXL10n.Common.LabelLanguage, "Language"), EditorStyles.miniLabel, GUILayout.Width(60));
-                    _selectedLanguageIndex = EditorGUILayout.Popup(
-                        _selectedLanguageIndex,
-                        _languagesArray,
-                        EditorStyles.toolbarPopup,
-                        GUILayout.ExpandWidth(true));
-                }
+                _icons.Initialize();
             }
 
-            EditorGUILayout.Space(3);
+            if (!_content.IsBuilt)
+            {
+                _content.Build();
+            }
+
+
+            if (_styles.IsInitialized && _icons.IsInitialized && _content.IsBuilt)
+            {
+                if (!_isFullyInitialized)
+                {
+                    _isFullyInitialized = true;
+                    titleContent = _content.WindowTitle ?? new GUIContent("SherpaONNX Models");
+                }
+            }
         }
 
-        /// <summary>
-        /// Draws the scrollable list of model entries with occlusion culling (virtualization) based on scroll position and window size.
-        /// </summary>
-        private void DrawModelList()
+        private void SubscribeToEvents()
         {
-            // Determine viewport after toolbar; this operates reliably since DrawModelList()
-            // is called after header + toolbar have been laid out.
-            float prevBottom = GUILayoutUtility.GetLastRect().yMax;
-            float viewHeight = Mathf.Max(64f, position.height - prevBottom - 6f);
-            float viewWidth = Mathf.Max(200f, position.width - 20f); // leave space for scrollbar
+            SherpaONNXLocalization.LanguageChanged += OnLanguageChanged;
+            SherpaONNXModelRegistry.Instance.Initialized += OnRegistryInitialized;
+        }
 
-            // Precompute total content height + the first and last visible items using a buffered window.
-            // The buffer reduces redraw pop-in during fast scrolling.
-            const float buffer = 400f;
-            float startY = Mathf.Max(0f, _scrollPosition.y - buffer);
-            float endY = _scrollPosition.y + viewHeight + buffer;
-
-            float totalHeight = 0f;
-            float topPadding = 0f;
-            float drawnHeight = 0f;
-            bool hasAny = false;
-
-            // Identify first visible item index and compute top padding.
-            int firstIndex = -1;
-            // We iterate twice at most: once to find the visible range, once to finalize total height if we break early.
-            for (int i = 0; i < _allEntries.Count; i++)
+        private void UnsubscribeFromEvents()
+        {
+            SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged;
+            if (SherpaONNXModelRegistry.Instance != null)
             {
-                var entry = _allEntries[i];
-                if (!IsVisible(entry))
-                {
-                    continue; // filtered-out entries do not contribute to height or scroll range
-                }
-
-                float h = CalcEntryHeight(entry, viewWidth);
-                float next = totalHeight + h;
-
-                if (firstIndex < 0 && next >= startY)
-                {
-                    firstIndex = i;
-                    topPadding = totalHeight;
-                    hasAny = true;
-                }
-
-                // If we've passed the end of the buffered window, we can stop early, but we still need total height.
-                if (next >= endY && hasAny)
-                {
-                    // Count the current item before finishing the rest to keep scroll math stable.
-                    totalHeight = next;
-                    // Finish computing total by scanning the remainder without drawing.
-                    for (int j = i + 1; j < _allEntries.Count; j++)
-                    {
-                        var e2 = _allEntries[j];
-                        if (!IsVisible(e2)) { continue; }
-                        totalHeight += CalcEntryHeight(e2, viewWidth);
-                    }
-                    break;
-                }
-                totalHeight = next;
+                SherpaONNXModelRegistry.Instance.Initialized -= OnRegistryInitialized;
             }
+        }
 
-            // If nothing matched filters, draw an empty scroll area with minimal height.
-            if (!hasAny)
+        private void OnLanguageChanged()
+        {
+            if (_content != null)
             {
-                // Ensure totalHeight reflects the sum for scrollbars (even if zero).
-                totalHeight = 0f;
-                foreach (var e in _allEntries)
-                {
-                    if (!IsVisible(e)) { continue; }
-                    totalHeight += CalcEntryHeight(e, viewWidth);
-                }
-                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-                if (Mathf.Approximately(totalHeight, 0f))
-                {
-                    EditorGUILayout.HelpBox(
-                        L(SherpaONNXL10n.Models.HelpNoMatches, "No models match the current filters."),
-                        MessageType.Info);
-                }
-                else
-                {
-                    GUILayout.Space(totalHeight);
-                }
-                EditorGUILayout.EndScrollView();
+                _content.Build();
+                titleContent = _content.WindowTitle ?? new GUIContent("SherpaONNX Models");
+            }
+            _needsFilterRebuild = true;
+            InvalidateAllCardHeights();
+            RequestRepaint();
+        }
+
+        private void OnRegistryInitialized()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                _isLoadingManifest = false;
+                LoadManifestData();
+                RequestRepaint();
+            };
+        }
+
+        #endregion
+
+        #region Repaint Management
+
+        private void InstallRepaintPump()
+        {
+            if (_repaintPumpCallback != null)
+            {
                 return;
             }
 
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-
-            // Top spacer to skip all items above the first visible one.
-            GUILayout.Space(topPadding);
-
-            // Draw visible window until we pass endY
-            float currentY = topPadding;
-            for (int i = firstIndex; i < _allEntries.Count; i++)
+            _repaintPumpCallback = () =>
             {
-                var entry = _allEntries[i];
-                if (!IsVisible(entry)) { continue; }
+                bool hasActivity = _needsRepaint || HasActiveDownloads();
+                if (!hasActivity)
+                {
+                    return;
+                }
 
-                float h = CalcEntryHeight(entry, viewWidth);
+                double now = EditorApplication.timeSinceStartup;
+                const double minInterval = 1.0 / 30.0; // Max 30 FPS for editor
 
-                if (currentY > endY) { break; } // we've drawn beyond the buffered window
+                if (now - _lastRepaintTime < minInterval)
+                {
+                    return;
+                }
 
-                DrawEntry(entry);
-                drawnHeight += h;
-                currentY += h;
+
+                _lastRepaintTime = now;
+                _needsRepaint = false;
+                Repaint();
+            };
+
+            EditorApplication.update += _repaintPumpCallback;
+        }
+
+        private void UninstallRepaintPump()
+        {
+            if (_repaintPumpCallback != null)
+            {
+                EditorApplication.update -= _repaintPumpCallback;
+                _repaintPumpCallback = null;
+            }
+        }
+
+        private void RequestRepaint()
+        {
+            _needsRepaint = true;
+        }
+
+        private bool HasActiveDownloads()
+        {
+            for (int i = 0; i < _activeDownloads.Count; i++)
+            {
+                if (_activeDownloads[i].IsActive)
+                {
+                    return true;
+                }
+
+            }
+            return false;
+        }
+
+        private void InvalidateAllCardHeights()
+        {
+            for (int i = 0; i < _allModels.Count; i++)
+            {
+                _allModels[i].IsHeightValid = false;
+            }
+        }
+
+        #endregion
+
+        #region Data Loading
+
+        private void LoadManifestData()
+        {
+            _allModels.Clear();
+            _filteredModels.Clear();
+
+            var registry = SherpaONNXModelRegistry.Instance;
+            if (registry == null)
+            {
+                _isLoadingManifest = false;
+                return;
             }
 
-            float bottomPadding = Mathf.Max(0f, totalHeight - topPadding - drawnHeight);
-            GUILayout.Space(bottomPadding);
+            if (registry.TryGetManifest(out var manifest))
+            {
+                _isLoadingManifest = false;
+                PopulateModelsFromManifest(manifest);
+                _needsFilterRebuild = true;
+                ScanAllModelStatuses();
+            }
+            else
+            {
+                _isLoadingManifest = true;
+                RequestRepaint();
+                StartManifestLoadAsync();
+            }
+        }
+
+        private async void StartManifestLoadAsync()
+        {
+            CancelManifestLoad();
+            _manifestLoadCts = new CancellationTokenSource();
+            var token = _manifestLoadCts.Token;
+
+            try
+            {
+                var manifest = await SherpaONNXModelRegistry.Instance.WaitForManifestAsync(token);
+
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+
+                EditorApplication.delayCall += () =>
+                {
+                    _isLoadingManifest = false;
+                    PopulateModelsFromManifest(manifest);
+                    _needsFilterRebuild = true;
+                    ScanAllModelStatuses();
+                    RequestRepaint();
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when window closes during load
+            }
+            catch (Exception ex)
+            {
+                EditorApplication.delayCall += () =>
+                {
+                    _isLoadingManifest = false;
+                    Debug.LogWarning($"[SherpaONNXModelsEditorWindow] Failed to load manifest: {ex.Message}");
+                    RequestRepaint();
+                };
+            }
+        }
+
+        private void CancelManifestLoad()
+        {
+            try { _manifestLoadCts?.Cancel(); } catch { }
+            try { _manifestLoadCts?.Dispose(); } catch { }
+            _manifestLoadCts = null;
+        }
+
+        private void PopulateModelsFromManifest(SherpaONNXModelManifest manifest)
+        {
+            if (manifest?.models == null)
+            {
+                return;
+            }
+
+
+            foreach (var meta in manifest.models)
+            {
+                if (meta == null)
+                {
+                    continue;
+                }
+
+
+                var entry = new ModelEntry
+                {
+                    Metadata = meta,
+                    Languages = ParseLanguagesFromModelId(meta.modelId),
+                    Status = ModelStatus.Unknown
+                };
+                _allModels.Add(entry);
+            }
+        }
+
+        private void ForceRefreshManifest()
+        {
+            CancelAllDownloads();
+            _allModels.Clear();
+            _filteredModels.Clear();
+            _isLoadingManifest = true;
+            _needsFilterRebuild = true;
+            RequestRepaint();
+
+            SherpaONNXModelRegistry.Instance?.Uninitialize();
+            EditorApplication.delayCall += StartManifestLoadAsync;
+        }
+
+        #endregion
+
+        #region Status Scanning
+
+        private void ScanAllModelStatuses()
+        {
+            foreach (var entry in _allModels)
+            {
+                ScanModelStatusAsync(entry);
+            }
+        }
+
+        private async void ScanModelStatusAsync(ModelEntry entry)
+        {
+            if (entry?.Metadata == null)
+            {
+                return;
+            }
+
+
+            entry.Status = ModelStatus.Checking;
+            entry.StatusMessage = null;
+            entry.IsHeightValid = false;
+            RequestRepaint();
+
+            try
+            {
+                bool isDownloaded = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(entry.Metadata);
+                entry.Status = isDownloaded ? ModelStatus.Downloaded : ModelStatus.NotDownloaded;
+            }
+            catch (Exception)
+            {
+                entry.Status = ModelStatus.NotDownloaded;
+            }
+
+            entry.IsHeightValid = false;
+            RequestRepaint();
+        }
+
+        #endregion
+
+        #region Main GUI
+
+        private void OnGUI()
+        {
+            // Ensure all caches are initialized
+            EnsureInitialized();
+
+            if (!_isFullyInitialized || !_styles.IsInitialized)
+            {
+                DrawFallbackUI();
+                return;
+            }
+
+            // Check for loading state
+            bool isLoading = _isLoadingManifest ||
+                             (SherpaONNXModelRegistry.Instance?.IsInitializing ?? false);
+
+            if (isLoading)
+            {
+                DrawLoadingState();
+                return;
+            }
+
+            // Rebuild filter options if needed
+            if (_needsFilterRebuild)
+            {
+                RebuildFilterOptions();
+                RebuildFilteredModelList();
+                _needsFilterRebuild = false;
+            }
+
+            // Draw main UI
+            DrawToolbar();
+            DrawFilterBar();
+
+            EditorGUILayout.Space(4);
+
+            DrawModelList();
+            DrawDownloadsPanel();
+        }
+
+        private void DrawFallbackUI()
+        {
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("Initializing...", EditorStyles.centeredGreyMiniLabel);
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+            GUILayout.FlexibleSpace();
+
+            // Force repaint until initialized
+            if (Event.current.type == EventType.Repaint)
+            {
+                EditorApplication.delayCall += Repaint;
+            }
+        }
+
+        private void DrawLoadingState()
+        {
+            var contentToShow = _content?.LoadingMessage ?? new GUIContent("Loading...");
+
+            GUILayout.FlexibleSpace();
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+
+            EditorGUILayout.BeginVertical(GUILayout.Width(250));
+
+            // Spinner
+            int frame = (int)(EditorApplication.timeSinceStartup * 12) % 12;
+            var spinnerContent = EditorGUIUtility.IconContent($"WaitSpin{frame:00}");
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (spinnerContent != null && spinnerContent.image != null)
+            {
+                GUILayout.Label(spinnerContent, GUILayout.Width(32), GUILayout.Height(32));
+            }
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(8);
+
+            EditorGUILayout.LabelField(contentToShow, EditorStyles.centeredGreyMiniLabel);
+
+            EditorGUILayout.EndVertical();
+
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.FlexibleSpace();
+
+            RequestRepaint();
+        }
+
+        #endregion
+
+        #region Toolbar
+
+        private void DrawToolbar()
+        {
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+
+            // Header title
+            GUILayout.Label(_content.HeaderTitle, _styles.HeaderLabel, GUILayout.ExpandWidth(false));
+
+            GUILayout.FlexibleSpace();
+
+            // Refresh button
+            var refreshContent = _icons.Refresh ?? GUIContent.none;
+            if (!string.IsNullOrEmpty(_content.RefreshTooltip?.tooltip))
+            {
+                refreshContent = new GUIContent(refreshContent.image, _content.RefreshTooltip.tooltip);
+            }
+
+            if (GUILayout.Button(refreshContent, EditorStyles.toolbarButton,
+                GUILayout.Width(LayoutConstants.SmallButtonWidth)))
+            {
+                ForceRefreshManifest();
+            }
+
+            // Rescan button
+            if (GUILayout.Button(_content.RescanButton, EditorStyles.toolbarButton,
+                GUILayout.Width(LayoutConstants.MediumButtonWidth)))
+            {
+                ScanAllModelStatuses();
+            }
+
+            // Clear filters button
+            EditorGUI.BeginDisabledGroup(!_filter.HasActiveFilters);
+            if (GUILayout.Button(_content.ClearButton, EditorStyles.toolbarButton,
+                GUILayout.Width(50)))
+            {
+                _filter.Reset();
+                RebuildFilteredModelList();
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        #endregion
+
+        #region Filter Bar
+
+        private void DrawFilterBar()
+        {
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+
+            // Search field
+            float searchWidth = Mathf.Clamp(
+                position.width * 0.3f,
+                LayoutConstants.SearchFieldMinWidth,
+                LayoutConstants.SearchFieldMaxWidth
+            );
+
+            var searchRect = GUILayoutUtility.GetRect(
+                searchWidth, searchWidth,
+                LayoutConstants.ToolbarHeight, LayoutConstants.ToolbarHeight,
+                _styles.ToolbarSearchField
+            );
+
+            string newSearch = _searchField.OnToolbarGUI(searchRect, _filter.SearchQuery);
+            if (newSearch != _filter.SearchQuery)
+            {
+                _filter.SearchQuery = newSearch;
+                RebuildFilteredModelList();
+            }
+
+            GUILayout.Space(LayoutConstants.FilterSpacing);
+
+            // Category filter
+            GUILayout.Label(_content.CategoryLabel, EditorStyles.miniLabel,
+                GUILayout.Width(LayoutConstants.FilterLabelWidth));
+
+            int newCategoryIndex = EditorGUILayout.Popup(
+                _filter.CategoryIndex,
+                GetDisplayStrings(_filter.CategoryDisplays),
+                EditorStyles.toolbarPopup,
+                GUILayout.Width(LayoutConstants.FilterDropdownWidth)
+            );
+
+            if (newCategoryIndex != _filter.CategoryIndex)
+            {
+                _filter.CategoryIndex = newCategoryIndex;
+                RebuildFilteredModelList();
+            }
+
+            GUILayout.Space(LayoutConstants.FilterSpacing);
+
+            // Language filter
+            GUILayout.Label(_content.LanguageLabel, EditorStyles.miniLabel,
+                GUILayout.Width(LayoutConstants.FilterLabelWidth));
+
+            int newLanguageIndex = EditorGUILayout.Popup(
+                _filter.LanguageIndex,
+                GetDisplayStrings(_filter.LanguageDisplays),
+                EditorStyles.toolbarPopup,
+                GUILayout.Width(LayoutConstants.FilterDropdownWidth)
+            );
+
+            if (newLanguageIndex != _filter.LanguageIndex)
+            {
+                _filter.LanguageIndex = newLanguageIndex;
+                RebuildFilteredModelList();
+            }
+
+            GUILayout.FlexibleSpace();
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private string[] GetDisplayStrings(GUIContent[] contents)
+        {
+            if (contents == null || contents.Length == 0)
+            {
+                return new[] { "All" };
+            }
+
+            var result = new string[contents.Length];
+            for (int i = 0; i < contents.Length; i++)
+            {
+                result[i] = contents[i]?.text ?? string.Empty;
+            }
+            return result;
+        }
+
+        private void RebuildFilterOptions()
+        {
+            _filter.RebuildOptions(
+                _allModels,
+                GetModuleTypeDisplayName,
+                GetLanguageDisplayName,
+                _content?.FilterAll?.text ?? "All"
+            );
+        }
+
+        private void RebuildFilteredModelList()
+        {
+            _filteredModels.Clear();
+
+            for (int i = 0; i < _allModels.Count; i++)
+            {
+                var entry = _allModels[i];
+                if (_filter.Matches(entry))
+                {
+                    _filteredModels.Add(entry);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Model List
+
+        private void DrawModelList()
+        {
+            if (_filteredModels.Count == 0)
+            {
+                EditorGUILayout.HelpBox(_content.NoModelsMessage?.text ?? "No models found.", MessageType.Info);
+                return;
+            }
+
+            // Calculate available height
+            float downloadsHeight = HasActiveDownloads() ? LayoutConstants.DownloadsPanelMaxHeight + 20 : 0;
+            float availableHeight = position.height - GUILayoutUtility.GetLastRect().yMax - downloadsHeight - 10;
+            availableHeight = Mathf.Max(100f, availableHeight);
+
+            float viewWidth = position.width - 20;
+
+            // Begin scroll view
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(availableHeight));
+
+            // Simple virtualization: calculate visible range
+            float scrollY = _scrollPosition.y;
+            float viewBottom = scrollY + availableHeight;
+            float bufferSize = LayoutConstants.VirtualizationBuffer;
+
+            float accumulatedY = 0;
+            int firstVisible = -1;
+            int lastVisible = -1;
+
+            // First pass: find visible range
+            for (int i = 0; i < _filteredModels.Count; i++)
+            {
+                var entry = _filteredModels[i];
+                float cardHeight = GetCardHeight(entry, viewWidth);
+                float cardTop = accumulatedY;
+                float cardBottom = accumulatedY + cardHeight;
+
+                if (firstVisible < 0 && cardBottom >= scrollY - bufferSize)
+                {
+                    firstVisible = i;
+                }
+
+                if (cardTop <= viewBottom + bufferSize)
+                {
+                    lastVisible = i;
+                }
+
+                accumulatedY += cardHeight;
+            }
+
+            float totalHeight = accumulatedY;
+
+            // Calculate pre-space
+            float preSpace = 0;
+            if (firstVisible > 0)
+            {
+                for (int i = 0; i < firstVisible; i++)
+                {
+                    preSpace += GetCardHeight(_filteredModels[i], viewWidth);
+                }
+            }
+
+            // Draw pre-space
+            if (preSpace > 0)
+            {
+                GUILayout.Space(preSpace);
+            }
+
+            // Draw visible cards
+            if (firstVisible >= 0 && lastVisible >= 0)
+            {
+                for (int i = firstVisible; i <= lastVisible && i < _filteredModels.Count; i++)
+                {
+                    DrawModelCard(_filteredModels[i], viewWidth);
+                }
+            }
+
+            // Calculate post-space
+            float drawnHeight = 0;
+            if (firstVisible >= 0 && lastVisible >= 0)
+            {
+                for (int i = firstVisible; i <= lastVisible && i < _filteredModels.Count; i++)
+                {
+                    drawnHeight += GetCardHeight(_filteredModels[i], viewWidth);
+                }
+            }
+
+            float postSpace = totalHeight - preSpace - drawnHeight;
+            if (postSpace > 0)
+            {
+                GUILayout.Space(postSpace);
+            }
 
             EditorGUILayout.EndScrollView();
         }
 
-        /// <summary>
-        /// Compute a tiny layout snapshot during Layout so both Layout and Repaint use the same structure.
-        /// </summary>
-        private void UpdateLayoutSnapshot(ModelEntry entry, float viewWidth)
+        private float GetCardHeight(ModelEntry entry, float viewWidth)
         {
-            if (Event.current.type != EventType.Layout)
+            if (entry.IsHeightValid)
+            {
+                return entry.CachedCardHeight;
+            }
+
+            float height = LayoutConstants.CardPadding * 2; // Padding
+            height += EditorGUIUtility.singleLineHeight; // Name row
+            height += LayoutConstants.RowSpacing;
+            height += EditorGUIUtility.singleLineHeight * 0.9f; // Meta row
+
+            // Progress bar if downloading
+            var download = GetActiveDownloadForModel(entry.Metadata);
+            if (download != null && download.IsActive)
+            {
+                height += LayoutConstants.RowSpacing;
+                height += LayoutConstants.ProgressBarHeight;
+            }
+
+            // Error message
+            if (entry.Status == ModelStatus.Failed && !string.IsNullOrEmpty(entry.StatusMessage))
+            {
+                height += LayoutConstants.RowSpacing;
+                height += EditorGUIUtility.singleLineHeight * 2; // Approximate help box height
+            }
+
+            height += LayoutConstants.CardMarginBottom;
+
+            entry.CachedCardHeight = height;
+            entry.IsHeightValid = true;
+            return height;
+        }
+
+        private void DrawModelCard(ModelEntry entry, float viewWidth)
+        {
+            if (entry?.Metadata == null)
             {
                 return;
             }
 
-            // Whether to show progress area this frame
-            entry.ProgressVisible = _activeDownloads.Any(x => x.Metadata == entry.Metadata);
 
-            // Pre-compute helpbox height for verification message
-            bool showVerify = entry.VerifyFailed && !string.IsNullOrEmpty(entry.VerifyMessage);
-            if (showVerify)
+            var download = GetActiveDownloadForModel(entry.Metadata);
+            bool isDownloading = download?.IsActive ?? false;
+
+            EditorGUILayout.BeginVertical(_styles.CardBackground);
+
+            // Row 1: Icon + Name + Badge + Actions
+            DrawModelCardHeader(entry, isDownloading, viewWidth);
+
+            EditorGUILayout.Space(LayoutConstants.RowSpacing);
+
+            // Row 2: Metadata
+            DrawModelCardMetadata(entry);
+
+            // Progress bar if downloading
+            if (isDownloading)
             {
-                float usableWidth = Mathf.Max(60f, viewWidth - 40f);
-                entry.HelpHeight = EditorStyles.helpBox.CalcHeight(new GUIContent(entry.VerifyMessage), usableWidth);
-            }
-            else
-            {
-                entry.HelpHeight = 0f;
-            }
-        }
-
-        /// <summary>
-        /// Predicts the vertical space that a `ModelEntry` will occupy in the list, given the current window width.
-        /// Keep this in sync with `DrawEntry` layout to ensure smooth virtualization.
-        /// </summary>
-        private float CalcEntryHeight(ModelEntry entry, float viewWidth)
-        {
-            float h = 0f;
-            float line = EditorGUIUtility.singleLineHeight;
-            // bool hasFiles = entry.Metadata?.modelFileNames != null && entry.Metadata.modelFileNames.Length > 0;
-
-            // Compute minimal layout snapshot (only during Layout)
-            UpdateLayoutSnapshot(entry, viewWidth);
-            bool showProgress = entry.ProgressVisible;
-
-            // Approximate padding/margins from the "box" container
-            h += 6f;                 // top inner padding
-
-            // Header row
-            h += line;               // foldout or bold label
-
-            // Meta row (Category + Language)
-            h += line;
-
-            // Files count (only if there are files)
-            // if (hasFiles)
-            // {
-            //     h += line;
-            // }
-
-            // URL row
-            h += line;
-
-            // Expanded file list
-            // if (hasFiles && entry.Expanded)
-            // {
-            //     int n = entry.Metadata.modelFileNames.Length;
-            //     h += 2f + n * line;
-            // }
-
-            // Actions row
-            h += line;
-
-            // Verification message: always emit one control; height 0 when hidden
-            if (entry.HelpHeight > 0f)
-            {
-                h += entry.HelpHeight;
+                EditorGUILayout.Space(LayoutConstants.RowSpacing);
+                DrawProgressBar(download);
             }
 
-            // Progress UI: always emit two controls; height 0 when hidden
-            h += showProgress ? 18f : 0f;   // progress bar rect
-            h += showProgress ? line : 0f;  // Cancel button row
-
-            // Bottom spacing between entries
-            h += 10f;
-
-            return h;
-        }
-
-        /// <summary>
-        /// Draw a single entry row (compact). Hides Files row and foldout when there are no files.
-        /// </summary>
-        private void DrawEntry(ModelEntry entry)
-        {
-            // bool hasFiles = entry.Metadata?.modelFileNames != null && entry.Metadata.modelFileNames.Length > 0;
-
-            // Compute minimal snapshot for this frame
-            float viewWidth = Mathf.Max(200f, position.width - 20f);
-            UpdateLayoutSnapshot(entry, viewWidth);
-
-            EditorGUILayout.BeginVertical("box");
-
-            // Header row: Only show foldout if there are files; otherwise show a bold label.
-            EditorGUILayout.BeginHorizontal();
-            // if (hasFiles)
-            // {
-            //     entry.Expanded = EditorGUILayout.Foldout(entry.Expanded, entry.Metadata.modelId, true);
-            // }
-            // else
-            // {
-            GUILayout.Label(entry.Metadata.modelId, EditorStyles.boldLabel);
-            entry.Expanded = false; // ensure not expanded when no files
-            // }
-            GUILayout.FlexibleSpace();
-            DrawDownloadStatusPill(entry);
-            EditorGUILayout.EndHorizontal();
-
-            // Meta row: Category & Language as compact labels
-            EditorGUILayout.BeginHorizontal();
-            var categoryLabel = GetModuleDisplayName(entry.Metadata.moduleType);
-            EditorGUILayout.LabelField(
-                string.Format(
-                    L(SherpaONNXL10n.Models.LabelCategoryPrefix, "Category: {0}"),
-                    categoryLabel),
-                EditorStyles.miniLabel);
-
-            EditorGUILayout.LabelField(
-                string.Format(
-                    L(SherpaONNXL10n.Models.LabelLanguagePrefix, "Language: {0}"),
-                    FormatLanguageList(entry.Languages)),
-                EditorStyles.miniLabel);
-            EditorGUILayout.EndHorizontal();
-
-            // Files count row (only if files exist)
-            // if (hasFiles)
-            // {
-            //     EditorGUILayout.LabelField("Files: " + entry.Metadata.modelFileNames.Length, EditorStyles.miniLabel);
-            // }
-
-            // Download URL display
-            var url = entry.Metadata.downloadUrl;
-            using (new EditorGUILayout.HorizontalScope())
+            // Error message
+            if (entry.Status == ModelStatus.Failed && !string.IsNullOrEmpty(entry.StatusMessage))
             {
-                EditorGUILayout.LabelField(
-                    L(SherpaONNXL10n.Models.LabelUrlPrefix, "URL: "),
-                    EditorStyles.miniLabel,
-                    GUILayout.Width(40));
-                if (string.IsNullOrEmpty(url))
-                {
-                    EditorGUILayout.LabelField("—", EditorStyles.miniLabel);
-                }
-                else
-                {
-                    EditorGUILayout.SelectableLabel(url, EditorStyles.miniLabel, GUILayout.Height(EditorGUIUtility.singleLineHeight));
-                }
-            }
-
-            // Expandable file list (only if has files)
-            // if (hasFiles && entry.Expanded)
-            // {
-            //     EditorGUI.indentLevel++;
-            //     var files = entry.Metadata.modelFileNames;
-            //     for (int i = 0; i < files.Length; i++)
-            //     {
-            //         EditorGUILayout.LabelField(files[i], EditorStyles.miniLabel);
-            //     }
-            //     EditorGUI.indentLevel--;
-            //     EditorGUILayout.Space(2);
-            // }
-
-            // Actions row
-            EditorGUILayout.BeginHorizontal();
-            bool hasUrlInMetadata = !string.IsNullOrEmpty(entry.Metadata.downloadUrl);
-            bool isDownloadingThis = _activeDownloads.Any(d => d.Metadata == entry.Metadata);
-
-            // Push all operation buttons to the RIGHT
-            GUILayout.FlexibleSpace();
-
-            // Copy Name button
-            if (GUILayout.Button(
-                    Lc(SherpaONNXL10n.Models.ButtonCopyName, "Copy Name", SherpaONNXL10n.Models.TooltipCopyName, "Copy modelId to clipboard"),
-                    GUILayout.Width(90)))
-            {
-                EditorGUIUtility.systemCopyBuffer = entry.Metadata.modelId;
-                ShowNotification(new GUIContent(string.Format(
-                    L(SherpaONNXL10n.Models.NotificationCopiedName, "Copied: {0}"),
-                    entry.Metadata.modelId)));
-            }
-
-            // Copy URL button
-            if (GUILayout.Button(
-                    Lc(SherpaONNXL10n.Models.ButtonCopyUrl, "Copy URL", SherpaONNXL10n.Models.TooltipCopyUrl, "Copy download URL to clipboard"),
-                    GUILayout.Width(80)))
-            {
-                if (!string.IsNullOrEmpty(entry.Metadata.downloadUrl))
-                {
-                    EditorGUIUtility.systemCopyBuffer = entry.Metadata.downloadUrl;
-                    ShowNotification(new GUIContent(
-                        L(SherpaONNXL10n.Models.NotificationCopiedUrl, "Copied URL")));
-                }
-                else
-                {
-                    ShowNotification(new GUIContent(
-                        L(SherpaONNXL10n.Models.NotificationNoUrl, "No URL")));
-                }
-            }
-
-            // Reveal button
-            string moduleRoot = SherpaPathResolver.GetModuleRootPath(entry.Metadata.moduleType);
-            string modelDir = Path.Combine(moduleRoot, entry.Metadata.modelId);
-            EditorGUI.BeginDisabledGroup(!Directory.Exists(modelDir));
-            if (GUILayout.Button(
-                    Lc(SherpaONNXL10n.Models.ButtonReveal, "Reveal", SherpaONNXL10n.Common.TooltipReveal, "Reveal model folder in Finder/Explorer"),
-                    GUILayout.Width(70)))
-            {
-                EditorUtility.RevealInFinder(modelDir);
-            }
-            EditorGUI.EndDisabledGroup();
-
-            // Rescan button
-            if (GUILayout.Button(
-                    Lc(SherpaONNXL10n.Common.ButtonRescan, "Rescan", SherpaONNXL10n.Common.TooltipEntryRescan, "Re-check whether this model is fully downloaded & verified"),
-                    GUILayout.Width(70)))
-            {
-                RescanSingle(entry.Metadata);
-            }
-
-            // Download button
-            EditorGUI.BeginDisabledGroup(!hasUrlInMetadata || isDownloadingThis || entry.IsDownloaded == true);
-            var downloadLabel = entry.VerifyFailed
-                ? L(SherpaONNXL10n.Models.ButtonRedownload, "Re-download")
-                : L(SherpaONNXL10n.Models.ButtonDownload, "Download");
-            var downloadTooltip = entry.VerifyFailed
-                ? L(SherpaONNXL10n.Models.TooltipRedownload, "Verification failed previously. Click to re-download.")
-                : L(SherpaONNXL10n.Models.TooltipDownload, "Download model archive");
-            var dlContent = hasUrlInMetadata
-                ? new GUIContent(downloadLabel, downloadTooltip)
-                : Lc(SherpaONNXL10n.Models.NotificationNoUrl, "No URL", SherpaONNXL10n.Models.TooltipNoUrl, "No download URL in metadata");
-
-            if (GUILayout.Button(dlContent, GUILayout.Width(90)))
-            {
-                if (hasUrlInMetadata)
-                {
-                    StartDownload(entry.Metadata);
-                }
-            }
-            EditorGUI.EndDisabledGroup();
-
-            // Delete button
-            bool canDelete = Directory.Exists(modelDir);
-            EditorGUI.BeginDisabledGroup(!canDelete);
-            if (GUILayout.Button(
-                    Lc(SherpaONNXL10n.Models.ButtonDelete, "Delete", SherpaONNXL10n.Models.TooltipDelete, "Delete local model files"),
-                    GUILayout.Width(70)))
-            {
-                bool confirm = EditorUtility.DisplayDialog(
-                    L(SherpaONNXL10n.Models.DialogDeleteTitle, "Delete Model"),
-                    string.Format(
-                        L(SherpaONNXL10n.Models.DialogDeleteMessage, "Are you sure you want to delete local files for '{0}'?"),
-                        entry.Metadata.modelId),
-                    L(SherpaONNXL10n.Models.DialogDeleteConfirm, "Delete"),
-                    L(SherpaONNXL10n.Models.DialogDeleteCancel, "Cancel"));
-                if (confirm)
-                {
-                    if (DeleteModelFolder(entry.Metadata, modelDir))
-                    {
-                        ShowNotification(new GUIContent(string.Format(
-                            L(SherpaONNXL10n.Models.NotificationDeleted, "Deleted: {0}"),
-                            entry.Metadata.modelId)));
-                        _activeDownloads.RemoveAll(d => d.Metadata == entry.Metadata);
-                        _needsRepaint = true;
-                        RescanSingle(entry.Metadata);
-                    }
-                    else
-                    {
-                        ShowNotification(new GUIContent(string.Format(
-                            L(SherpaONNXL10n.Models.NotificationDeleteFailed, "Delete failed: {0}"),
-                            entry.Metadata.modelId)));
-                    }
-                }
-            }
-            EditorGUI.EndDisabledGroup();
-
-            EditorGUILayout.EndHorizontal();
-
-            // Verification message: always emit one control; height 0 when hidden
-            Rect verifyRect = EditorGUILayout.GetControlRect(false, entry.HelpHeight);
-            if (entry.HelpHeight > 0f)
-            {
-                EditorGUI.HelpBox(verifyRect, entry.VerifyMessage, MessageType.Error);
-            }
-
-            // Progress UI: always emit two controls; height 0 when hidden
-            var currentDownload = _activeDownloads.FirstOrDefault(d => d.Metadata == entry.Metadata);
-            bool showProgress = entry.ProgressVisible;
-            float prog = currentDownload?.Progress ?? 0f;
-            string status = currentDownload?.Status ?? string.Empty;
-
-            // Progress bar line
-            Rect pRect = EditorGUILayout.GetControlRect(false, showProgress ? 18f : 0f);
-            if (showProgress)
-            {
-                var fallback = L(SherpaONNXL10n.Models.StatusWorking, "Working…");
-                EditorGUI.ProgressBar(pRect, Mathf.Clamp01(prog), string.IsNullOrEmpty(status) ? fallback : status);
-            }
-
-            // Cancel row (draw manually to keep control count constant without extra GUILayout containers)
-            Rect cancelRect = EditorGUILayout.GetControlRect(false, showProgress ? EditorGUIUtility.singleLineHeight : 0f);
-            if (showProgress)
-            {
-                Rect btnRect = new Rect(cancelRect.xMax - 70f, cancelRect.y, 70f, cancelRect.height);
-                bool canCancel = currentDownload != null && !currentDownload.IsCanceled;
-                using (new EditorGUI.DisabledScope(!canCancel))
-                {
-                    if (GUI.Button(btnRect, L(SherpaONNXL10n.Common.ButtonCancel, "Cancel")) && currentDownload != null)
-                    {
-                        CancelDownload(currentDownload);
-                    }
-                }
+                EditorGUILayout.Space(LayoutConstants.RowSpacing);
+                EditorGUILayout.HelpBox(entry.StatusMessage, MessageType.Error);
             }
 
             EditorGUILayout.EndVertical();
-            EditorGUILayout.Space();
         }
 
-        private void DrawDownloadStatusPill(ModelEntry entry)
+        private void DrawModelCardHeader(ModelEntry entry, bool isDownloading, float viewWidth)
         {
-            string text;
-            Color col;
-            if (entry.VerifyFailed)
+            EditorGUILayout.BeginHorizontal();
+
+            // Module type icon
+            var moduleIcon = GetModuleTypeIcon(entry.ModuleType);
+            if (moduleIcon != null && moduleIcon.image != null)
             {
-                text = L(SherpaONNXL10n.Models.StatusVerifyFailed, "Verify Failed");
-                col = new Color(0.85f, 0.2f, 0.2f); // stronger red
+                GUILayout.Label(moduleIcon, GUILayout.Width(LayoutConstants.IconSize),
+                    GUILayout.Height(LayoutConstants.IconSize));
             }
-            else if (entry.IsDownloaded == null)
+
+            GUILayout.Space(LayoutConstants.ElementSpacing);
+
+            // Calculate available width for name
+            float fixedWidth = LayoutConstants.IconSize +
+                               LayoutConstants.ElementSpacing * 4 +
+                               LayoutConstants.StatusBadgeWidth +
+                               LayoutConstants.ActionButtonWidth +
+                               LayoutConstants.MenuButtonWidth +
+                               LayoutConstants.CardPadding * 2;
+
+            float nameWidth = Mathf.Max(100, viewWidth - fixedWidth);
+
+            // Model name
+            GUILayout.Label(entry.ModelId, _styles.ModelNameLabel,
+                GUILayout.MaxWidth(nameWidth),
+                GUILayout.MinWidth(80));
+
+            GUILayout.FlexibleSpace();
+
+            // Status badge
+            DrawStatusBadge(entry.Status);
+
+            GUILayout.Space(LayoutConstants.ElementSpacing);
+
+            // Primary action button
+            DrawPrimaryActionButton(entry, isDownloading);
+
+            // Context menu button
+            if (GUILayout.Button(_icons.Menu ?? new GUIContent("≡"),
+                EditorStyles.iconButton,
+                GUILayout.Width(LayoutConstants.MenuButtonWidth)))
             {
-                text = L(SherpaONNXL10n.Models.StatusChecking, "Checking…");
-                col = new Color(1.0f, 0.65f, 0f);
+                ShowModelContextMenu(entry);
             }
-            else if (entry.IsDownloaded == true)
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawStatusBadge(ModelStatus status)
+        {
+            GUIContent content;
+            Color bgColor;
+
+            switch (status)
             {
-                text = L(SherpaONNXL10n.Models.StatusDownloaded, "Downloaded");
-                col = new Color(0.25f, 0.75f, 0.25f);
+                case ModelStatus.Downloaded:
+                    content = _content.StatusReady;
+                    bgColor = ColorPalette.BadgeDownloaded;
+                    break;
+                case ModelStatus.NotDownloaded:
+                    content = _content.StatusNotDownloaded;
+                    bgColor = ColorPalette.BadgeNotDownloaded;
+                    break;
+                case ModelStatus.Checking:
+                    content = _content.StatusChecking;
+                    bgColor = ColorPalette.BadgeChecking;
+                    break;
+                case ModelStatus.Failed:
+                    content = _content.StatusFailed;
+                    bgColor = ColorPalette.BadgeFailed;
+                    break;
+                default:
+                    content = new GUIContent("...");
+                    bgColor = ColorPalette.BadgeNotDownloaded;
+                    break;
+            }
+
+            var rect = GUILayoutUtility.GetRect(
+                LayoutConstants.StatusBadgeWidth,
+                EditorGUIUtility.singleLineHeight,
+                GUILayout.Width(LayoutConstants.StatusBadgeWidth)
+            );
+
+            // Draw background
+            var prevColor = GUI.color;
+            GUI.color = bgColor;
+            GUI.DrawTexture(rect, StyleCache.GetBadgeBackground(), ScaleMode.StretchToFill);
+            GUI.color = prevColor;
+
+            // Draw text
+            GUI.Label(rect, content, _styles.BadgeLabel);
+        }
+
+        private void DrawPrimaryActionButton(ModelEntry entry, bool isDownloading)
+        {
+            if (isDownloading)
+            {
+                if (GUILayout.Button(_content.CancelButton, _styles.ActionButton,
+                    GUILayout.Width(LayoutConstants.ActionButtonWidth)))
+                {
+                    var download = GetActiveDownloadForModel(entry.Metadata);
+                    CancelDownload(download);
+                }
+            }
+            else if (entry.Status == ModelStatus.Failed && entry.HasDownloadUrl)
+            {
+                if (GUILayout.Button(_content.RedownloadButton, _styles.ActionButton,
+                    GUILayout.Width(LayoutConstants.ActionButtonWidth)))
+                {
+                    StartModelDownload(entry.Metadata);
+                }
+            }
+            else if (entry.Status == ModelStatus.NotDownloaded && entry.HasDownloadUrl)
+            {
+                if (GUILayout.Button(_content.DownloadButton, _styles.ActionButton,
+                    GUILayout.Width(LayoutConstants.ActionButtonWidth)))
+                {
+                    StartModelDownload(entry.Metadata);
+                }
+            }
+            else if (entry.Status == ModelStatus.Downloaded)
+            {
+                if (GUILayout.Button(_content.DeleteButton, _styles.ActionButton,
+                    GUILayout.Width(LayoutConstants.ActionButtonWidth)))
+                {
+                    ConfirmAndDeleteModel(entry);
+                }
             }
             else
             {
-                text = L(SherpaONNXL10n.Models.StatusNotDownloaded, "Not Downloaded");
-                col = new Color(0.75f, 0.3f, 0.3f);
+                // Placeholder to maintain layout
+                GUILayout.Space(LayoutConstants.ActionButtonWidth + 2);
             }
-            var prev = GUI.color;
-            GUI.color = col;
-            GUILayout.Label("■", GUILayout.Width(12));
-            GUI.color = prev;
-
-            EditorGUILayout.LabelField(text, EditorStyles.miniBoldLabel, GUILayout.Width(110));
         }
 
-        /// <summary>
-        /// Draws a summary list of active downloads with progress bars.
-        /// </summary>
-        private void DrawActiveDownloads()
+        private void DrawModelCardMetadata(ModelEntry entry)
         {
-            if (_activeDownloads.Count == 0)
+            EditorGUILayout.BeginHorizontal();
+
+            // Build metadata string + tooltip with full language list
+            _stringBuilder.Clear();
+            _stringBuilder.Append(GetModuleTypeDisplayName(entry.ModuleType));
+            _stringBuilder.Append("  •  ");
+            var languageSummary = FormatLanguageList(entry.Languages);
+            _stringBuilder.Append(languageSummary);
+
+            _tempMetaContent.text = _stringBuilder.ToString();
+            _tempMetaContent.tooltip = BuildLanguageTooltip(entry.Languages);
+
+            GUILayout.Label(_tempMetaContent, _styles.MetaLabel);
+
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawProgressBar(DownloadOperation download)
+        {
+            if (download == null)
             {
                 return;
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                L(SherpaONNXL10n.Models.LabelActiveDownloads, "Active Downloads"),
-                EditorStyles.boldLabel);
-            foreach (var download in _activeDownloads.ToArray())
-            {
-                var phaseLabel = GetPhaseDisplayName(download.Phase);
-                var header = string.IsNullOrEmpty(phaseLabel)
-                    ? download.Metadata.modelId
-                    : $"{download.Metadata.modelId}  •  {phaseLabel}";
-                EditorGUILayout.LabelField(header);
-                Rect rect = EditorGUILayout.GetControlRect(false, 18f);
-                var fallback = L(SherpaONNXL10n.Models.StatusWorking, "Working…");
-                EditorGUI.ProgressBar(rect, download.Progress, string.IsNullOrEmpty(download.Status) ? fallback : download.Status);
 
-                using (new EditorGUILayout.HorizontalScope())
+            var rect = EditorGUILayout.GetControlRect(false, LayoutConstants.ProgressBarHeight);
+            EditorGUI.ProgressBar(rect, download.Progress, download.StatusText ?? "Working...");
+        }
+
+        #endregion
+
+        #region Context Menu
+
+        private void ShowModelContextMenu(ModelEntry entry)
+        {
+            var menu = new GenericMenu();
+            var meta = entry.Metadata;
+
+            // Copy Model ID
+            menu.AddItem(_content.CopyModelIdItem, false, () =>
+            {
+                EditorGUIUtility.systemCopyBuffer = entry.ModelId;
+                ShowNotification(new GUIContent($"Copied: {entry.ModelId}"));
+            });
+
+            // Copy URL
+            if (entry.HasDownloadUrl)
+            {
+                menu.AddItem(_content.CopyUrlItem, false, () =>
                 {
-                    GUILayout.FlexibleSpace();
-                    EditorGUI.BeginDisabledGroup(download.IsCanceled);
-                    if (GUILayout.Button(L(SherpaONNXL10n.Common.ButtonCancel, "Cancel"), GUILayout.Width(70)))
+                    EditorGUIUtility.systemCopyBuffer = meta.downloadUrl;
+                    ShowNotification(new GUIContent("URL copied to clipboard"));
+                });
+            }
+            else
+            {
+                menu.AddDisabledItem(_content.CopyUrlItem);
+            }
+
+            menu.AddSeparator(string.Empty);
+
+            // Reveal in Explorer/Finder
+            var modelFolder = GetModelFolder(meta);
+            if (!string.IsNullOrEmpty(modelFolder) && Directory.Exists(modelFolder))
+            {
+                menu.AddItem(_content.RevealButton, false, () =>
+                {
+                    EditorUtility.RevealInFinder(modelFolder);
+                });
+            }
+            else
+            {
+                menu.AddDisabledItem(_content.RevealButton);
+            }
+
+            // Rescan status
+            menu.AddItem(_content.RescanStatusItem, false, () =>
+            {
+                ScanModelStatusAsync(entry);
+            });
+
+            menu.AddSeparator(string.Empty);
+
+            // Delete
+            if (!string.IsNullOrEmpty(modelFolder) && Directory.Exists(modelFolder))
+            {
+                menu.AddItem(_content.DeleteButton, false, () =>
+                {
+                    ConfirmAndDeleteModel(entry);
+                });
+            }
+            else
+            {
+                menu.AddDisabledItem(_content.DeleteButton);
+            }
+
+            menu.ShowAsContext();
+        }
+
+        #endregion
+
+        #region Downloads Panel
+
+        private void DrawDownloadsPanel()
+        {
+            // Count active downloads without LINQ
+            int activeCount = 0;
+            for (int i = 0; i < _activeDownloads.Count; i++)
+            {
+                if (_activeDownloads[i].IsActive)
+                {
+                    activeCount++;
+                }
+
+            }
+
+            if (activeCount == 0)
+            {
+                return;
+            }
+
+
+            EditorGUILayout.Space(8);
+
+            _stringBuilder.Clear();
+            _stringBuilder.Append(_content.ActiveDownloadsHeader?.text ?? "Active Downloads");
+            _stringBuilder.Append(" (");
+            _stringBuilder.Append(activeCount);
+            _stringBuilder.Append(")");
+
+            _showDownloadsPanel = EditorGUILayout.BeginFoldoutHeaderGroup(
+                _showDownloadsPanel,
+                _stringBuilder.ToString(),
+                _styles.FoldoutHeader
+            );
+
+            if (_showDownloadsPanel)
+            {
+                EditorGUILayout.BeginVertical("box");
+
+                for (int i = 0; i < _activeDownloads.Count; i++)
+                {
+                    var download = _activeDownloads[i];
+                    if (!download.IsActive)
                     {
-                        CancelDownload(download);
+                        continue;
                     }
-                    EditorGUI.EndDisabledGroup();
+
+
+                    DrawDownloadRow(download);
+
+                    if (i < _activeDownloads.Count - 1)
+                    {
+                        EditorGUILayout.Space(4);
+                    }
                 }
+
+                EditorGUILayout.EndVertical();
             }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
-        /// <summary>
-        /// Finalize a download task: remove from active list, trigger repaint, and optionally notify.
-        /// Ensures we stop showing the progress UI once a download is finished or failed.
-        /// </summary>
-        private void CompleteDownload(DownloadTask task, bool success, string notifyMessage = null)
+        private void DrawDownloadRow(DownloadOperation download)
         {
-            // Ensure UI changes occur on the main thread
-            EditorApplication.delayCall += () =>
-            {
-                // Remove any matching active downloads for this metadata
-                _activeDownloads.RemoveAll(d => d.Metadata == task.Metadata);
-                isDownloading = false;
-                _needsRepaint = true;
+            EditorGUILayout.BeginVertical();
 
-                if (!string.IsNullOrEmpty(notifyMessage))
-                {
-                    ShowNotification(new GUIContent(notifyMessage));
-                }
-            };
+            // Name and phase
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(download.ModelId, EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(GetDownloadPhaseDisplayName(download.Phase), EditorStyles.miniLabel);
+            EditorGUILayout.EndHorizontal();
+
+            // Progress bar
+            var rect = EditorGUILayout.GetControlRect(false, LayoutConstants.ProgressBarHeight);
+            EditorGUI.ProgressBar(rect, download.Progress, download.StatusText ?? "Working...");
+
+            // Cancel button
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+
+            EditorGUI.BeginDisabledGroup(download.IsCanceled);
+            if (GUILayout.Button(_content.CancelButton, _styles.ActionButton, GUILayout.Width(60)))
+            {
+                CancelDownload(download);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
         }
-        private void CancelAllActiveOperations()
+
+        #endregion
+
+        #region Download Operations
+
+        private DownloadOperation GetActiveDownloadForModel(SherpaONNXModelMetadata meta)
         {
-            foreach (var d in _activeDownloads.ToList())
+            if (meta == null)
             {
-                CancelDownload(d, L(SherpaONNXL10n.Models.StatusWindowClosed, "Window closed"));
+                return null;
             }
-            _activeDownloads.Clear();
-            isDownloading = false;
-            _needsRepaint = true;
+
+
+            for (int i = 0; i < _activeDownloads.Count; i++)
+            {
+                var download = _activeDownloads[i];
+                if (download.Metadata == meta && download.IsActive)
+                {
+                    return download;
+                }
+            }
+            return null;
         }
 
-        private void CancelDownload(DownloadTask task, string reason = null)
+        private void StartModelDownload(SherpaONNXModelMetadata meta)
         {
-            try
-            {
-                reason ??= L(SherpaONNXL10n.Models.StatusCancelByUser, "Canceled by user");
-                task.IsCanceled = true;
-                try { task.Cts?.Cancel(); } catch { }
-                try { task.Request?.Abort(); } catch { }
-
-                if (task.UpdateHandler != null)
-                {
-                    try { EditorApplication.update -= task.UpdateHandler; } catch { }
-                    task.UpdateHandler = null;
-                }
-
-                // Clean any partial archive
-                if (!string.IsNullOrEmpty(task.DestPath) && File.Exists(task.DestPath))
-                {
-                    try { SherpaFileUtils.Delete(task.DestPath); } catch { }
-                }
-
-                task.Status = reason;
-                task.Progress = 1f;
-
-                // Neutral UI state for cancel (not a red error)
-                SetVerifyFailed(task.Metadata, false);
-            }
-            finally
-            {
-                // Always prune footer row & notify
-                CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaONNXL10n.Models.NotificationCanceled, "Canceled: {0}"),
-                    task.Metadata.modelId));
-                // And refresh the pill/progress on the list row
-                RescanSingle(task.Metadata);
-            }
-        }
-        /// <summary>
-        /// Determines whether a model entry should be displayed based on the current filters.
-        /// </summary>
-        private bool IsVisible(ModelEntry entry)
-        {
-            // Category filter
-            if (_selectedCategoryIndex > 0 && entry.Category != _categories[_selectedCategoryIndex])
-            {
-                return false;
-            }
-            // Language filter
-
-            if (_selectedLanguageIndex > 0)
-            {
-                var selected = _languages[_selectedLanguageIndex];
-                if (entry.Languages == null || !entry.Languages.Contains(selected))
-                { return false; }
-            }
-            // Search filter
-
-            if (!string.IsNullOrWhiteSpace(_searchQuery) &&
-                !entry.Metadata.modelId.ToLowerInvariant().Contains(_searchQuery.ToLowerInvariant()))
-            {
-
-                return false;
-            }
-
-
-            return true;
-        }
-        /// <summary>
-        /// 从 modelId 解析受支持语言，返回**单语种**的规范小写名列表；
-        /// 永不返回复合字符串；若未命中则返回 ["other"]。
-        /// 规范集：chinese, cantonese, english, japanese, korean, thai, vietnamese, russian,
-        ///        french, spanish, german, dutch, danish, czech, catalan, arabic,
-        ///        italian, portuguese, turkish, polish, swedish, norwegian, indonesian,
-        ///        malay, hindi, urdu, persian, hebrew
-        /// </summary>
-        private static List<string> ParseLanguages(string id)
-        {
-            var order = new List<string> {
-        "chinese","cantonese","english","japanese","korean","thai","vietnamese","russian",
-        "french","spanish","german","dutch","danish","czech","catalan","arabic",
-        "italian","portuguese","turkish","polish","swedish","norwegian","indonesian",
-        "malay","hindi","urdu","persian","hebrew"
-    };
-            var canon = new HashSet<string>(order);
-            var found = new List<string>();
-
-            if (string.IsNullOrWhiteSpace(id))
-            {
-
-                return new List<string> { "other" };
-            }
-
-
-            string s = id.ToLowerInvariant();
-
-            void Add(string label)
-            {
-                if (canon.Contains(label) && !found.Contains(label))
-                {
-                    found.Add(label);
-                }
-
-            }
-
-            // 直观关键词（避免两字母误伤，例如 "ar"）
-            if (s.Contains("chinese") || s.Contains("mandarin"))
-            {
-                Add("chinese");
-            }
-
-
-            if (s.Contains("cantonese"))
-            {
-                Add("cantonese");
-            }
-
-
-            if (s.Contains("english"))
-            {
-                Add("english");
-            }
-
-
-            if (s.Contains("japanese"))
-            {
-                Add("japanese");
-            }
-
-
-            if (s.Contains("korean"))
-            {
-                Add("korean");
-            }
-
-
-            if (s.Contains("thai"))
-            {
-                Add("thai");
-            }
-
-
-            if (s.Contains("vietnamese"))
-            {
-                Add("vietnamese");
-            }
-
-
-            if (s.Contains("russian"))
-            {
-                Add("russian");
-            }
-
-
-            if (s.Contains("french"))
-            {
-                Add("french");
-            }
-
-
-            if (s.Contains("spanish"))
-            {
-                Add("spanish");
-            }
-
-
-            if (s.Contains("german"))
-            {
-                Add("german");
-            }
-
-
-            if (s.Contains("dutch"))
-            {
-                Add("dutch");
-            }
-
-            if (s.Contains("danish"))
-            {
-                Add("danish");
-            }
-
-            if (s.Contains("czech"))
-            {
-                Add("czech");
-            }
-
-            if (s.Contains("catalan"))
-            {
-                Add("catalan");
-            }
-
-            if (s.Contains("arabic"))
-            {
-                Add("arabic");
-            }
-
-            if (s.Contains("italian"))
-            {
-                Add("italian");
-            }
-
-            if (s.Contains("portuguese"))
-            {
-                Add("portuguese");
-            }
-
-            if (s.Contains("turkish"))
-            {
-                Add("turkish");
-            }
-
-            if (s.Contains("polish"))
-            {
-                Add("polish");
-            }
-
-            if (s.Contains("swedish"))
-            {
-                Add("swedish");
-            }
-
-            if (s.Contains("norwegian"))
-            {
-                Add("norwegian");
-            }
-
-            if (s.Contains("indonesian"))
-            {
-                Add("indonesian");
-            }
-
-            if (s.Contains("malay"))
-            {
-                Add("malay");
-            }
-
-            if (s.Contains("hindi"))
-            {
-                Add("hindi");
-            }
-
-            if (s.Contains("urdu"))
-            {
-                Add("urdu");
-            }
-
-            if (s.Contains("persian") || s.Contains("farsi"))
-            {
-                Add("persian");
-            }
-
-            if (s.Contains("hebrew"))
-            {
-                Add("hebrew");
-            }
-
-            // 代码/locale 扫描（支持 zh/en/ja/ko/th/vi/ru/fr/es/de/nl/da/cs/ca/ar/yue 等）
-
-            char[] seps = new[] { '-', '_', '.', '/', ' ', '+' };
-            var parts = s.Split(seps, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var p in parts)
-            {
-                if (p == "zh" || p.StartsWith("zh"))
-                {
-                    Add("chinese");
-                }
-
-                else if (p == "yue" || p.Contains("cant"))
-                {
-                    Add("cantonese");
-                }
-
-                else if (p == "en" || p.StartsWith("en"))
-                {
-                    Add("english");
-                }
-
-                else if (p == "ja" || p.StartsWith("ja"))
-                {
-                    Add("japanese");
-                }
-
-                else if (p == "ko" || p.StartsWith("ko"))
-                {
-                    Add("korean");
-                }
-
-                else if (p == "th" || p.StartsWith("th"))
-                {
-                    Add("thai");
-                }
-
-                else if (p == "vi" || p.StartsWith("vi"))
-                {
-                    Add("vietnamese");
-                }
-
-                else if (p == "ru" || p.StartsWith("ru"))
-                {
-                    Add("russian");
-                }
-
-                else if (p == "fr" || p.StartsWith("fr"))
-                {
-                    Add("french");
-                }
-
-                else if (p == "es" || p.StartsWith("es"))
-                {
-                    Add("spanish");
-                }
-
-                else if (p == "de" || p.StartsWith("de"))
-                {
-                    Add("german");
-                }
-
-                else if (p == "nl" || p.StartsWith("nl"))
-                {
-                    Add("dutch");
-                }
-
-                else if (p == "da" || p.StartsWith("da"))
-                {
-                    Add("danish");
-                }
-
-                else if (p == "cs" || p.StartsWith("cs"))
-                {
-                    Add("czech");
-                }
-
-                else if (p == "ca" || p.StartsWith("ca"))
-                {
-                    Add("catalan");
-                }
-
-                else if (p == "ar" || p.StartsWith("ar"))
-                {
-                    Add("arabic");
-                }
-
-                else if (p == "it" || p.StartsWith("it"))
-                {
-                    Add("italian");
-                }
-
-                else if (p == "pt" || p.StartsWith("pt") || p == "br")
-                {
-                    Add("portuguese");
-                }
-
-                else if (p == "tr" || p.StartsWith("tr"))
-                {
-                    Add("turkish");
-                }
-
-                else if (p == "pl" || p.StartsWith("pl"))
-                {
-                    Add("polish");
-                }
-
-                else if (p == "sv" || p.StartsWith("sv"))
-                {
-                    Add("swedish");
-                }
-
-                else if (p == "no" || p.StartsWith("no"))
-                {
-                    Add("norwegian");
-                }
-
-                else if (p == "id" || p.StartsWith("id"))
-                {
-                    Add("indonesian");
-                }
-
-                else if (p == "ms" || p.StartsWith("ms") || p == "my")
-                {
-                    Add("malay");
-                }
-
-                else if (p == "hi" || p.StartsWith("hi"))
-                {
-                    Add("hindi");
-                }
-
-                else if (p == "ur" || p.StartsWith("ur"))
-                {
-                    Add("urdu");
-                }
-
-                else if (p == "fa" || p.StartsWith("fa") || p == "ir")
-                {
-                    Add("persian");
-                }
-
-                else if (p == "he" || p.StartsWith("he") || p == "iw")
-                {
-                    Add("hebrew");
-                }
-            }
-
-            if (found.Count == 0)
-            {
-
-                return new List<string> { "other" };
-            }
-
-            // 稳定顺序（按 order 排）
-
-            found.Sort((a, b) => order.IndexOf(a).CompareTo(order.IndexOf(b)));
-            return found;
-        }
-        /// <summary>
-        /// Initiates a download for the given model metadata if a download URL is present.
-        /// </summary>
-        private void StartDownload(SherpaONNXModelMetadata metadata)
-        {
-            if (string.IsNullOrEmpty(metadata.downloadUrl))
+            if (meta == null || string.IsNullOrEmpty(meta.downloadUrl))
             {
                 return;
             }
 
 
-            if (isDownloading)
+            if (GetActiveDownloadForModel(meta) != null)
             {
-                return; // Avoid duplicate downloads
+                return;
             }
 
-            SetVerifyFailed(metadata, false);
-            var task = new DownloadTask
+            // Reset entry status
+
+            var entry = FindModelEntry(meta);
+            if (entry != null)
             {
-                Metadata = metadata,
+                entry.Status = ModelStatus.Checking;
+                entry.StatusMessage = null;
+                entry.IsHeightValid = false;
+            }
+
+            var operation = new DownloadOperation
+            {
+                Metadata = meta,
+                Phase = DownloadPhase.Downloading,
                 Progress = 0f,
-                Status = L(SherpaONNXL10n.Models.StatusStarting, "Starting..."),
-                Phase = DownloadPhase.Download
+                StatusText = "Starting...",
+                CancellationSource = new CancellationTokenSource()
             };
-            _activeDownloads.Add(task);
-            isDownloading = true;
-            StartDownloadProgressUpdate(task); // Start the download manually
+
+            _activeDownloads.Add(operation);
+            BeginDownloadRequest(operation);
+            RequestRepaint();
         }
 
-        private void StartDownloadProgressUpdate(DownloadTask task)
+        private void BeginDownloadRequest(DownloadOperation operation)
         {
-            string url = task.Metadata.downloadUrl;
+            var meta = operation.Metadata;
 
-            // Resolve the expected archive path using the runtime’s Prepare logic
-            bool isCompressed;
+            // Resolve paths
             string moduleDir, modelDir, fileName;
-            string destPath = SherpaUtils.Prepare.ResolveDownloadFilePath(task.Metadata, out moduleDir, out modelDir, out fileName, out isCompressed);
-            task.DestPath = destPath;
-            task.ModuleDir = moduleDir;
-            task.IsCompressed = isCompressed;
-            // Ensure the download directory exists
-            string downloadDir = Path.GetDirectoryName(destPath);
-            if (!string.IsNullOrEmpty(downloadDir))
+            bool isCompressed;
+
+            string destPath = SherpaUtils.Prepare.ResolveDownloadFilePath(
+                meta, out moduleDir, out modelDir, out fileName, out isCompressed
+            );
+
+            operation.ArchivePath = destPath;
+            operation.TempArchivePath = destPath + ".download";
+            operation.ModuleDirectory = moduleDir;
+            operation.IsCompressed = isCompressed;
+
+            // Ensure directory exists
+            var downloadDir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(downloadDir) && !Directory.Exists(downloadDir))
             {
                 Directory.CreateDirectory(downloadDir);
             }
 
-            var reporter = new SherpaONNXFeedbackReporterAdapter((p, msg) =>
-            {
-                task.Progress = p;
-                task.Status = msg;
-                _needsRepaint = true;
-            });
+            // Create request
+            var request = UnityWebRequest.Get(meta.downloadUrl);
+            request.downloadHandler = new DownloadHandlerFile(operation.TempArchivePath, false);
+            operation.WebRequest = request;
 
-            var request = UnityWebRequest.Get(url);
-            task.Request = request;
-            var operation = request.SendWebRequest();
-            var canceledStatus = L(SherpaONNXL10n.Models.StatusCanceled, "Canceled");
-            EditorApplication.CallbackFunction updateHandler = null;
-            updateHandler = () =>
-            {
-                // Fast path: external cancel
-                if (task.Cts.IsCancellationRequested)
-                {
-                    CancelDownload(task, canceledStatus);
-                    return;
-                }
+            var asyncOp = request.SendWebRequest();
 
-                if (operation.isDone)
-                {
-                    try
-                    {
-                        if (task.Cts.IsCancellationRequested)
-                        {
-                            CancelDownload(task, canceledStatus);
-                            return;
-                        }
-
-                        if (request.result == UnityWebRequest.Result.Success)
-                        {
-                            var data = request.downloadHandler.data;
-
-                            // Offload disk write so the editor doesn't stall
-                            Task.Run(() => File.WriteAllBytes(destPath, data))
-                            .ContinueWith(t =>
-                            {
-                                if (task.Cts.IsCancellationRequested)
-                                {
-                                    EditorApplication.delayCall += () => CancelDownload(task, canceledStatus);
-                                    return;
-                                }
-
-                                if (t.IsFaulted)
-                                {
-                                    var baseMessage = t.Exception?.GetBaseException().Message ?? L(SherpaONNXL10n.Models.StatusUnknown, "unknown");
-                                    var msg = string.Format(
-                                        L(SherpaONNXL10n.Models.StatusSaveError, "Save Error: {0}"),
-                                        baseMessage);
-                                    SetVerifyFailed(task.Metadata, true, msg);
-                                    task.Progress = 1f;
-                                    task.Status = msg;
-                                    CompleteDownload(task, success: false, notifyMessage: string.Format(
-                                        L(SherpaONNXL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
-                                        task.Metadata.modelId));
-                                    RescanSingle(task.Metadata);
-                                }
-                                else
-                                {
-                                    EditorApplication.delayCall += () =>
-                                    {
-                                        ContinueInstallAndVerify(task, destPath, moduleDir, isCompressed, reporter, task.Cts.Token);
-                                    };
-                                }
-                            });
-                        }
-                        else
-                        {
-                            if (task.Cts.IsCancellationRequested || task.IsCanceled)
-                            {
-                                CancelDownload(task, canceledStatus);
-                            }
-                            else
-                            {
-                                string err = string.Format(
-                                    L(SherpaONNXL10n.Models.StatusGenericError, "Error: {0}"),
-                                    request.error);
-                                SetVerifyFailed(task.Metadata, true, err);
-                                task.Progress = 1f;
-                                task.Status = err;
-                                CompleteDownload(task, success: false, notifyMessage: string.Format(
-                                    L(SherpaONNXL10n.Models.NotificationDownloadFailed, "Download failed: {0}"),
-                                    task.Metadata.modelId));
-                                RescanSingle(task.Metadata);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        if (task.UpdateHandler != null)
-                        {
-                            EditorApplication.update -= task.UpdateHandler;
-                            task.UpdateHandler = null;
-                        }
-                        request.Dispose();
-                        _needsRepaint = true;
-                    }
-                    return;
-                }
-
-                // Progress 0..70% during network
-                float p = Mathf.Clamp01(operation.progress);
-                task.Phase = DownloadPhase.Download;
-                task.Progress = 0.7f * p;
-                var percentText = (p * 100f).ToString("0");
-                task.Status = string.Format(
-                    L(SherpaONNXL10n.Models.StatusDownloadProgress, "Downloading... {0}%"),
-                    percentText);
-                _needsRepaint = true;
-            };
-
-            task.UpdateHandler = updateHandler;
-            EditorApplication.update += updateHandler;
+            // Set up update callback
+            operation.SetUpdateCallback(() => UpdateDownloadProgress(operation, request, asyncOp));
         }
 
-        private async void ContinueInstallAndVerify(
-            DownloadTask task,
-            string archivePath,
-            string moduleDirectory,
-            bool isCompressed,
-            SherpaONNXFeedbackReporterAdapter reporter,
-            CancellationToken token)
+        private void UpdateDownloadProgress(DownloadOperation operation, UnityWebRequest request, UnityWebRequestAsyncOperation asyncOp)
         {
-            var canceledStatus = L(SherpaONNXL10n.Models.StatusCanceled, "Canceled");
-            if (token.IsCancellationRequested) { CancelDownload(task, canceledStatus); return; }
-            // INSTALL (decompress if archive)
+            if (operation.IsCanceled)
+            {
+                FinalizeDownload(operation, false, "Canceled", canceled: true);
+                return;
+            }
+
+            if (!asyncOp.isDone)
+            {
+                // Update progress (0-70% for download phase)
+                float progress = Mathf.Clamp01(request.downloadProgress);
+                operation.Progress = progress * 0.7f;
+
+                _stringBuilder.Clear();
+                _stringBuilder.Append("Downloading... ");
+                _stringBuilder.Append((progress * 100f).ToString("0"));
+                _stringBuilder.Append("%");
+                operation.StatusText = _stringBuilder.ToString();
+
+                RequestRepaint();
+                return;
+            }
+
+            // Download complete - remove update callback
+            operation.RemoveUpdateCallback();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                string error = request.error ?? "Unknown error";
+                FinalizeDownload(operation, false, $"Download failed: {error}");
+                request.Dispose();
+                return;
+            }
+
+            request.Dispose();
+
+            ProcessDownloadedArchive(operation);
+        }
+
+        private async void ProcessDownloadedArchive(DownloadOperation operation)
+        {
             try
             {
-                task.Phase = DownloadPhase.Install;
-                reporter.Report(0.72f, L(SherpaONNXL10n.Models.StatusPreparingInstall, "Preparing install..."));
+                operation.Phase = DownloadPhase.Extracting;
+                operation.Progress = 0.72f;
+                operation.StatusText = "Saving...";
+                RequestRepaint();
 
-                if (isCompressed)
+                if (!string.IsNullOrEmpty(operation.TempArchivePath) &&
+                    !string.Equals(operation.TempArchivePath, operation.ArchivePath, StringComparison.Ordinal))
                 {
-                    var progressAdapter = new Progress<DecompressionEventArgs>(args =>
+                    try { if (File.Exists(operation.ArchivePath)) { SherpaFileUtils.Delete(operation.ArchivePath); } } catch { }
+                    File.Move(operation.TempArchivePath, operation.ArchivePath);
+                }
+
+                if (operation.IsCanceled)
+                {
+                    EditorApplication.delayCall += () => FinalizeDownload(operation, false, "Canceled", canceled: true);
+                    return;
+                }
+
+                // Extract if compressed
+                if (operation.IsCompressed)
+                {
+                    var progressHandler = new Progress<DecompressionEventArgs>(args =>
                     {
-                        // Map 0..1 -> 0.70..0.90
-                        float mapped = 0.7f + 0.2f * Mathf.Clamp01(args.Progress);
-                        var percent = (args.Progress * 100f).ToString("0");
-                        reporter.Report(mapped, string.Format(
-                            L(SherpaONNXL10n.Models.StatusExtracting, "Extracting... {0}%  (Elapsed {1})"),
-                            percent,
-                            args.ElapsedTime));
+                        operation.Progress = 0.7f + 0.2f * Mathf.Clamp01(args.Progress);
+
+                        _stringBuilder.Clear();
+                        _stringBuilder.Append("Extracting... ");
+                        _stringBuilder.Append((args.Progress * 100f).ToString("0"));
+                        _stringBuilder.Append("%");
+                        operation.StatusText = _stringBuilder.ToString();
+
+                        RequestRepaint();
                     });
+
                     var result = await SherpaDecompressHelper.DecompressAsync(
-                        archivePath,
-                        moduleDirectory,
-                        progressAdapter,
-                        cancellationToken: token);
+                        operation.ArchivePath,
+                        operation.ModuleDirectory,
+                        progressHandler,
+                        cancellationToken: operation.CancellationSource.Token
+                    );
 
                     if (!result.Success)
                     {
-                        throw new InvalidOperationException(result.ErrorMessage ?? L(SherpaONNXL10n.Models.StatusExtractionFailed, "Extraction failed"));
+                        throw new Exception(result.ErrorMessage ?? "Extraction failed");
                     }
 
-                    // Clean up the archive after successful extraction
-                    try { SherpaFileUtils.Delete(archivePath); } catch { /* ignore */ }
+                    // Clean up archive
+                    try { SherpaFileUtils.Delete(operation.ArchivePath); } catch { }
 
-                    // Refresh only if extracting inside Assets/
-                    if (moduleDirectory.Replace("\\", "/").StartsWith(Application.dataPath.Replace("\\", "/"), StringComparison.OrdinalIgnoreCase))
+                    // Refresh AssetDatabase if in Assets folder
+                    string normalizedModulePath = operation.ModuleDirectory.Replace("\\", "/");
+                    string normalizedDataPath = Application.dataPath.Replace("\\", "/");
+
+                    if (normalizedModulePath.StartsWith(normalizedDataPath, StringComparison.OrdinalIgnoreCase))
                     {
-                        AssetDatabase.Refresh();
+                        EditorApplication.delayCall += AssetDatabase.Refresh;
                     }
                 }
-                else
+
+                // Verify phase
+                operation.Phase = DownloadPhase.Verifying;
+                operation.Progress = 0.95f;
+                operation.StatusText = "Verifying...";
+                RequestRepaint();
+
+                bool verified = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(operation.Metadata);
+
+                EditorApplication.delayCall += () =>
                 {
-                    // Non-compressed payload; nothing to extract
-                    reporter.Report(0.9f, L(SherpaONNXL10n.Models.StatusInstallSkipped, "Install skipped (no archive), verifying..."));
-                }
+                    if (verified)
+                    {
+                        FinalizeDownload(operation, true, "Completed");
+                    }
+                    else
+                    {
+                        FinalizeDownload(operation, false, "Verification failed - files may be corrupt");
+                    }
+                };
             }
             catch (OperationCanceledException)
             {
-                task.Phase = DownloadPhase.Install;
-                task.Status = canceledStatus;
-                CancelDownload(task, canceledStatus);
-                _needsRepaint = true;
-                return;
+                EditorApplication.delayCall += () => FinalizeDownload(operation, false, "Canceled", canceled: true);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                task.Phase = DownloadPhase.Install;
-                task.Progress = 1f;
-                var installError = string.Format(
-                    L(SherpaONNXL10n.Models.StatusInstallError, "Install Error: {0}"),
-                    e.Message);
-                task.Status = installError;
+                EditorApplication.delayCall += () => FinalizeDownload(operation, false, $"Error: {ex.Message}");
+            }
+        }
 
-                // Mark verification as failed for UI list, hide progress, and notify
-                SetVerifyFailed(task.Metadata, true, installError);
-                CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaONNXL10n.Models.StatusInstallFailed, "Install failed: {0}"),
-                    task.Metadata.modelId));
-                _needsRepaint = true;
+        private void FinalizeDownload(DownloadOperation operation, bool success, string message, bool canceled = false)
+        {
+            operation.Phase = success ? DownloadPhase.Completed : canceled ? DownloadPhase.Canceled : DownloadPhase.Failed;
+            operation.Progress = 1f;
+            operation.StatusText = message;
+            operation.Dispose();
+
+            // Update model entry
+            var entry = FindModelEntry(operation.Metadata);
+            if (entry != null)
+            {
+                if (success)
+                {
+                    entry.Status = ModelStatus.Downloaded;
+                    entry.StatusMessage = null;
+                }
+                else if (canceled || operation.Phase == DownloadPhase.Canceled)
+                {
+                    entry.Status = ModelStatus.NotDownloaded;
+                    entry.StatusMessage = null;
+                }
+                else
+                {
+                    entry.Status = ModelStatus.Failed;
+                    entry.StatusMessage = message;
+                }
+                entry.IsHeightValid = false;
+            }
+
+            // Clean up archive on failure
+            if (!success && !string.IsNullOrEmpty(operation.ArchivePath) && File.Exists(operation.ArchivePath))
+            {
+                try { SherpaFileUtils.Delete(operation.ArchivePath); } catch { }
+            }
+            if (!success && !string.IsNullOrEmpty(operation.TempArchivePath) && File.Exists(operation.TempArchivePath))
+            {
+                try { SherpaFileUtils.Delete(operation.TempArchivePath); } catch { }
+            }
+
+            // Remove from list
+            _activeDownloads.Remove(operation);
+
+            // Show notification
+            _stringBuilder.Clear();
+            _stringBuilder.Append(success ? "Downloaded: " : canceled ? "Canceled: " : "Failed: ");
+            _stringBuilder.Append(operation.ModelId);
+            ShowNotification(new GUIContent(_stringBuilder.ToString()));
+
+            RequestRepaint();
+        }
+
+        private void CancelDownload(DownloadOperation operation)
+        {
+            if (operation == null)
+            {
                 return;
             }
 
-            if (token.IsCancellationRequested) { CancelDownload(task, canceledStatus); return; }
-            // VERIFY
-            task.Phase = DownloadPhase.Verify;
-            reporter.Report(0.92f, L(SherpaONNXL10n.Models.StatusVerifying, "Verifying files..."));
 
-            bool verified = false;
+            operation.Dispose();
+            FinalizeDownload(operation, false, "Canceled by user", canceled: true);
+        }
+
+        private void CancelAllDownloads()
+        {
+            for (int i = _activeDownloads.Count - 1; i >= 0; i--)
+            {
+                _activeDownloads[i].Dispose();
+            }
+            _activeDownloads.Clear();
+        }
+
+        #endregion
+
+        #region File Operations
+
+        private string GetModelFolder(SherpaONNXModelMetadata meta)
+        {
+            if (meta == null)
+            {
+                return null;
+            }
+
+
+            string moduleRoot = SherpaPathResolver.GetModuleRootPath(meta.moduleType);
+            if (string.IsNullOrEmpty(moduleRoot))
+            {
+                return null;
+            }
+
+
+            string modelDir = Path.Combine(moduleRoot, meta.modelId);
+            return Directory.Exists(modelDir) ? modelDir : null;
+        }
+
+        private void ConfirmAndDeleteModel(ModelEntry entry)
+        {
+            if (entry?.Metadata == null)
+            {
+                return;
+            }
+
+
+            var meta = entry.Metadata;
+            var folder = GetModelFolder(meta);
+            if (string.IsNullOrEmpty(folder))
+            {
+                return;
+            }
+
+
+            bool confirmed = EditorUtility.DisplayDialog(
+                _content.DeleteDialogTitle,
+                $"Delete local files for '{meta.modelId}'?\n\nPath: {folder}",
+                _content.DeleteDialogConfirm,
+                _content.DeleteDialogCancel
+            );
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+
             try
             {
-                verified = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(task.Metadata);
+                string normalizedFolder = folder.Replace("\\", "/");
+                string normalizedDataPath = Application.dataPath.Replace("\\", "/");
+
+                if (normalizedFolder.StartsWith(normalizedDataPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Inside Assets - use AssetDatabase
+                    string relativePath = "Assets" + normalizedFolder.Substring(normalizedDataPath.Length);
+
+                    if (AssetDatabase.IsValidFolder(relativePath))
+                    {
+                        AssetDatabase.DeleteAsset(relativePath);
+                    }
+                    else
+                    {
+                        FileUtil.DeleteFileOrDirectory(relativePath);
+                    }
+                    AssetDatabase.Refresh();
+                }
+                else
+                {
+                    // Outside Assets - direct delete
+                    Directory.Delete(folder, true);
+                }
+
+                entry.Status = ModelStatus.NotDownloaded;
+                entry.StatusMessage = null;
+                entry.IsHeightValid = false;
+
+                // Cancel any active download
+                var activeDownload = GetActiveDownloadForModel(meta);
+                if (activeDownload != null)
+                {
+                    CancelDownload(activeDownload);
+                }
+
+                ShowNotification(new GUIContent($"Deleted: {meta.modelId}"));
+            }
+            catch (Exception ex)
+            {
+                ShowNotification(new GUIContent($"Delete failed: {ex.Message}"));
+            }
+
+            RequestRepaint();
+        }
+
+        #endregion
+
+        #region Utility Methods
+
+        private ModelEntry FindModelEntry(SherpaONNXModelMetadata meta)
+        {
+            if (meta == null)
+            {
+                return null;
+            }
+
+
+            for (int i = 0; i < _allModels.Count; i++)
+            {
+                if (_allModels[i].Metadata == meta)
+                {
+                    return _allModels[i];
+                }
+            }
+            return null;
+        }
+
+        private string GetModuleTypeDisplayName(SherpaONNXModuleType moduleType)
+        {
+            return moduleType switch
+            {
+                SherpaONNXModuleType.Undefined => Tr(SherpaONNXL10n.Models.CategoryUndefined, "Undefined"),
+                SherpaONNXModuleType.SpeechRecognition => Tr(SherpaONNXL10n.Models.CategorySpeechRecognition, "Speech Recognition"),
+                SherpaONNXModuleType.SpeechSynthesis => Tr(SherpaONNXL10n.Models.CategorySpeechSynthesis, "Text to Speech"),
+                SherpaONNXModuleType.SourceSeparation => Tr(SherpaONNXL10n.Models.CategorySourceSeparation, "Source Separation"),
+                SherpaONNXModuleType.SpeakerIdentification => Tr(SherpaONNXL10n.Models.CategorySpeakerIdentification, "Speaker ID"),
+                SherpaONNXModuleType.SpeakerDiarization => Tr(SherpaONNXL10n.Models.CategorySpeakerDiarization, "Diarization"),
+                SherpaONNXModuleType.SpokenLanguageIdentification => Tr(SherpaONNXL10n.Models.CategorySpokenLanguageId, "Language ID"),
+                SherpaONNXModuleType.AudioTagging => Tr(SherpaONNXL10n.Models.CategoryAudioTagging, "Audio Tagging"),
+                SherpaONNXModuleType.VoiceActivityDetection => Tr(SherpaONNXL10n.Models.CategoryVad, "VAD"),
+                SherpaONNXModuleType.KeywordSpotting => Tr(SherpaONNXL10n.Models.CategoryKeywordSpotting, "Keyword"),
+                SherpaONNXModuleType.AddPunctuation => Tr(SherpaONNXL10n.Models.CategoryAddPunctuation, "Punctuation"),
+                SherpaONNXModuleType.SpeechEnhancement => Tr(SherpaONNXL10n.Models.CategorySpeechEnhancement, "Enhancement"),
+                _ => moduleType.ToString()
+            };
+        }
+
+        private string GetLanguageDisplayName(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code) || code.Equals("other", StringComparison.OrdinalIgnoreCase))
+            {
+                return Tr(SherpaONNXL10n.Common.LanguageOther, "Other");
+            }
+
+            return code.ToLowerInvariant() switch
+            {
+                "chinese" => Tr(SherpaONNXL10n.Common.LanguageChinese, "Chinese"),
+                "cantonese" => Tr(SherpaONNXL10n.Common.LanguageCantonese, "Cantonese"),
+                "english" => Tr(SherpaONNXL10n.Common.LanguageEnglish, "English"),
+                "japanese" => Tr(SherpaONNXL10n.Common.LanguageJapanese, "Japanese"),
+                "korean" => Tr(SherpaONNXL10n.Common.LanguageKorean, "Korean"),
+                "thai" => Tr(SherpaONNXL10n.Common.LanguageThai, "Thai"),
+                "vietnamese" => Tr(SherpaONNXL10n.Common.LanguageVietnamese, "Vietnamese"),
+                "russian" => Tr(SherpaONNXL10n.Common.LanguageRussian, "Russian"),
+                "french" => Tr(SherpaONNXL10n.Common.LanguageFrench, "French"),
+                "spanish" => Tr(SherpaONNXL10n.Common.LanguageSpanish, "Spanish"),
+                "german" => Tr(SherpaONNXL10n.Common.LanguageGerman, "German"),
+                "dutch" => Tr(SherpaONNXL10n.Common.LanguageDutch, "Dutch"),
+                "danish" => Tr(SherpaONNXL10n.Common.LanguageDanish, "Danish"),
+                "czech" => Tr(SherpaONNXL10n.Common.LanguageCzech, "Czech"),
+                "catalan" => Tr(SherpaONNXL10n.Common.LanguageCatalan, "Catalan"),
+                "italian" => Tr(SherpaONNXL10n.Common.LanguageItalian, "Italian"),
+                "portuguese" => Tr(SherpaONNXL10n.Common.LanguagePortuguese, "Portuguese"),
+                "arabic" => Tr(SherpaONNXL10n.Common.LanguageArabic, "Arabic"),
+                "hindi" => Tr(SherpaONNXL10n.Common.LanguageHindi, "Hindi"),
+                "turkish" => Tr(SherpaONNXL10n.Common.LanguageTurkish, "Turkish"),
+                "polish" => Tr(SherpaONNXL10n.Common.LanguagePolish, "Polish"),
+                "swedish" => Tr(SherpaONNXL10n.Common.LanguageSwedish, "Swedish"),
+                "norwegian" => Tr(SherpaONNXL10n.Common.LanguageNorwegian, "Norwegian"),
+                "indonesian" => Tr(SherpaONNXL10n.Common.LanguageIndonesian, "Indonesian"),
+                "malay" => Tr(SherpaONNXL10n.Common.LanguageMalay, "Malay"),
+                "urdu" => Tr(SherpaONNXL10n.Common.LanguageUrdu, "Urdu"),
+                "persian" => Tr(SherpaONNXL10n.Common.LanguagePersian, "Persian"),
+                "hebrew" => Tr(SherpaONNXL10n.Common.LanguageHebrew, "Hebrew"),
+                _ => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(code)
+            };
+        }
+
+        private string GetDownloadPhaseDisplayName(DownloadPhase phase)
+        {
+            return phase switch
+            {
+                DownloadPhase.Downloading => Tr(SherpaONNXL10n.Models.StatusDownloadPhase, "Downloading"),
+                DownloadPhase.Extracting => Tr(SherpaONNXL10n.Models.StatusInstallPhase, "Extracting"),
+                DownloadPhase.Verifying => Tr(SherpaONNXL10n.Models.StatusVerifyPhase, "Verifying"),
+                DownloadPhase.Completed => "Completed",
+                DownloadPhase.Failed => "Failed",
+                DownloadPhase.Canceled => "Canceled",
+                _ => string.Empty
+            };
+        }
+
+        private string FormatLanguageList(List<string> languages)
+        {
+            // Deduplicate while preserving order to avoid showing the same language multiple times.
+            if (languages == null || languages.Count == 0)
+            {
+                return GetLanguageDisplayName("other");
+            }
+
+            var displayList = BuildLanguageDisplayList(languages);
+
+            if (displayList.Count == 0)
+            {
+                return GetLanguageDisplayName("other");
+            }
+
+            _languageStringBuilder.Clear();
+
+            int count = Mathf.Min(displayList.Count, 3);
+            for (int i = 0; i < count; i++)
+            {
+                if (i > 0)
+                {
+                    _languageStringBuilder.Append(", ");
+                }
+
+
+                _languageStringBuilder.Append(displayList[i]);
+            }
+
+            if (displayList.Count > 3)
+            {
+                _languageStringBuilder.Append(" +");
+                _languageStringBuilder.Append(displayList.Count - 3);
+            }
+
+            return _languageStringBuilder.ToString();
+        }
+
+        private string BuildLanguageTooltip(List<string> languages)
+        {
+            var displayList = BuildLanguageDisplayList(languages);
+            if (displayList.Count == 0)
+            {
+                return GetLanguageDisplayName("other");
+            }
+
+            _languageStringBuilder.Clear();
+            for (int i = 0; i < displayList.Count; i++)
+            {
+                if (i > 0)
+                {
+                    _languageStringBuilder.Append(", ");
+                }
+                _languageStringBuilder.Append(displayList[i]);
+            }
+            return _languageStringBuilder.ToString();
+        }
+
+        private List<string> BuildLanguageDisplayList(List<string> languages)
+        {
+            _languageDisplayBuffer.Clear();
+            _languageCodeSeen.Clear();
+            _languageDisplaySeen.Clear();
+
+            if (languages == null)
+            {
+                return _languageDisplayBuffer;
+            }
+
+            for (int i = 0; i < languages.Count; i++)
+            {
+                var code = languages[i];
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    continue;
+                }
+
+                if (!_languageCodeSeen.Add(code))
+                {
+                    continue;
+                }
+
+                var display = GetLanguageDisplayName(code)?.Trim();
+                if (string.IsNullOrEmpty(display))
+                {
+                    continue;
+                }
+
+                // Also dedupe by translated display string in case different codes map to the same name.
+                if (_languageDisplaySeen.Add(display))
+                {
+                    _languageDisplayBuffer.Add(display);
+                }
+            }
+
+            return _languageDisplayBuffer;
+        }
+
+        private GUIContent GetModuleTypeIcon(SherpaONNXModuleType type)
+        {
+            return type switch
+            {
+                SherpaONNXModuleType.SpeechRecognition => _icons.Microphone,
+                SherpaONNXModuleType.SpeechSynthesis => _icons.AudioSource,
+                SherpaONNXModuleType.VoiceActivityDetection => _icons.AudioMixer,
+                _ => _icons.ScriptableObject
+            };
+        }
+
+        private static string Tr(string key, string fallback)
+        {
+            try
+            {
+                return SherpaONNXLocalization.Tr(key, fallback);
             }
             catch
             {
-                verified = false;
+                return fallback;
+            }
+        }
+
+        #endregion
+
+        #region Language Parser
+
+        private static readonly Dictionary<string, string> LanguageKeywordMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "chinese", "chinese" }, { "mandarin", "chinese" }, { "zh", "chinese" },
+            { "cantonese", "cantonese" }, { "yue", "cantonese" },
+            { "english", "english" }, { "en", "english" },
+            { "japanese", "japanese" }, { "ja", "japanese" },
+            { "korean", "korean" }, { "ko", "korean" },
+            { "thai", "thai" }, { "th", "thai" },
+            { "vietnamese", "vietnamese" }, { "vi", "vietnamese" },
+            { "russian", "russian" }, { "ru", "russian" },
+            { "french", "french" }, { "fr", "french" },
+            { "spanish", "spanish" }, { "es", "spanish" },
+            { "german", "german" }, { "de", "german" },
+            { "dutch", "dutch" }, { "nl", "dutch" },
+            { "italian", "italian" }, { "it", "italian" },
+            { "portuguese", "portuguese" }, { "pt", "portuguese" },
+            { "arabic", "arabic" }, { "ar", "arabic" },
+            { "turkish", "turkish" }, { "tr", "turkish" },
+            { "polish", "polish" }, { "pl", "polish" },
+            { "swedish", "swedish" }, { "sv", "swedish" },
+            { "norwegian", "norwegian" }, { "no", "norwegian" }, { "nb", "norwegian" }, { "nn", "norwegian" },
+            { "indonesian", "indonesian" }, { "id", "indonesian" },
+            { "malay", "malay" }, { "ms", "malay" },
+            { "urdu", "urdu" }, { "ur", "urdu" },
+            { "persian", "persian" }, { "fa", "persian" }, { "farsi", "persian" },
+            { "hebrew", "hebrew" }, { "he", "hebrew" }, { "iw", "hebrew" },
+            { "danish", "danish" }, { "da", "danish" },
+            { "czech", "czech" }, { "cs", "czech" },
+            { "catalan", "catalan" }, { "ca", "catalan" },
+            { "hindi", "hindi" }, { "hi", "hindi" },
+            { "bengali", "bengali" }, { "bn", "bengali" },
+            { "tamil", "tamil" }, { "ta", "tamil" },
+            { "telugu", "telugu" }, { "te", "telugu" },
+            { "marathi", "marathi" }, { "mr", "marathi" },
+            { "gujarati", "gujarati" }, { "gu", "gujarati" },
+            { "kannada", "kannada" }, { "kn", "kannada" },
+            { "malayalam", "malayalam" }, { "ml", "malayalam" },
+            { "punjabi", "punjabi" }, { "pa", "punjabi" },
+            { "nepali", "nepali" }, { "ne", "nepali" },
+            { "sinhala", "sinhala" }, { "si", "sinhala" },
+            { "lao", "lao" }, { "lo", "lao" },
+            { "burmese", "burmese" }, { "my", "burmese" }, { "myanmar", "burmese" },
+            { "khmer", "khmer" }, { "km", "khmer" },
+            { "mongolian", "mongolian" }, { "mn", "mongolian" },
+            { "tagalog", "tagalog" }, { "fil", "tagalog" }, { "tl", "tagalog" },
+            { "javanese", "javanese" }, { "jv", "javanese" },
+            { "ukrainian", "ukrainian" }, { "uk", "ukrainian" },
+            { "romanian", "romanian" }, { "ro", "romanian" },
+            { "hungarian", "hungarian" }, { "hu", "hungarian" },
+            { "bulgarian", "bulgarian" }, { "bg", "bulgarian" },
+            { "croatian", "croatian" }, { "hr", "croatian" },
+            { "serbian", "serbian" }, { "sr", "serbian" },
+            { "slovak", "slovak" }, { "sk", "slovak" },
+            { "slovenian", "slovenian" }, { "sl", "slovenian" },
+            { "finnish", "finnish" }, { "fi", "finnish" },
+            { "estonian", "estonian" }, { "et", "estonian" },
+            { "latvian", "latvian" }, { "lv", "latvian" },
+            { "lithuanian", "lithuanian" }, { "lt", "lithuanian" },
+            { "swahili", "swahili" }, { "sw", "swahili" },
+            { "afrikaans", "afrikaans" }, { "af", "afrikaans" },
+            { "zulu", "zulu" }, { "zu", "zulu" },
+            { "xhosa", "xhosa" }, { "xh", "xhosa" }
+        };
+
+        private static readonly char[] LanguageSeparators = { '-', '_', '.', '/', ' ', '+' };
+
+        private static List<string> ParseLanguagesFromModelId(string modelId)
+        {
+            var result = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(modelId))
+            {
+                result.Add("other");
+                return result;
             }
 
-            if (verified)
-            {
-                SetVerifyFailed(task.Metadata, false);
-                reporter.Report(1f, L(SherpaONNXL10n.Models.StatusCompleted, "Completed"));
+            var foundLanguages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string lowerModelId = modelId.ToLowerInvariant();
 
-                // Hide the download status section and notify success
-                CompleteDownload(task, success: true, notifyMessage: string.Format(
-                    L(SherpaONNXL10n.Models.StatusDownloadedWithCheck, "Downloaded ✓ {0}"),
-                    task.Metadata.modelId));
+            // Check segmented parts
+            var parts = lowerModelId.Split(LanguageSeparators, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                var normalized = NormalizeLanguageToken(part);
+                if (string.IsNullOrEmpty(normalized))
+                {
+                    continue;
+                }
+
+                if (LanguageKeywordMap.TryGetValue(normalized, out string language))
+                {
+                    foundLanguages.Add(language);
+                }
+            }
+
+            if (foundLanguages.Count == 0)
+            {
+                result.Add("other");
             }
             else
             {
-                SetVerifyFailed(task.Metadata, true,
-                    L(SherpaONNXL10n.Models.StatusVerifyFailedRetryMessage, "Verification failed. Click Re-download to try again."));
-                reporter.Report(1f, L(SherpaONNXL10n.Models.StatusVerifyFailed, "Verify Failed"));
-
-                // Hide the download status section and notify failure
-                CompleteDownload(task, success: false, notifyMessage: string.Format(
-                    L(SherpaONNXL10n.Models.StatusVerifyFailedRetry, "Verify failed: {0}"),
-                    task.Metadata.modelId));
+                result.AddRange(foundLanguages);
+                result.Sort(StringComparer.OrdinalIgnoreCase);
             }
 
-            // Refresh the single entry so the pill reads "Downloaded" when appropriate
-            RescanSingle(task.Metadata);
-            _needsRepaint = true;
+            return result;
         }
 
-        private static string L(string key, string fallback) =>
-            SherpaONNXLocalization.Tr(key, fallback);
-
-        private static GUIContent Lc(string labelKey, string fallback, string tooltipKey = null, string tooltipFallback = null)
+        private static string NormalizeLanguageToken(string token)
         {
-            var label = L(labelKey, fallback);
-            string tooltip = null;
-            if (!string.IsNullOrEmpty(tooltipKey))
+            if (string.IsNullOrWhiteSpace(token))
             {
-                tooltip = L(tooltipKey, tooltipFallback ?? string.Empty);
-            }
-            else if (!string.IsNullOrEmpty(tooltipFallback))
-            {
-                tooltip = tooltipFallback;
+                return string.Empty;
             }
 
-            return string.IsNullOrEmpty(tooltip)
-                ? new GUIContent(label)
-                : new GUIContent(label, tooltip);
+            var sb = new StringBuilder(token.Length);
+            for (int i = 0; i < token.Length; i++)
+            {
+                char c = token[i];
+                if (char.IsLetter(c))
+                {
+                    sb.Append(char.ToLowerInvariant(c));
+                }
+            }
+
+            return sb.ToString();
         }
+
+        #endregion
     }
 }
+
 #endif

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.2-exp.3] - 2025-12-08
+
+### Changed
+- Restructured the overall codebase, refactoring several module implementations to improve readability, maintainability, and architectural robustness.
+- Optimized performance across core components to reduce overhead and improve runtime efficiency.
+- Updated the native Sherpa-ONNX dependency to v1.12.19, aligning with the latest upstream changes for enhanced compatibility and feature support.
+- Improved editor window responsiveness with better rendering performance and smoother interaction flow.
+- Refined the editor UI for a cleaner and more polished user experience.
+### Added
+- Introduced the SherpaONNX Profiler editor tool, enabling real-time performance monitoring and activity tracking for all Sherpa ONNX modules.
+- Integrated a new logging system within the profiler to trace module behavior and assist with debugging, diagnostics, and performance analysis.
+
 ## [0.1.2-exp.2] - 2025-11-23
 
 ### Added

@@ -36,6 +36,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Range(0.5f, 2.5f)]
         private float speechRate = 1f;
 
+        [Header("Concurrency")]
+        [SerializeField]
+        [Tooltip("Reject new synthesis requests while another generation is in flight.")]
+        private bool rejectConcurrentRequests = true;
+
         [Header("Events")]
         [SerializeField]
         private UnityEvent onSynthesisStarted = new UnityEvent();
@@ -117,8 +122,17 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             if (string.IsNullOrWhiteSpace(text))
             {
-                Debug.LogWarning("[SpeechSynthesizerComponent] Cannot synthesize empty text.");
+                SherpaLog.Warning("[SpeechSynthesizerComponent] Cannot synthesize empty text.");
                 return null;
+            }
+
+            if (activeGenerationCts != null && !activeGenerationCts.IsCancellationRequested)
+            {
+                if (rejectConcurrentRequests)
+                {
+                    NotifyBusy();
+                    return null;
+                }
             }
 
             if (!EnsureModuleReady(out var module))
@@ -141,11 +155,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                     text.Trim(),
                     voiceOverride ?? voiceId,
                     speedOverride ?? speechRate,
-                    linkedCts.Token).ConfigureAwait(true);
+                    linkedCts.Token).ConfigureAwait(false);
 
                 if (clip != null)
                 {
-                    HandleClipReady(clip);
+                    DispatchToUnity(() => HandleClipReady(clip));
                 }
 
                 return clip;
@@ -156,8 +170,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[SpeechSynthesizerComponent] Generation failed: {ex.Message}");
-                onSynthesisFailed?.Invoke(ex.Message);
+                SherpaLog.Error($"[SpeechSynthesizerComponent] Generation failed: {ex.Message}");
+                var message = ex.Message;
+                DispatchToUnity(() => onSynthesisFailed?.Invoke(message));
+                RaiseError(ex.Message);
                 return null;
             }
             finally
@@ -201,6 +217,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             activeGenerationCts.Dispose();
             activeGenerationCts = null;
+        }
+
+        private void NotifyBusy()
+        {
+            const string message = "Synthesis request ignored because another generation is already running.";
+            SherpaLog.Warning($"[SpeechSynthesizerComponent] {message}");
+            DispatchToUnity(() => onSynthesisFailed?.Invoke(message));
+            RaiseError(message);
         }
     }
 }

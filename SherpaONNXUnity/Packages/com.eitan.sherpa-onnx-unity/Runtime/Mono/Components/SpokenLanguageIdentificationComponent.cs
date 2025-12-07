@@ -93,8 +93,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[SpokenLanguageIdentificationComponent] Identification failed: {ex.Message}");
+                SherpaLog.Error($"[SpokenLanguageIdentificationComponent] Identification failed: {ex.Message}");
                 onIdentificationFailed?.Invoke(ex.Message);
+                RaiseError(ex.Message);
                 return string.Empty;
             }
         }
@@ -130,7 +131,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[SpokenLanguageIdentificationComponent] Identification failed: {ex.Message}");
+                SherpaLog.Error($"[SpokenLanguageIdentificationComponent] Identification failed: {ex.Message}");
                 onIdentificationFailed?.Invoke(ex.Message);
                 return string.Empty;
             }

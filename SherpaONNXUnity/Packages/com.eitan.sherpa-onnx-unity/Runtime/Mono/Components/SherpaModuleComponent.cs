@@ -3,7 +3,9 @@
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
     using System;
+    using System.Threading;
     using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Utilities;
     using UnityEngine;
     using UnityEngine.Events;
 
@@ -43,15 +45,30 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private FeedbackMessageEvent onFeedbackMessage = new FeedbackMessageEvent();
 
+        [Header("Errors")]
+        [SerializeField]
+        [Tooltip("Raised whenever the component encounters an error condition.")]
+        private UnityEvent<string> onError = new UnityEvent<string>();
+
         /// <summary>
         /// Exposes the initialization UnityEvent so callers can register listeners in code.
         /// </summary>
         public UnityEvent<bool> InitializationStateChangedEvent => onInitializationStateChanged;
 
         /// <summary>
+        /// Fires whenever any feedback is received. Use this for structured progress handling.
+        /// </summary>
+        public event Action<SherpaFeedback> FeedbackReceived;
+
+        /// <summary>
         /// Exposes feedback messages so UI scripts can surface loader state easily.
         /// </summary>
         public FeedbackMessageEvent FeedbackMessages => onFeedbackMessage;
+
+        /// <summary>
+        /// Exposes error notifications for consumers.
+        /// </summary>
+        public UnityEvent<string> ErrorEvent => onError;
 
         /// <summary>
         /// UnityEvent wrapper that exposes textual feedback.
@@ -61,9 +78,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
         }
 
+        private readonly object moduleGate = new object();
+
         private TModule module;
         private SherpaONNXFeedbackReporter reporter;
         private bool isReady;
+        private bool loadInProgress;
+        private bool disposeInProgress;
+
+        private SynchronizationContext unityContext;
+        private int unityThreadId;
 
         /// <summary>
         /// Gets the instantiated module or null when not loaded.
@@ -104,6 +128,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected virtual void Awake()
         {
+            // Capture Unity SystemInfo on the main thread to avoid background-thread access errors.
+            ThreadingUtils.PrimeUnityInfo();
+
+            unityContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            unityThreadId = Thread.CurrentThread.ManagedThreadId;
+
             if (Application.isPlaying && loadOnAwake)
             {
                 TryLoadModule();
@@ -126,13 +156,13 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             loadedModule = module;
             if (module == null)
             {
-                Debug.LogWarning($"[{GetType().Name}] Module not loaded. Call TryLoadModule first.");
+                SherpaLog.Warning($"[{GetType().Name}] Module not loaded. Call TryLoadModule first.");
                 return false;
             }
 
             if (!module.Initialized)
             {
-                Debug.LogWarning($"[{GetType().Name}] Module is still initializing.");
+                SherpaLog.Warning($"[{GetType().Name}] Module is still initializing.");
                 return false;
             }
 
@@ -146,17 +176,32 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning($"[{GetType().Name}] Modules should be loaded only in play mode.");
+                SherpaLog.Warning($"[{GetType().Name}] Modules should be loaded only in play mode.");
             }
 
-            if (module != null)
+            lock (moduleGate)
             {
-                return false;
+                if (loadInProgress)
+                {
+                    SherpaLog.Warning($"[{GetType().Name}] Module load already in progress.");
+                    RaiseError($"{GetType().Name} is already loading a module.");
+                    return false;
+                }
+
+                if (module != null)
+                {
+                    SherpaLog.Warning($"[{GetType().Name}] Module already loaded; ignoring duplicate request.");
+                    return false;
+                }
+
+                loadInProgress = true;
             }
 
             if (string.IsNullOrWhiteSpace(modelId))
             {
-                Debug.LogError($"[{GetType().Name}] Model ID cannot be empty.");
+                SherpaLog.Error($"[{GetType().Name}] Model ID cannot be empty.");
+                RaiseError("Model ID cannot be empty.");
+                MarkLoadComplete();
                 return false;
             }
 
@@ -170,16 +215,21 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             {
                 module = null;
                 reporter = null;
-                Debug.LogError($"[{GetType().Name}] Failed to create module for model '{modelId}': {ex.Message}");
+                SherpaLog.Error($"[{GetType().Name}] Failed to create module for model '{modelId}': {ex.Message}");
+                RaiseError($"Failed to create module for model '{modelId}': {ex.Message}");
+                MarkLoadComplete();
                 return false;
             }
 
             if (module == null)
             {
-                Debug.LogError($"[{GetType().Name}] Failed to create module for model '{modelId}'.");
+                SherpaLog.Error($"[{GetType().Name}] Failed to create module for model '{modelId}'.");
+                RaiseError($"Failed to create module for model '{modelId}'.");
+                MarkLoadComplete();
                 return false;
             }
 
+            MarkLoadComplete();
             return true;
         }
 
@@ -188,14 +238,33 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// </summary>
         public void DisposeModule()
         {
-            if (module != null)
+            lock (moduleGate)
             {
-                module.Dispose();
-                module = null;
+                if (disposeInProgress)
+                {
+                    return;
+                }
+                disposeInProgress = true;
             }
 
-            reporter = null;
-            UpdateReadyState(false);
+            try
+            {
+                if (module != null)
+                {
+                    module.Dispose();
+                    module = null;
+                }
+            }
+            finally
+            {
+                reporter = null;
+                UpdateReadyState(false);
+                lock (moduleGate)
+                {
+                    disposeInProgress = false;
+                    loadInProgress = false;
+                }
+            }
         }
 
         /// <summary>
@@ -244,18 +313,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 switch (logType)
                 {
                     case LogType.Error:
-                        Debug.LogError(message);
+                        SherpaLog.Error(message);
                         break;
                     case LogType.Warning:
-                        Debug.LogWarning(message);
+                        SherpaLog.Warning(message);
                         break;
                     default:
-                        Debug.Log(message);
+                        SherpaLog.Info(message);
                         break;
                 }
             }
 
-            onFeedbackMessage?.Invoke(message);
+            DispatchToUnity(() => onFeedbackMessage?.Invoke(message));
+            DispatchToUnity(() => FeedbackReceived?.Invoke(feedback));
         }
 
         private static string BuildFeedbackMessage(SherpaFeedback feedback)
@@ -272,8 +342,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
 
             isReady = ready;
-            onInitializationStateChanged?.Invoke(ready);
-            OnModuleInitializationStateChanged(ready);
+            DispatchToUnity(() => onInitializationStateChanged?.Invoke(ready));
+            DispatchToUnity(() => OnModuleInitializationStateChanged(ready));
         }
 
         /// <summary>
@@ -282,6 +352,54 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <param name="ready">True when the module finished initializing successfully.</param>
         protected virtual void OnModuleInitializationStateChanged(bool ready)
         {
+        }
+
+        /// <summary>
+        /// Raises an error message to listeners in a consistent way.
+        /// </summary>
+        /// <param name="message">Human-readable error details.</param>
+        protected void RaiseError(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            DispatchToUnity(() => onError?.Invoke(message));
+        }
+
+        /// <summary>
+        /// Executes an action on the Unity synchronization context when available.
+        /// Ensures UnityEvents fire on the main thread even when awaited tasks resume on worker threads.
+        /// </summary>
+        protected void DispatchToUnity(Action action)
+        {
+            if (action == null)
+            {
+                return;
+            }
+
+            if (unityContext == null)
+            {
+                action();
+                return;
+            }
+
+            if (Thread.CurrentThread.ManagedThreadId == unityThreadId)
+            {
+                action();
+                return;
+            }
+
+            unityContext.Post(_ => action(), null);
+        }
+
+        private void MarkLoadComplete()
+        {
+            lock (moduleGate)
+            {
+                loadInProgress = false;
+            }
         }
 
         #endregion

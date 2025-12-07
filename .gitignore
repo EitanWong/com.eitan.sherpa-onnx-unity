@@ -92,3 +92,5 @@ SherpaOnnxUnity/.config/
 *.blob
 
 SherpaONNXUnity/Assets/Resources/
+
+SherpaONNXUnity/.editorconfig

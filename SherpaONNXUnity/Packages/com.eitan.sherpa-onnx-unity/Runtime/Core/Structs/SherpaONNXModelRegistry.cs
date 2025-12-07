@@ -68,7 +68,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
             catch (Exception cbEx)
             {
-                UnityEngine.Debug.LogWarning($"Initialized callback error: {cbEx.Message}");
+                SherpaLog.Warning($"Initialized callback error: {cbEx.Message}");
             }
         }
 
@@ -127,7 +127,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
                 if (string.IsNullOrWhiteSpace(metadata.modelId))
                 {
-                    Debug.LogWarning("Encountered a model entry with an empty modelId. Entry skipped.");
+                    SherpaLog.Warning("Encountered a model entry with an empty modelId. Entry skipped.");
                     continue;
                 }
 
@@ -234,7 +234,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             if (!IsInitialized)
             {
-                UnityEngine.Debug.LogWarning("SherpaONNXModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
+                SherpaLog.Warning("SherpaONNXModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
                 return null;
             }
 
@@ -253,7 +253,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 return metadata;
             }
 
-            Debug.LogError($"Metadata for modelId '{modelId}' not found in the manifest.");
+            SherpaLog.Error($"Metadata for modelId '{modelId}' not found in the manifest.");
             return null;
         }
 

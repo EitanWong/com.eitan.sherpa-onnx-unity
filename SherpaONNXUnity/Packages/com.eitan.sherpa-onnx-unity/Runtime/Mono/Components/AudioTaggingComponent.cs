@@ -3,6 +3,8 @@
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
     using System;
+    using System.Collections.Generic;
+
     using System.Threading;
     using System.Threading.Tasks;
     using Eitan.SherpaONNXUnity.Runtime;
@@ -38,6 +40,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Tooltip("Log a warning when the incoming audio sample rate differs from the configured module rate.")]
         private bool warnOnSampleRateMismatch = true;
 
+        [Header("Back-Pressure")]
+        [SerializeField]
+        [Tooltip("Maximum pending chunks to buffer. Oldest chunk is dropped when the limit is exceeded (0 = unbounded).")]
+        private int maxPendingChunks = 8;
+
         [Header("Events")]
         [SerializeField]
         private UnityEvent<AudioTagging.AudioTag[]> onTagsReady = new UnityEvent<AudioTagging.AudioTag[]>();
@@ -47,6 +54,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         private CancellationTokenSource streamingCts;
         private bool loggedSampleRateMismatch;
+        private readonly Queue<float[]> pendingChunks = new Queue<float[]>();
+        private readonly object queueLock = new object();
+        private bool drainingQueue;
+        private int droppedChunks;
+        private float lastDropLog;
 
         /// <summary>Raised whenever tagging completes (streaming or offline).</summary>
         public UnityEvent<AudioTagging.AudioTag[]> TagsReadyEvent => onTagsReady;
@@ -73,6 +85,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             base.OnEnable();
             streamingCts = new CancellationTokenSource();
             loggedSampleRateMismatch = false;
+            droppedChunks = 0;
+            lastDropLog = 0f;
         }
 
         protected override void OnDisable()
@@ -80,6 +94,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             streamingCts?.Cancel();
             streamingCts?.Dispose();
             streamingCts = null;
+            ClearQueue();
             base.OnDisable();
         }
 
@@ -95,6 +110,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             streamingCts?.Cancel();
             streamingCts?.Dispose();
+            ClearQueue();
             base.OnDestroy();
         }
 
@@ -146,7 +162,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         {
             if (clip == null)
             {
-                onTaggingFailed?.Invoke("Missing AudioClip reference.");
+                var msg = "Missing AudioClip reference.";
+                onTaggingFailed?.Invoke(msg);
+                RaiseError(msg);
                 return Array.Empty<AudioTagging.AudioTag>();
             }
 
@@ -158,9 +176,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             try
             {
                 var mono = ExtractMono(clip);
-                var tags = await module.TagAsync(mono, clip.frequency, topK, cancellationToken).ConfigureAwait(true);
-                onTagsReady?.Invoke(tags ?? Array.Empty<AudioTagging.AudioTag>());
-                return tags ?? Array.Empty<AudioTagging.AudioTag>();
+                var tags = await module.TagAsync(mono, clip.frequency, topK, cancellationToken).ConfigureAwait(false);
+                var safeTags = tags ?? Array.Empty<AudioTagging.AudioTag>();
+                DispatchToUnity(() => onTagsReady?.Invoke(safeTags));
+                return safeTags;
             }
             catch (OperationCanceledException)
             {
@@ -168,8 +187,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[AudioTaggingComponent] Tagging failed: {ex.Message}");
-                onTaggingFailed?.Invoke(ex.Message);
+                SherpaLog.Error($"[AudioTaggingComponent] Tagging failed: {ex.Message}");
+                var message = ex.Message;
+                DispatchToUnity(() => onTaggingFailed?.Invoke(message));
+                RaiseError(ex.Message);
                 return Array.Empty<AudioTagging.AudioTag>();
             }
         }
@@ -190,39 +211,118 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             if (warnOnSampleRateMismatch && sampleRate != SampleRate && !loggedSampleRateMismatch)
             {
                 loggedSampleRateMismatch = true;
-                Debug.LogWarning($"[AudioTaggingComponent] Sample rate mismatch. Input={sampleRate}Hz Component={SampleRate}Hz. Results may drift.");
+                SherpaLog.Warning($"[AudioTaggingComponent] Sample rate mismatch. Input={sampleRate}Hz Component={SampleRate}Hz. Results may drift.");
             }
 
-            _ = ProcessStreamingAsync(samples);
+            EnqueueChunk(samples);
         }
 
-        private async Task ProcessStreamingAsync(float[] samples)
+        private void EnqueueChunk(float[] samples)
         {
-            if (!EnsureModuleReady(out var module))
+            if (samples == null || samples.Length == 0)
             {
                 return;
             }
 
-            var buffer = new float[samples.Length];
-            Array.Copy(samples, buffer, samples.Length);
+            // Clone to avoid consumer-side mutation; reuse queue for back-pressure.
+            var clone = new float[samples.Length];
+            Array.Copy(samples, clone, samples.Length);
 
-            try
+            lock (queueLock)
             {
-                var tags = await module.TagStreamAsync(buffer, topK, streamingCts?.Token ?? default).ConfigureAwait(true);
-                if (tags != null && tags.Length > 0)
+                if (maxPendingChunks > 0 && pendingChunks.Count >= maxPendingChunks)
                 {
-                    onTagsReady?.Invoke(tags);
+                    pendingChunks.Dequeue(); // Drop oldest to bound latency.
+                    droppedChunks++;
+                }
+
+                pendingChunks.Enqueue(clone);
+                if (drainingQueue)
+                {
+                    return;
+                }
+                drainingQueue = true;
+            }
+
+            MaybeLogDroppedChunks();
+            _ = DrainQueueAsync();
+        }
+
+        private async Task DrainQueueAsync()
+        {
+            while (true)
+            {
+                float[] buffer;
+                lock (queueLock)
+                {
+                    if (pendingChunks.Count == 0)
+                    {
+                        drainingQueue = false;
+                        return;
+                    }
+
+                    buffer = pendingChunks.Dequeue();
+                }
+
+                if (buffer == null || buffer.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!EnsureModuleReady(out var module))
+                {
+                    ClearQueue();
+                    return;
+                }
+
+                try
+                {
+                    var tags = await module.TagStreamAsync(buffer, topK, streamingCts?.Token ?? default).ConfigureAwait(false);
+                    if (tags != null && tags.Length > 0)
+                    {
+                        var captured = tags;
+                        DispatchToUnity(() => onTagsReady?.Invoke(captured));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    SherpaLog.Error($"[AudioTaggingComponent] Streaming tagging failed: {ex.Message}");
+                    var message = ex.Message;
+                    DispatchToUnity(() => onTaggingFailed?.Invoke(message));
+                    RaiseError(ex.Message);
                 }
             }
-            catch (OperationCanceledException)
+        }
+
+        private void ClearQueue()
+        {
+            lock (queueLock)
             {
-                // Expected during teardown.
+                pendingChunks.Clear();
+                drainingQueue = false;
             }
-            catch (Exception ex)
+        }
+
+        private void MaybeLogDroppedChunks()
+        {
+            if (droppedChunks <= 0)
             {
-                Debug.LogError($"[AudioTaggingComponent] Streaming tagging failed: {ex.Message}");
-                onTaggingFailed?.Invoke(ex.Message);
+                return;
             }
+
+            var now = Time.realtimeSinceStartup;
+            if (now - lastDropLog < 1f)
+            {
+                return;
+            }
+
+            SherpaLog.Warning($"[AudioTaggingComponent] Dropped {droppedChunks} audio chunk(s) due to back-pressure (maxPendingChunks={maxPendingChunks}).");
+            droppedChunks = 0;
+            lastDropLog = now;
         }
 
         private static float[] ExtractMono(AudioClip clip)

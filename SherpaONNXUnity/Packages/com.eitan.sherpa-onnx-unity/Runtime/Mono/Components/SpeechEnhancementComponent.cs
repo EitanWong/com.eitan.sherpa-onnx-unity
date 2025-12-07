@@ -22,7 +22,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Header("Playback")]
         [SerializeField]
         [Tooltip("Optional AudioSource for playback. If not assigned, the component will not autoplay.")]
-        [FormerlySerializedAs("targetAudioSource")]
         private AudioSource playbackAudioSource;
 
         [SerializeField]
@@ -44,11 +43,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         [Header("Events")]
         [SerializeField]
-        [FormerlySerializedAs("onClipEnhanced")]
         private UnityEvent<AudioClip> onClipReady = new UnityEvent<AudioClip>();
 
         [SerializeField]
-        [FormerlySerializedAs("onEnhancementFailed")]
         private UnityEvent<string> onError = new UnityEvent<string>();
 
         private CancellationTokenSource enhancementCts;
@@ -57,7 +54,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         public UnityEvent<AudioClip> ClipReadyEvent => onClipReady;
 
         /// <summary>Raised when the component encounters an error.</summary>
-        public UnityEvent<string> ErrorEvent => onError;
+        public new UnityEvent<string> ErrorEvent => onError;
 
         protected override SpeechEnhancement CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
@@ -151,21 +148,25 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 for (int channel = 0; channel < channels; channel++)
                 {
                     ExtractChannel(interleaved, channels, channel, channelBuffer);
-                    await module.EnhanceAsync(channelBuffer, clip.frequency, linkedCts.Token).ConfigureAwait(true);
+                    await module.EnhanceAsync(channelBuffer, clip.frequency, linkedCts.Token).ConfigureAwait(false);
                     InjectChannel(workingBuffer, channels, channel, channelBuffer);
                 }
 
-                var processedClip = duplicateClip
-                    ? AudioClip.Create($"{clip.name}_enhanced", samplesPerChannel, channels, clip.frequency, false)
-                    : clip;
-
-                processedClip.SetData(workingBuffer, 0);
-
-                if (applyToPlayback)
+                AudioClip processedClip = null;
+                await RunOnUnityThreadAsync(() =>
                 {
-                    var output = playbackOverride != null ? playbackOverride : playbackAudioSource;
-                    HandleClipReady(processedClip, output);
-                }
+                    processedClip = duplicateClip
+                        ? AudioClip.Create($"{clip.name}_enhanced", samplesPerChannel, channels, clip.frequency, false)
+                        : clip;
+
+                    processedClip.SetData(workingBuffer, 0);
+
+                    if (applyToPlayback)
+                    {
+                        var output = playbackOverride != null ? playbackOverride : playbackAudioSource;
+                        HandleClipReady(processedClip, output);
+                    }
+                }).ConfigureAwait(false);
 
                 return processedClip;
             }
@@ -205,19 +206,23 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             try
             {
-                await module.EnhanceAsync(buffer, sampleRate, linkedCts.Token).ConfigureAwait(true);
+                await module.EnhanceAsync(buffer, sampleRate, linkedCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 return null;
             }
 
-            var clip = CreateClipFromSamples(buffer, sampleRate);
-            if (applyToPlayback)
+            AudioClip clip = null;
+            await RunOnUnityThreadAsync(() =>
             {
-                var output = playbackOverride != null ? playbackOverride : playbackAudioSource;
-                HandleClipReady(clip, output);
-            }
+                clip = CreateClipFromSamples(buffer, sampleRate);
+                if (applyToPlayback)
+                {
+                    var output = playbackOverride != null ? playbackOverride : playbackAudioSource;
+                    HandleClipReady(clip, output);
+                }
+            }).ConfigureAwait(false);
 
             return clip;
         }
@@ -264,8 +269,33 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         private void ReportError(string message)
         {
-            Debug.LogError($"[SpeechEnhancementComponent] {message}");
-            onError?.Invoke(message);
+            SherpaLog.Error($"[SpeechEnhancementComponent] {message}");
+            DispatchToUnity(() => onError?.Invoke(message));
+            RaiseError(message);
+        }
+
+        private Task RunOnUnityThreadAsync(Action action)
+        {
+            if (action == null)
+            {
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            DispatchToUnity(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            });
+
+            return tcs.Task;
         }
 
         private static AudioClip CreateClipFromSamples(float[] monoSamples, int sampleRate)

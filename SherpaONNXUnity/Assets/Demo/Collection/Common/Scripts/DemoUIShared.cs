@@ -1,5 +1,6 @@
 namespace Eitan.SherpaONNXUnity.Samples
 {
+    using Eitan.SherpaONNXUnity.Runtime;
     using UnityEngine;
     using UnityEngine.UI;
     using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
@@ -59,6 +60,60 @@ namespace Eitan.SherpaONNXUnity.Samples
             if (statusText != null)
             {
                 statusText.text = message;
+            }
+        }
+
+        /// <summary>
+        /// Update the shared progress tracker based on structured feedback from the runtime.
+        /// </summary>
+        public static void UpdateProgressFromFeedback(ModelLoadProgressTracker tracker, Text statusText, SherpaFeedback feedback)
+        {
+            if (feedback == null)
+            {
+                return;
+            }
+
+            tracker?.SetVisible(true);
+
+            var message = feedback.Message ?? string.Empty;
+            statusText?.gameObject.SetActive(true);
+            if (statusText != null)
+            {
+                statusText.text = message;
+            }
+
+            switch (feedback)
+            {
+                case PrepareFeedback prepare:
+                    tracker?.UpdateStage(Stage.Prepare, message, 0.05f);
+                    break;
+                case DownloadFeedback download:
+                    tracker?.UpdateStage(Stage.Download, message, download.Progress);
+                    break;
+                case VerifyFeedback verify:
+                    tracker?.UpdateStage(Stage.Verify, message, verify.Progress);
+                    break;
+                case DecompressFeedback decompress:
+                    tracker?.UpdateStage(Stage.Decompress, message, decompress.Progress);
+                    break;
+                case CleanFeedback clean:
+                    tracker?.UpdateStage(Stage.Clean, message, 1f);
+                    break;
+                case LoadFeedback load:
+                    tracker?.UpdateStage(Stage.Load, message, 0.75f);
+                    break;
+                case SuccessFeedback success:
+                    tracker?.Complete(message);
+                    tracker?.SetVisible(false);
+                    break;
+                case FailedFeedback failed:
+                    tracker?.UpdateStage(Stage.Load, message, 1f);
+                    tracker?.SetVisible(true);
+                    break;
+                case CancelFeedback cancel:
+                    tracker?.UpdateStage(Stage.Load, message, 0f);
+                    tracker?.SetVisible(true);
+                    break;
             }
         }
     }

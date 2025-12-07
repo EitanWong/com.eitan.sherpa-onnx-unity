@@ -1,6 +1,10 @@
 namespace Eitan.SherpaONNXUnity.Samples
 {
+    using System;
+
     using System.Linq;
+    using System.Threading;
+
     using System.Threading.Tasks;
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.SherpaONNXUnity.Runtime;
@@ -48,6 +52,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool modelRequested;
         private bool modelReady;
         private ModelLoadProgressTracker progressTracker;
+        private CancellationTokenSource manifestCts;
 
         private void Awake()
         {
@@ -78,6 +83,8 @@ namespace Eitan.SherpaONNXUnity.Samples
                 synthesizer.ClipReadyEvent.AddListener(clip => statusText.text = clip != null ? $"Generated {clip.length:F1}s clip." : "Empty clip returned.");
                 synthesizer.SynthesisFailedEvent.AddListener(message => statusText.text = message);
                 synthesizer.InitializationStateChangedEvent.AddListener(HandleReadyState);
+                synthesizer.FeedbackMessages.AddListener(HandleFeedbackMessage);
+                synthesizer.FeedbackReceived += HandleFeedback;
             }
 
             if (audioSource == null)
@@ -95,6 +102,7 @@ namespace Eitan.SherpaONNXUnity.Samples
 
         private void OnEnable()
         {
+            manifestCts = new CancellationTokenSource();
             if (textInput != null && string.IsNullOrWhiteSpace(textInput.text))
             {
                 textInput.text = defaultUtterance;
@@ -105,7 +113,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 speedLabel.text = $"Speed: {speedSlider.value:F1}x";
             }
 
-            _ = PopulateDropdownAsync();
+            _ = PopulateDropdownAsync(manifestCts.Token);
             modelReady = false;
             UpdateButtonLabel();
             synthesizeButton.interactable = false;
@@ -135,10 +143,15 @@ namespace Eitan.SherpaONNXUnity.Samples
                 synthesizer.ClipReadyEvent.RemoveAllListeners();
                 synthesizer.SynthesisFailedEvent.RemoveAllListeners();
                 synthesizer.InitializationStateChangedEvent.RemoveListener(HandleReadyState);
+                synthesizer.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+                synthesizer.FeedbackReceived -= HandleFeedback;
             }
+
+            manifestCts?.Cancel();
+            manifestCts?.Dispose();
         }
 
-        private async Task PopulateDropdownAsync()
+        private async Task PopulateDropdownAsync(CancellationToken cancellationToken)
         {
             if (modelDropdown == null)
             {
@@ -149,25 +162,42 @@ namespace Eitan.SherpaONNXUnity.Samples
             modelDropdown.captionText.text = "Loading TTS models…";
             modelDropdown.interactable = false;
 
-            var manifest = await SherpaONNXModelRegistry.Instance
-                .GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis)
-                .ConfigureAwait(true);
-
-            if (manifest.models == null || manifest.models.Count == 0)
+            try
             {
-                modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
-                return;
+                var manifest = await SherpaONNXModelRegistry.Instance
+                    .GetManifestAsync(SherpaONNXModuleType.SpeechSynthesis, cancellationToken)
+                    .ConfigureAwait(true);
+
+                if (manifest.models == null || manifest.models.Count == 0)
+                {
+                    modelDropdown.options.Add(new Dropdown.OptionData("<no models>"));
+                    return;
+                }
+
+                var options = manifest.models
+                    .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
+                    .Select(m => new Dropdown.OptionData(m.modelId))
+                    .ToList();
+
+                modelDropdown.AddOptions(options);
+                var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
+                modelDropdown.value = defaultIndex >= 0 ? defaultIndex : 0;
+                modelDropdown.interactable = options.Count > 0;
             }
-
-            var options = manifest.models
-                .Where(m => !string.IsNullOrWhiteSpace(m.modelId))
-                .Select(m => new Dropdown.OptionData(m.modelId))
-                .ToList();
-
-            modelDropdown.AddOptions(options);
-            var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
-            modelDropdown.value = defaultIndex >= 0 ? defaultIndex : 0;
-            modelDropdown.interactable = options.Count > 0;
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                modelDropdown.options.Clear();
+                modelDropdown.options.Add(new Dropdown.OptionData("<manifest unavailable>"));
+                modelDropdown.interactable = false;
+                statusText.text = $"Manifest fetch failed: {ex.Message}";
+                if (loadOrUnloadButton != null)
+                {
+                    loadOrUnloadButton.interactable = false;
+                }
+            }
         }
 
         private string SelectedModelId =>
@@ -229,6 +259,19 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
 
             DemoUIShared.SetButtonColor(loadOrUnloadButton, modelRequested ? DemoUIShared.UnloadColor : DemoUIShared.LoadColor);
+        }
+
+        private void HandleFeedbackMessage(string message)
+        {
+            if (progressMessageText != null)
+            {
+                progressMessageText.text = message;
+            }
+        }
+
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
         }
 
         private async void StartSynthesis()
