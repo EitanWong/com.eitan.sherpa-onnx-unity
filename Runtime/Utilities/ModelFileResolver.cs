@@ -189,9 +189,26 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             Action<string> onFallback = null,
             params ModelFileCriteria[] criteria)
         {
-            if (TryResolveFirstValidPath(metadata, out var path, onFallback, recordFailures: true, criteria))
+            var failures = new List<string>();
+            Action<string> fallback = message =>
+            {
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    failures.Add(message);
+                }
+                onFallback?.Invoke(message);
+            };
+
+            if (TryResolveFirstValidPath(metadata, out var path, fallback, recordFailures: true, criteria))
             {
                 return path;
+            }
+
+            var nonAsciiFailure = failures.LastOrDefault(message => message.IndexOf("non-ASCII", StringComparison.OrdinalIgnoreCase) >= 0);
+            var detail = nonAsciiFailure ?? failures.LastOrDefault();
+            if (!string.IsNullOrWhiteSpace(detail))
+            {
+                throw new InvalidOperationException($"Unable to locate {description} for model '{metadata?.modelId}'. {detail}");
             }
 
             throw new InvalidOperationException($"Unable to locate {description} for model '{metadata?.modelId}'.");
@@ -287,6 +304,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 return false;
             }
 
+            if (ContainsNonAscii(path))
+            {
+                failureReason = "Path contains non-ASCII characters (e.g., Chinese). The native backend does not support non-ASCII paths.";
+                return false;
+            }
+
             if (expectDirectory)
             {
                 if (!Directory.Exists(path))
@@ -329,6 +352,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
             return true;
+        }
+
+        private static bool ContainsNonAscii(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (value[i] > 127)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static long GetDefaultMinimumSize(string extension)
