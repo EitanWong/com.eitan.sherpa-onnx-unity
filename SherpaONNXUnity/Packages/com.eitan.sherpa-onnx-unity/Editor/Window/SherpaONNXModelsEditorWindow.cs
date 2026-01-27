@@ -922,7 +922,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 return;
             }
 
-
+            var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var meta in manifest.models)
             {
                 if (meta == null)
@@ -930,6 +930,11 @@ namespace Eitan.SherpaONNXUnity.Editor
                     continue;
                 }
 
+                string key = BuildModelKey(meta);
+                if (!seenKeys.Add(key))
+                {
+                    continue;
+                }
 
                 var entry = new ModelEntry
                 {
@@ -1277,8 +1282,8 @@ namespace Eitan.SherpaONNXUnity.Editor
             float availableHeight = position.height - filterBottom - downloadsHeight - 10;
             availableHeight = Mathf.Max(100f, availableHeight);
 
-            float leftPadding = LayoutConstants.CardPadding;
-            float rightPadding = 4f;
+            float leftPadding = 5f;
+            float rightPadding = 2f;
             float viewWidth = position.width - 20 - leftPadding - rightPadding;
 
             // Begin scroll view with light side padding and extra vertical padding
@@ -2202,6 +2207,16 @@ namespace Eitan.SherpaONNXUnity.Editor
                 }
             }
             return null;
+        }
+
+        private static string BuildModelKey(SherpaONNXModelMetadata meta)
+        {
+            if (meta == null)
+            {
+                return string.Empty;
+            }
+
+            return $"{meta.moduleType}|{meta.modelId}";
         }
 
         private string GetModuleTypeDisplayName(SherpaONNXModuleType moduleType)

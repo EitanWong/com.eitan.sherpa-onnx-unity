@@ -223,12 +223,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                             "ZipVoice flow matching model",
                             fallbackReporter,
                             ModelFileCriteria.FromKeywords("fm_decoder", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
                             ModelFileCriteria.FromKeywords("fm_decoder"));
                         ttsModelConfig.Model.ZipVoice.TextModel = ModelFileResolver.ResolveRequiredFile(
                             metadata,
                             "ZipVoice text model",
                             fallbackReporter,
                             ModelFileCriteria.FromKeywords("text_encoder", int8QuantKeyword),
+                            ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
                             ModelFileCriteria.FromKeywords("text_encoder"));
                         ttsModelConfig.Model.ZipVoice.Vocoder = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice vocoder", fallbackReporter, "vocos_24khz.onnx");
                         ttsModelConfig.Model.ZipVoice.Tokens = ModelFileResolver.ResolveRequiredByKeywords(metadata, "ZipVoice tokens", fallbackReporter, "tokens.txt");

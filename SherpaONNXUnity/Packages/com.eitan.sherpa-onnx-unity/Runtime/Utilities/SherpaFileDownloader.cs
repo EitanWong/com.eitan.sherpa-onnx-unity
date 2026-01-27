@@ -2410,7 +2410,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             string persistentPath;
             try
             {
-                persistentPath = Application.persistentDataPath;
+                if (!SherpaPathResolver.TryGetPersistentDataPath(out persistentPath))
+                {
+                    SherpaLog.Warning("[SherpaFileDownloader] Application.persistentDataPath is not available on this thread. Call SherpaPathResolver.PrimeUnityPaths on the main thread before downloading.", category: "Download");
+                    return;
+                }
             }
             catch (Exception ex)
             {

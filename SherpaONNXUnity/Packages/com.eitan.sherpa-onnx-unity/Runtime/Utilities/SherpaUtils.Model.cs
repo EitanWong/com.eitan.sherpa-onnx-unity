@@ -418,6 +418,29 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
             }
 
+            public static string GetOfflineModelTypeString(SpeechRecognitionModelType modelType)
+            {
+                switch (modelType)
+                {
+                    case SpeechRecognitionModelType.Offline_Transducer: return "transducer";
+                    case SpeechRecognitionModelType.Offline_Paraformer: return "paraformer";
+                    case SpeechRecognitionModelType.Offline_ZipformerCtc: return "zipformer_ctc";
+                    case SpeechRecognitionModelType.Offline_Nemo_Ctc: return "nemo_ctc";
+                    case SpeechRecognitionModelType.Dolphin: return "dolphin";
+                    case SpeechRecognitionModelType.TeleSpeech: return "telespeech_ctc";
+                    case SpeechRecognitionModelType.Whisper: return "whisper";
+                    case SpeechRecognitionModelType.Tdnn: return "tdnn";
+                    case SpeechRecognitionModelType.SenseVoice: return "sensevoice";
+                    case SpeechRecognitionModelType.Moonshine: return "moonshine";
+                    case SpeechRecognitionModelType.FireRedAsr: return "fire_red_asr";
+                    case SpeechRecognitionModelType.Omnilingual: return "omnilingual";
+                    case SpeechRecognitionModelType.Offline_Canary: return "canary";
+                    case SpeechRecognitionModelType.Offline_WenetCtc: return "wenet_ctc";
+                    case SpeechRecognitionModelType.Offline_MedAsrCtc: return "med_asr_ctc";
+                    case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
+                    default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
+                }
+            }
 
             #endregion
         }

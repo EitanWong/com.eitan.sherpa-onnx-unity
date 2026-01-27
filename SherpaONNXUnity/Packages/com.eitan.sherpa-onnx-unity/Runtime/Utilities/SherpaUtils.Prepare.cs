@@ -100,6 +100,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     throw new InvalidOperationException("EnsureUnityThreadInfrastructure must be invoked from the Unity main thread.");
                 }
 
+                SherpaPathResolver.PrimeUnityPaths();
                 RuntimeHelpers.RunClassConstructor(typeof(SherpaFileDownloader).TypeHandle);
 #endif
             }
@@ -123,6 +124,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
 
                 var paths = GetModelPaths(metadata);
+                var modelDirectoryExisted = Directory.Exists(paths.ModelDirectory);
+                var downloadAttempted = false;
                 SherpaLog.Verbose(
                     $"[Prepare] Begin model prepare for '{metadata.modelId}'. Archive={paths.DownloadFileName} Target={paths.ModelDirectory}",
                     category: "Prepare");
@@ -160,6 +163,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                             return false;
                         }
 
+                        downloadAttempted = true;
                         var downloadSucceeded = await DownloadModelAsync(metadata, paths.DownloadFilePath, reporter, attempt, cancellationToken).ConfigureAwait(false);
 
                         if (!downloadSucceeded)
@@ -198,7 +202,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     }
 
                     ReportSafe(reporter, new FailedFeedback(metadata, message: $"Failed to prepare model {metadata.modelId} after {MAX_ATTEMPTS} attempts. Please download and install the model manually."));
-                    await CleanPathAsync(metadata, new[] { paths.ModelDirectory, paths.DownloadFilePath }, reporter, cancellationToken).ConfigureAwait(false);
+                    var cleanupTargets = GetCleanupTargets(paths, modelDirectoryExisted, downloadAttempted);
+                    if (cleanupTargets.Length > 0)
+                    {
+                        await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                    }
                     SherpaLog.Error($"[Prepare] Exhausted retries while preparing '{metadata.modelId}'. Cleaned temp data.", category: "Prepare");
 
                     return false;
@@ -211,7 +219,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 catch (Exception ex)
                 {
                     ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    await CleanPathAsync(metadata, new[] { paths.ModelDirectory, paths.DownloadFilePath }, reporter, cancellationToken).ConfigureAwait(false);
+                    var cleanupTargets = GetCleanupTargets(paths, modelDirectoryExisted, downloadAttempted);
+                    if (cleanupTargets.Length > 0)
+                    {
+                        await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                    }
                     SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Unexpected failure for '{metadata.modelId}'.");
                     throw;
                 }
@@ -865,6 +877,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     Directory.CreateDirectory(paths.DownloadDirectory);
                 }
+            }
+
+            private static string[] GetCleanupTargets(ModelPaths paths, bool modelDirectoryExisted, bool downloadAttempted)
+            {
+                if (!downloadAttempted)
+                {
+                    return Array.Empty<string>();
+                }
+
+                var targets = new List<string> { paths.DownloadFilePath };
+                if (!modelDirectoryExisted)
+                {
+                    targets.Add(paths.ModelDirectory);
+                }
+
+                return targets.ToArray();
             }
 
             private static void ReportSafe(SherpaONNXFeedbackReporter reporter, IFeedback feedback)

@@ -6,13 +6,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
     using System.Threading;
     using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
-    using UnityEngine;
-
     using Eitan.SherpaONNXUnity.Runtime.Native;
     using Eitan.SherpaONNXUnity.Runtime.Utilities;
     using Eitan.SherpaONNXUnity.Runtime.Utilities.Lexicon;
-    using System.Collections.Generic;
-
 
     public class SpeechRecognition : SherpaONNXModule
     {
@@ -79,45 +75,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             public string Text { get; }
             public bool IsFinal { get; }
             public Exception Error { get; }
-        }
-
-        private static IEnumerable<string> CollectOfflineModelFiles(OfflineRecognizerConfig config)
-        {
-            var list = new List<string>(8);
-            if (!string.IsNullOrEmpty(config.ModelConfig.Paraformer.Model))
-            {
-                list.Add(config.ModelConfig.Paraformer.Model);
-            }
-
-
-            if (!string.IsNullOrEmpty(config.ModelConfig.Transducer.Encoder))
-            {
-                list.Add(config.ModelConfig.Transducer.Encoder);
-            }
-
-
-            if (!string.IsNullOrEmpty(config.ModelConfig.Transducer.Decoder))
-            {
-                list.Add(config.ModelConfig.Transducer.Decoder);
-            }
-
-            if (!string.IsNullOrEmpty(config.ModelConfig.Transducer.Joiner))
-            {
-                list.Add(config.ModelConfig.Transducer.Joiner);
-            }
-
-            if (!string.IsNullOrEmpty(config.ModelConfig.NeMoCtc.Model))
-            {
-                list.Add(config.ModelConfig.NeMoCtc.Model);
-            }
-
-            if (!string.IsNullOrEmpty(config.ModelConfig.ZipformerCtc.Model))
-            {
-                list.Add(config.ModelConfig.ZipformerCtc.Model);
-            }
-
-
-            return list;
         }
 
         protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechRecognition;
@@ -320,7 +277,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 ModelConfig = {
                     Tokens = context.TokensPath,
                     NumThreads = context.ThreadCount,
-                    ModelType = GetOfflineModelTypeString(_modelType)
+                    ModelType = SherpaUtils.Model.GetOfflineModelTypeString(_modelType)
 
                 },
                 DecodingMethod = "greedy_search",
@@ -434,10 +391,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("embedding"));
                     config.ModelConfig.FunAsrNano.Tokenizer = ModelFileResolver.ResolveRequiredFile(
                         metadata,
-                        "FunASR Nano tokenizer",
+                        "FunASR Nano tokenizer folder",
                         context.FallbackReporter,
-                        ModelFileCriteria.FromKeywords("tokenizer"),
-                        ModelFileCriteria.FromKeywords("token"));
+                        ModelFileCriteria.FromDirectoryKeywords("qwen3-0.6b"));
+                    config.ModelConfig.Tokens = string.Empty;
                     break;
 
                 case SpeechRecognitionModelType.Dolphin:
@@ -566,30 +523,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
 
             return config;
-        }
-
-        private static string GetOfflineModelTypeString(SpeechRecognitionModelType modelType)
-        {
-            switch (modelType)
-            {
-                case SpeechRecognitionModelType.Offline_Transducer: return "transducer";
-                case SpeechRecognitionModelType.Offline_Paraformer: return "paraformer";
-                case SpeechRecognitionModelType.Offline_ZipformerCtc: return "zipformer_ctc";
-                case SpeechRecognitionModelType.Offline_Nemo_Ctc: return "nemo_ctc";
-                case SpeechRecognitionModelType.Dolphin: return "dolphin";
-                case SpeechRecognitionModelType.TeleSpeech: return "telespeech_ctc";
-                case SpeechRecognitionModelType.Whisper: return "whisper";
-                case SpeechRecognitionModelType.Tdnn: return "tdnn";
-                case SpeechRecognitionModelType.SenseVoice: return "sensevoice";
-                case SpeechRecognitionModelType.Moonshine: return "moonshine";
-                case SpeechRecognitionModelType.FireRedAsr: return "fire_red_asr";
-                case SpeechRecognitionModelType.Omnilingual: return "omnilingual";
-                case SpeechRecognitionModelType.Offline_Canary: return "canary";
-                case SpeechRecognitionModelType.Offline_WenetCtc: return "wenet_ctc";
-                case SpeechRecognitionModelType.Offline_MedAsrCtc: return "med_asr_ctc";
-                case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
-                default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
-            }
         }
 
         public async Task<TranscriptionResult> TranscribeAsync(float[] audioSamplesFrame, int sampleRate, CancellationToken cancellationToken = default)
@@ -755,7 +688,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
-            var tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "token file", fallbackReporter, "tokens", "tokens.txt");
+            string tokensPath;
+            if (_modelType == SpeechRecognitionModelType.Offline_FunAsrNano)
+            {   //The FunAsrNano model does not have a token file, so please ignore it.
+                tokensPath = string.Empty;
+            }
+            else
+            {
+                tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "token file", fallbackReporter, "tokens", "tokens.txt");
+            }
 
             return new RecognizerConfigContext(threadCount, tokensPath, int8QuantKeyword, fallbackReporter);
         }
