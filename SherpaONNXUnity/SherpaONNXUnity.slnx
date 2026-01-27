@@ -11,7 +11,7 @@
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.TextMeshPro.Editor.csproj" />
   <Project Path="Eitan.SherpaONNXUnity.Editor.csproj" />
-  <Project Path="Utilities.BuildPipeline.Editor.csproj" />
   <Project Path="Eitan.SherpaONNXUnity.Tests.csproj" />
+  <Project Path="Utilities.BuildPipeline.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

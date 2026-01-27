@@ -786,7 +786,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             var initialConcurrency = ComputeAdaptiveConcurrencyHint();
             SetConcurrency(initialConcurrency);
 
-            var platformTimeout = Application.platform == RuntimePlatform.IPhonePlayer || Application.platform == RuntimePlatform.Android
+            ThreadingUtils.GetPlatformSnapshot(out _, out _, out bool isMobile, out _, out _);
+            var platformTimeout = isMobile
                 ? Math.Max(timeoutSeconds, 120)
                 : Math.Max(timeoutSeconds, 60);
             _timeoutSeconds = platformTimeout;
@@ -810,7 +811,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             if (string.IsNullOrEmpty(filePath)) { throw new ArgumentNullException(nameof(filePath)); }
 
             EnsureWritablePath(filePath);
-            SherpaLog.Verbose($"[SherpaFileDownloader] Start download {( _modelMetadata?.modelId ?? "<unknown>")} from {url} -> {filePath}", category: "Download");
+            SherpaLog.Verbose($"[SherpaFileDownloader] Start download {(_modelMetadata?.modelId ?? "<unknown>")} from {url} -> {filePath}", category: "Download");
 
             using var linkedUserCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _manualCancellationSource.Token);
             var userToken = linkedUserCancellation.Token;
@@ -1236,32 +1237,30 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             await SaveMetadataAsync().ConfigureAwait(false);
         }
 
-        private async Task<UnityWebRequestResponse> SendSimpleRequestAsync(UnityWebRequest request, CancellationToken token)
+        private async Task<UnityWebRequestResponse> SendSimpleRequestAsync(Func<UnityWebRequest> requestFactory, CancellationToken token)
         {
             return await UnityMainThreadScheduler.Run(async () =>
             {
-                using (request)
+                using var request = requestFactory();
+                request.timeout = GetCurrentTimeoutSeconds();
+                request.SetRequestHeader("User-Agent", _userAgent);
+
+                using var registration = token.Register(() =>
                 {
-                    request.timeout = GetCurrentTimeoutSeconds();
-                    request.SetRequestHeader("User-Agent", _userAgent);
-
-                    using var registration = token.Register(() =>
+                    UnityMainThreadScheduler.Post(() =>
                     {
-                        UnityMainThreadScheduler.Post(() =>
+                        if (!request.isDone)
                         {
-                            if (!request.isDone)
-                            {
-                                request.Abort();
-                            }
-                        });
+                            request.Abort();
+                        }
                     });
+                });
 
-                    var operation = request.SendWebRequest();
-                    await UnityMainThreadScheduler.AwaitAsyncOperation(operation, token);
+                var operation = request.SendWebRequest();
+                await UnityMainThreadScheduler.AwaitAsyncOperation(operation, token);
 
-                    var headers = request.GetResponseHeaders() ?? new Dictionary<string, string>();
-                    return new UnityWebRequestResponse(request.result, request.responseCode, request.error, headers);
-                }
+                var headers = request.GetResponseHeaders() ?? new Dictionary<string, string>();
+                return new UnityWebRequestResponse(request.result, request.responseCode, request.error, headers);
             }).ConfigureAwait(false);
         }
 
@@ -1269,7 +1268,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         {
             WarnIfInsecureUrl(url);
 
-            var headResponse = await SendSimpleRequestAsync(UnityWebRequest.Head(url), token).ConfigureAwait(false);
+            var headResponse = await SendSimpleRequestAsync(() => UnityWebRequest.Head(url), token).ConfigureAwait(false);
             if (headResponse.Result == UnityWebRequest.Result.Success &&
                 headResponse.Headers.TryGetValue("Content-Length", out var contentLengthHeader) &&
                 long.TryParse(contentLengthHeader, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sizeFromHead))
@@ -1284,9 +1283,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
             }
 
-            var probeRequest = UnityWebRequest.Get(url);
-            probeRequest.SetRequestHeader("Range", "bytes=0-0");
-            var probeResponse = await SendSimpleRequestAsync(probeRequest, token).ConfigureAwait(false);
+            var probeResponse = await SendSimpleRequestAsync(() =>
+            {
+                var request = UnityWebRequest.Get(url);
+                request.SetRequestHeader("Range", "bytes=0-0");
+                return request;
+            }, token).ConfigureAwait(false);
 
             if (probeResponse.Result == UnityWebRequest.Result.Success && probeResponse.ResponseCode == 206)
             {
@@ -1943,10 +1945,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
         private int ComputeAdaptiveConcurrencyHint()
         {
-            var cpuCount = Mathf.Max(1, SystemInfo.processorCount);
-            var memoryMb = SystemInfo.systemMemorySize;
-            var isMobile = Application.isMobilePlatform;
-            var isEditor = Application.isEditor;
+            // Avoid Unity APIs off the main thread: use ThreadingUtils snapshot (Environment fallback when not primed).
+            ThreadingUtils.GetPlatformSnapshot(out int cpuCount, out int memoryMb, out bool isMobile, out bool isBatchMode, out bool isEditor);
 
             int concurrency;
             if (isMobile)
@@ -1956,7 +1956,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             else
             {
                 concurrency = Mathf.Clamp(cpuCount - 1, 1, _maxConcurrentChunks);
-                if (isEditor || Application.isBatchMode)
+                if (isEditor || isBatchMode)
                 {
                     concurrency = Mathf.Clamp(cpuCount, 1, _maxConcurrentChunks);
                 }
@@ -2292,31 +2292,46 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
         private static string BuildUserAgent()
         {
-            var deviceModel = SystemInfo.deviceModel;
-            if (string.IsNullOrEmpty(deviceModel))
+            // Building a realistic UA is best-effort. Never fail model downloads because Unity SystemInfo is accessed off-thread.
+            const string fallback = "Mozilla/5.0 (UnityPlayer) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+            try
             {
-                deviceModel = "UnityPlayer";
-            }
+                UnityMainThreadScheduler.EnsureInitialized();
+                if (!UnityMainThreadScheduler.IsMainThread)
+                {
+                    return fallback;
+                }
 
-            switch (Application.platform)
+                var deviceModel = SystemInfo.deviceModel;
+                if (string.IsNullOrEmpty(deviceModel))
+                {
+                    deviceModel = "UnityPlayer";
+                }
+
+                switch (Application.platform)
+                {
+                    case RuntimePlatform.IPhonePlayer:
+                        var iosVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "iOS", "16_0", replaceDotsWithUnderscore: true);
+                        return $"Mozilla/5.0 (iPhone; CPU iPhone OS {iosVersion} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+                    case RuntimePlatform.Android:
+                        var androidVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "Android", "13", replaceDotsWithUnderscore: false);
+                        return $"Mozilla/5.0 (Linux; Android {androidVersion}; {deviceModel}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36";
+                    case RuntimePlatform.OSXPlayer:
+                    case RuntimePlatform.OSXEditor:
+                        return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15";
+                    case RuntimePlatform.WindowsPlayer:
+                    case RuntimePlatform.WindowsEditor:
+                        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+                    case RuntimePlatform.LinuxPlayer:
+                    case RuntimePlatform.LinuxEditor:
+                        return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+                    default:
+                        return $"Mozilla/5.0 ({deviceModel}) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+                }
+            }
+            catch
             {
-                case RuntimePlatform.IPhonePlayer:
-                    var iosVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "iOS", "16_0", replaceDotsWithUnderscore: true);
-                    return $"Mozilla/5.0 (iPhone; CPU iPhone OS {iosVersion} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
-                case RuntimePlatform.Android:
-                    var androidVersion = ExtractVersionSegment(SystemInfo.operatingSystem, "Android", "13", replaceDotsWithUnderscore: false);
-                    return $"Mozilla/5.0 (Linux; Android {androidVersion}; {deviceModel}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36";
-                case RuntimePlatform.OSXPlayer:
-                case RuntimePlatform.OSXEditor:
-                    return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15";
-                case RuntimePlatform.WindowsPlayer:
-                case RuntimePlatform.WindowsEditor:
-                    return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
-                case RuntimePlatform.LinuxPlayer:
-                case RuntimePlatform.LinuxEditor:
-                    return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
-                default:
-                    return $"Mozilla/5.0 ({deviceModel}) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+                return fallback;
             }
         }
 
@@ -2381,21 +2396,28 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 throw new ArgumentNullException(nameof(filePath));
             }
 
-            if (Application.isEditor)
+            ThreadingUtils.GetPlatformSnapshot(out _, out _, out bool isMobile, out _, out bool isEditor);
+            if (isEditor)
             {
                 return;
             }
 
-            var platform = Application.platform;
-            var requiresPersistent = platform == RuntimePlatform.IPhonePlayer ||
-                                     platform == RuntimePlatform.Android ||
-                                     platform == RuntimePlatform.tvOS;
-            if (!requiresPersistent)
+            if (!isMobile)
             {
                 return;
             }
 
-            var persistentPath = Application.persistentDataPath;
+            string persistentPath;
+            try
+            {
+                persistentPath = Application.persistentDataPath;
+            }
+            catch (Exception ex)
+            {
+                SherpaLog.Warning($"[SherpaFileDownloader] Unable to query Application.persistentDataPath on this thread: {ex.Message}", category: "Download");
+                return;
+            }
+
             if (string.IsNullOrEmpty(persistentPath))
             {
                 throw new InvalidOperationException("Application.persistentDataPath is not available on this platform.");

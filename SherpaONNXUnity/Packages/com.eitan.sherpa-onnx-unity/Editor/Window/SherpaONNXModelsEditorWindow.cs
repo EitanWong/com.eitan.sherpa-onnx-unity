@@ -620,6 +620,8 @@ namespace Eitan.SherpaONNXUnity.Editor
 
         // UI state
         private Vector2 _scrollPosition;
+        private float _lastFilterBarBottom;
+        private float _downloadsPanelHeight;
         private bool _showDownloadsPanel = true;
         private bool _isLoadingManifest;
         private bool _needsFilterRebuild = true;
@@ -1204,6 +1206,11 @@ namespace Eitan.SherpaONNXUnity.Editor
             GUILayout.FlexibleSpace();
 
             EditorGUILayout.EndHorizontal();
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                _lastFilterBarBottom = GUILayoutUtility.GetLastRect().yMax;
+            }
         }
 
         private string[] GetDisplayStrings(GUIContent[] contents)
@@ -1258,13 +1265,26 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             // Calculate available height
-            float downloadsHeight = HasActiveDownloads() ? LayoutConstants.DownloadsPanelMaxHeight + 20 : 0;
-            float availableHeight = position.height - GUILayoutUtility.GetLastRect().yMax - downloadsHeight - 10;
+            float downloadsHeight = 0f;
+            if (HasActiveDownloads())
+            {
+                downloadsHeight = _downloadsPanelHeight > 0f
+                    ? _downloadsPanelHeight + 4f
+                    : LayoutConstants.DownloadsPanelMaxHeight + 20f;
+            }
+
+            float filterBottom = _lastFilterBarBottom > 0f ? _lastFilterBarBottom : GUILayoutUtility.GetLastRect().yMax;
+            float availableHeight = position.height - filterBottom - downloadsHeight - 10;
             availableHeight = Mathf.Max(100f, availableHeight);
 
-            float viewWidth = position.width - 20;
+            float leftPadding = LayoutConstants.CardPadding;
+            float rightPadding = 4f;
+            float viewWidth = position.width - 20 - leftPadding - rightPadding;
 
-            // Begin scroll view
+            // Begin scroll view with light side padding and extra vertical padding
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(leftPadding);
+            EditorGUILayout.BeginVertical();
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(availableHeight));
 
             // Simple virtualization: calculate visible range
@@ -1341,6 +1361,9 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(rightPadding);
+            EditorGUILayout.EndHorizontal();
         }
 
         private float GetCardHeight(ModelEntry entry, float viewWidth)
@@ -1676,6 +1699,11 @@ namespace Eitan.SherpaONNXUnity.Editor
                 return;
             }
 
+            float startY = 0f;
+            if (Event.current.type == EventType.Repaint)
+            {
+                startY = GUILayoutUtility.GetLastRect().yMax;
+            }
 
             EditorGUILayout.Space(8);
 
@@ -1716,6 +1744,12 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             EditorGUILayout.EndFoldoutHeaderGroup();
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                float endY = GUILayoutUtility.GetLastRect().yMax;
+                _downloadsPanelHeight = Mathf.Max(0f, endY - startY);
+            }
         }
 
         private void DrawDownloadRow(DownloadOperation download)

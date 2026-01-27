@@ -41,6 +41,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             Canary = new OfflineCanaryModelConfig();
             WenetCtc = new OfflineWenetCtcModelConfig();
             Omnilingual = new OfflineOmnilingualAsrCtcModelConfig();
+            MedAsr = new OfflineMedAsrCtcModelConfig();
+            FunAsrNano = new OfflineFunAsrNanoModelConfig();
         }
         public OfflineTransducerModelConfig Transducer;
         public OfflineParaformerModelConfig Paraformer;
@@ -78,5 +80,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflineCanaryModelConfig Canary;
         public OfflineWenetCtcModelConfig WenetCtc;
         public OfflineOmnilingualAsrCtcModelConfig Omnilingual;
+        public OfflineMedAsrCtcModelConfig MedAsr;
+        public OfflineFunAsrNanoModelConfig FunAsrNano;
     }
 }
