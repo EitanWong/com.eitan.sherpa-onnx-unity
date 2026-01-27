@@ -7,6 +7,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         Online_Transducer,
         Online_Ctc,
         Online_Paraformer,
+        Online_Zipformer2Ctc,
+        Online_Nemo_Ctc,
+        Online_Tone_Ctc,
         Offline_Transducer,
         Offline_Paraformer,
         Offline_ZipformerCtc,
@@ -18,7 +21,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
         SenseVoice,
         FireRedAsr,
         Dolphin,
-        Omnilingual
+        Omnilingual,
+        Offline_Canary,
+        Offline_WenetCtc,
+        Offline_MedAsrCtc,
+        Offline_FunAsrNano
     }
 
 }

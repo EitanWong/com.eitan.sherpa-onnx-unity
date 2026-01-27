@@ -45,16 +45,10 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         private UnityEvent<AudioClip> onClipReady = new UnityEvent<AudioClip>();
 
-        [SerializeField]
-        private UnityEvent<string> onError = new UnityEvent<string>();
-
         private CancellationTokenSource enhancementCts;
 
         /// <summary>Raised when a processed clip is ready.</summary>
         public UnityEvent<AudioClip> ClipReadyEvent => onClipReady;
-
-        /// <summary>Raised when the component encounters an error.</summary>
-        public new UnityEvent<string> ErrorEvent => onError;
 
         protected override SpeechEnhancement CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
@@ -270,7 +264,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private void ReportError(string message)
         {
             SherpaLog.Error($"[SpeechEnhancementComponent] {message}");
-            DispatchToUnity(() => onError?.Invoke(message));
             RaiseError(message);
         }
 

@@ -18,6 +18,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             // Model architecture keywords
             private static readonly string[] transducer_keywords = { "zipformer", "conformer", "transducer" };
+            private static readonly string[] zipformer2_keywords = { "zipformer2", "zipformer-2" };
             private static readonly string[] ctc_keywords = { "ctc" };
             private static readonly string[] nemo_ctc_keywords = { "nemo-ctc" };
             // NVIDIA NeMo Parakeet/Canary variants
@@ -32,6 +33,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] fireredasr_keywords = { "fire-red-asr" };
             private static readonly string[] dolphin_keywords = { "dolphin" };
             private static readonly string[] telespeech_keywords = { "telespeech" };
+            private static readonly string[] tone_ctc_keywords = { "tone-ctc", "tone_ctc" };
+            private static readonly string[] wenet_ctc_keywords = { "wenet-ctc", "wenet_ctc" };
+            private static readonly string[] medasr_ctc_keywords = { "medasr", "med-asr", "med_asr" };
+            private static readonly string[] funasr_nano_keywords = { "funasr-nano", "funasr_nano", "funasr" };
 
             private static readonly string[] omnilingual_keywords = { "omnilingual" };
 
@@ -144,10 +149,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Dolphin; }
                 else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
                 { return SpeechRecognitionModelType.TeleSpeech; }
+                else if (ContainsAnyKeyword(lowerModelID, tone_ctc_keywords))
+                { return SpeechRecognitionModelType.Online_Tone_Ctc; }
                 else if (ContainsAnyKeyword(lowerModelID, nemo_ctc_keywords))
-                { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
+                { return isOnline ? SpeechRecognitionModelType.Online_Nemo_Ctc : SpeechRecognitionModelType.Offline_Nemo_Ctc; }
                 else if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
                 { return SpeechRecognitionModelType.Tdnn; }
+                else if (ContainsAnyKeyword(lowerModelID, nemo_canary_keywords))
+                { return SpeechRecognitionModelType.Offline_Canary; }
+                else if (ContainsAnyKeyword(lowerModelID, wenet_ctc_keywords))
+                { return SpeechRecognitionModelType.Offline_WenetCtc; }
+                else if (ContainsAnyKeyword(lowerModelID, medasr_ctc_keywords))
+                { return SpeechRecognitionModelType.Offline_MedAsrCtc; }
+                else if (ContainsAnyKeyword(lowerModelID, funasr_nano_keywords))
+                { return SpeechRecognitionModelType.Offline_FunAsrNano; }
                 else if (ContainsAnyKeyword(lowerModelID, omnilingual_keywords))
                 { return SpeechRecognitionModelType.Omnilingual; }
 
@@ -161,12 +176,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_keywords))
                 { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
 
-                // 3) Canary models (e.g., nemo-canary-180m[-flash]-...) -> treat as Transducer family
-                if (ContainsAnyKeyword(lowerModelID, nemo_canary_keywords))
-                { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
-
                 // Determine architecture type
-                if (ContainsAnyKeyword(lowerModelID, ctc_keywords))
+                if (isOnline && ContainsAnyKeyword(lowerModelID, zipformer2_keywords) && ContainsAnyKeyword(lowerModelID, ctc_keywords))
+                {
+                    return SpeechRecognitionModelType.Online_Zipformer2Ctc;
+                }
+                else if (ContainsAnyKeyword(lowerModelID, ctc_keywords))
                 {
                     // Generic CTC models (non-Nemo)
                     return isOnline ? SpeechRecognitionModelType.Online_Ctc : SpeechRecognitionModelType.Offline_ZipformerCtc;
@@ -264,6 +279,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Online_Transducer:
                     case SpeechRecognitionModelType.Online_Paraformer:
                     case SpeechRecognitionModelType.Online_Ctc:
+                    case SpeechRecognitionModelType.Online_Zipformer2Ctc:
+                    case SpeechRecognitionModelType.Online_Nemo_Ctc:
+                    case SpeechRecognitionModelType.Online_Tone_Ctc:
                         return true;
                     case SpeechRecognitionModelType.None:
                         return ContainsAnyKeyword(modelID, online_streaming_keywords); ;
@@ -355,14 +373,21 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Offline_Transducer:
                         return transducer_keywords
                             .Concat(nemo_parakeet_tdt_keywords)
-                            .Concat(nemo_canary_keywords)
                             .ToArray();
                     case SpeechRecognitionModelType.Online_Ctc:
+                    case SpeechRecognitionModelType.Offline_ZipformerCtc:
                         return ctc_keywords;
+                    case SpeechRecognitionModelType.Online_Zipformer2Ctc:
+                        return zipformer2_keywords
+                            .Concat(ctc_keywords)
+                            .ToArray();
+                    case SpeechRecognitionModelType.Online_Nemo_Ctc:
                     case SpeechRecognitionModelType.Offline_Nemo_Ctc:
                         return nemo_ctc_keywords
                             .Concat(nemo_parakeet_tdt_ctc_keywords)
                             .ToArray();
+                    case SpeechRecognitionModelType.Online_Tone_Ctc:
+                        return tone_ctc_keywords;
                     case SpeechRecognitionModelType.Online_Paraformer:
                     case SpeechRecognitionModelType.Offline_Paraformer:
                         return paraformer_keywords;
@@ -380,6 +405,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         return telespeech_keywords;
                     case SpeechRecognitionModelType.Omnilingual:
                         return omnilingual_keywords;
+                    case SpeechRecognitionModelType.Offline_Canary:
+                        return nemo_canary_keywords;
+                    case SpeechRecognitionModelType.Offline_WenetCtc:
+                        return wenet_ctc_keywords;
+                    case SpeechRecognitionModelType.Offline_MedAsrCtc:
+                        return medasr_ctc_keywords;
+                    case SpeechRecognitionModelType.Offline_FunAsrNano:
+                        return funasr_nano_keywords;
                     default:
                         return new string[0];
                 }

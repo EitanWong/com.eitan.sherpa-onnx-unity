@@ -276,12 +276,33 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("joiner"));
                     break;
                 case SpeechRecognitionModelType.Online_Ctc:
+                case SpeechRecognitionModelType.Online_Zipformer2Ctc:
                     config.DecodingMethod = "greedy_search";
                     config.ModelConfig.Zipformer2Ctc.Model = ModelFileResolver.ResolveRequiredFile(
                         metadata,
                         "CTC model",
                         context.FallbackReporter,
                         ModelFileCriteria.FromKeywords("model", "ctc", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc"));
+                    break;
+                case SpeechRecognitionModelType.Online_Nemo_Ctc:
+                    config.DecodingMethod = "greedy_search";
+                    config.ModelConfig.NemoCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "NeMo CTC model",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "ctc", "nemo", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc", "nemo"),
+                        ModelFileCriteria.FromKeywords("model", "ctc"));
+                    break;
+                case SpeechRecognitionModelType.Online_Tone_Ctc:
+                    config.DecodingMethod = "greedy_search";
+                    config.ModelConfig.ToneCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Tone CTC model",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "tone", "ctc", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "tone", "ctc"),
                         ModelFileCriteria.FromKeywords("model", "ctc"));
                     break;
                 default:
@@ -365,6 +386,58 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         context.FallbackReporter,
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
+                    break;
+                case SpeechRecognitionModelType.Offline_WenetCtc:
+                    config.ModelConfig.WenetCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Wenet CTC model",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "ctc", "wenet", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc", "wenet"),
+                        ModelFileCriteria.FromKeywords("model", "ctc"),
+                        ModelFileCriteria.FromKeywords("model"));
+                    break;
+                case SpeechRecognitionModelType.Offline_MedAsrCtc:
+                    config.ModelConfig.MedAsr.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Med ASR CTC model",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "ctc", "medasr", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc", "medasr"),
+                        ModelFileCriteria.FromKeywords("model", "ctc"),
+                        ModelFileCriteria.FromKeywords("model"));
+                    break;
+                case SpeechRecognitionModelType.Offline_FunAsrNano:
+                    config.ModelConfig.FunAsrNano.EncoderAdaptor = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FunASR Nano encoder adaptor",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", "adaptor", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder", "adapter", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder_adaptor", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder", "adaptor"),
+                        ModelFileCriteria.FromKeywords("encoder", "adapter"),
+                        ModelFileCriteria.FromKeywords("encoder_adaptor"));
+                    config.ModelConfig.FunAsrNano.LLM = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FunASR Nano LLM",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("llm", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("llm"),
+                        ModelFileCriteria.FromKeywords("model", "llm", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "llm"));
+                    config.ModelConfig.FunAsrNano.Embedding = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FunASR Nano embedding",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("embedding", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("embedding"));
+                    config.ModelConfig.FunAsrNano.Tokenizer = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FunASR Nano tokenizer",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("tokenizer"),
+                        ModelFileCriteria.FromKeywords("token"));
                     break;
 
                 case SpeechRecognitionModelType.Dolphin:
@@ -464,6 +537,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
+                case SpeechRecognitionModelType.Offline_Canary:
+                    config.ModelConfig.Canary.Encoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Canary encoder",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Canary.Decoder = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "Canary decoder",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
+                    break;
                 case SpeechRecognitionModelType.Omnilingual:
                     config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFile(
                         metadata,
@@ -497,6 +584,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 case SpeechRecognitionModelType.Moonshine: return "moonshine";
                 case SpeechRecognitionModelType.FireRedAsr: return "fire_red_asr";
                 case SpeechRecognitionModelType.Omnilingual: return "omnilingual";
+                case SpeechRecognitionModelType.Offline_Canary: return "canary";
+                case SpeechRecognitionModelType.Offline_WenetCtc: return "wenet_ctc";
+                case SpeechRecognitionModelType.Offline_MedAsrCtc: return "med_asr_ctc";
+                case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
                 default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
             }
         }
