@@ -171,9 +171,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
             try
             {
                 TraceLifecycle($"Preparing model '{_modelId}'");
-                var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelAsync(metadata, reporterAdapter, ct).ConfigureAwait(false);
+                var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(metadata, reporterAdapter, ct).ConfigureAwait(false);
 
-                if (prepareResult)
+                if (prepareResult.Success)
                 {
 
                     reporterAdapter?.Report(new PrepareFeedback(metadata, message: $"{ModuleType} model:{_modelId} ready to init"));
@@ -208,7 +208,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 }
                 else
                 {
-                    var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId)} manually.");
+                    if (prepareResult.ErrorCode == PrepareErrorCode.Cancelled)
+                    {
+                        throw new OperationCanceledException("Model preparation canceled.", ct);
+                    }
+                    var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed ({prepareResult.ErrorCode})\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId)} manually.");
                     _initializationException = prepareFailed;
                     TraceLifecycle($"Prepare phase failed: {prepareFailed.Message}");
                     throw prepareFailed;
@@ -266,6 +270,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private void TryCleanupCorruptedModel(SherpaONNXModelMetadata metadata, Exception ex)
         {
             if (metadata == null || ex == null)
+            {
+                return;
+            }
+
+            if (!SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, @default: true))
             {
                 return;
             }

@@ -16,8 +16,12 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private readonly Dictionary<string, SherpaONNXModelMetadata> _modelData = new Dictionary<string, SherpaONNXModelMetadata>();
         private readonly HashSet<string> _resolvedModelIds = new HashSet<string>();
         private readonly SemaphoreSlim _manifestUpdateSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _customManifestSemaphore = new SemaphoreSlim(1, 1);
+        private readonly Dictionary<string, SherpaONNXModuleType> _customModelTypeOverrides =
+            new Dictionary<string, SherpaONNXModuleType>(StringComparer.OrdinalIgnoreCase);
 
         private SherpaONNXModelManifest _manifest;
+        private bool _customRemoteLoaded;
 
         public bool IsInitialized { get; private set; }
         public bool IsInitializing { get; private set; }
@@ -56,6 +60,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
                 // Populate dictionary from (empty) manifest to keep behavior consistent.
                 PopulateDictionaryFromManifest(_manifest, clearExisting: true);
+                LoadLocalCustomModels();
 
                 IsInitialized = true;
                 IsInitializing = false;
@@ -85,6 +90,8 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 _manifest = null;
                 _modelData.Clear();
                 _resolvedModelIds.Clear();
+                _customModelTypeOverrides.Clear();
+                _customRemoteLoaded = false;
                 IsInitialized = false;
                 IsInitializing = false;
             }
@@ -135,6 +142,30 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
         }
 
+        private void LoadLocalCustomModels()
+        {
+            var customModels = SherpaONNXCustomModelCatalog.GetLocalModels();
+            if (customModels == null || customModels.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < customModels.Count; i++)
+            {
+                AddOrUpdateMetadata(customModels[i], overwriteExisting: true);
+            }
+        }
+
+        private SherpaONNXModuleType ResolveModuleType(string modelId)
+        {
+            if (!string.IsNullOrWhiteSpace(modelId) && _customModelTypeOverrides.TryGetValue(modelId, out var overrideType) && overrideType != SherpaONNXModuleType.Undefined)
+            {
+                return overrideType;
+            }
+
+            return SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+        }
+
         private bool IsModuleLoaded(SherpaONNXModuleType moduleType)
         {
             if (_manifest?.models == null)
@@ -174,6 +205,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             if (IsModuleLoaded(moduleType))
             {
+                await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
                 return;
             }
 
@@ -193,6 +225,8 @@ namespace Eitan.SherpaONNXUnity.Runtime
             {
                 _manifestUpdateSemaphore.Release();
             }
+
+            await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
         }
 
         private async Task EnsureAllModulesLoadedAsync(CancellationToken cancellationToken)
@@ -203,6 +237,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             if (pending.Length == 0)
             {
+                await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
                 return;
             }
 
@@ -215,6 +250,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
                 if (pending.Length == 0)
                 {
+                    await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
                     return;
                 }
 
@@ -225,20 +261,23 @@ namespace Eitan.SherpaONNXUnity.Runtime
             {
                 _manifestUpdateSemaphore.Release();
             }
+
+            await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
         }
 
         /// <summary>
         /// Get metadata for a specific modelId. Resolves model file names to absolute paths on first access.
         /// </summary>
-        private SherpaONNXModelMetadata GetMetadata(string modelId)
+        private bool TryGetMetadata(string modelId, out SherpaONNXModelMetadata metadata)
         {
             if (!IsInitialized)
             {
                 SherpaLog.Warning("SherpaONNXModelRegistry is not initialized yet. Call and await InitializeAsync() before accessing metadata.");
-                return null;
+                metadata = null;
+                return false;
             }
 
-            if (_modelData.TryGetValue(modelId, out var metadata))
+            if (_modelData.TryGetValue(modelId, out metadata))
             {
                 // Resolve model file names to absolute paths only once per modelId
                 if (!_resolvedModelIds.Contains(modelId))
@@ -250,6 +289,17 @@ namespace Eitan.SherpaONNXUnity.Runtime
                     _resolvedModelIds.Add(modelId);
                 }
 
+                return true;
+            }
+
+            metadata = null;
+            return false;
+        }
+
+        private SherpaONNXModelMetadata GetMetadata(string modelId)
+        {
+            if (TryGetMetadata(modelId, out var metadata))
+            {
                 return metadata;
             }
 
@@ -264,8 +314,16 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             await InitializeAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
-            var moduleType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            var moduleType = ResolveModuleType(modelId);
             await EnsureModuleDataAsync(moduleType, cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (TryGetMetadata(modelId, out var metadata))
+            {
+                return metadata;
+            }
+
+            await EnsureCustomRemoteManifestsAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
             return GetMetadata(modelId);
         }
@@ -333,6 +391,127 @@ namespace Eitan.SherpaONNXUnity.Runtime
             return result;
         }
 
+        public void RegisterCustomMetadata(SherpaONNXModelMetadata metadata, bool overwriteExisting = true)
+        {
+            if (metadata == null)
+            {
+                throw new ArgumentNullException(nameof(metadata));
+            }
+
+            EnsureInitialized();
+            AddOrUpdateMetadata(metadata, overwriteExisting);
+        }
+
+        private async Task EnsureCustomRemoteManifestsAsync(CancellationToken cancellationToken)
+        {
+            if (_customRemoteLoaded)
+            {
+                return;
+            }
+
+            await _customManifestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+            try
+            {
+                if (_customRemoteLoaded)
+                {
+                    return;
+                }
+
+                var remoteUrls = SherpaONNXCustomModelCatalog.GetRemoteManifestUrls();
+                if (remoteUrls.Count == 0)
+                {
+                    _customRemoteLoaded = true;
+                    return;
+                }
+
+                var remoteModels = await SherpaONNXCustomModelCatalog.FetchRemoteModelsAsync(remoteUrls, cancellationToken).ConfigureAwait(true);
+                if (remoteModels != null && remoteModels.Count > 0)
+                {
+                    await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+                    try
+                    {
+                        for (int i = 0; i < remoteModels.Count; i++)
+                        {
+                            AddOrUpdateMetadata(remoteModels[i], overwriteExisting: true);
+                        }
+                    }
+                    finally
+                    {
+                        _manifestUpdateSemaphore.Release();
+                    }
+                }
+
+                _customRemoteLoaded = true;
+            }
+            finally
+            {
+                _customManifestSemaphore.Release();
+            }
+        }
+
+        private void AddOrUpdateMetadata(SherpaONNXModelMetadata metadata, bool overwriteExisting)
+        {
+            if (metadata == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(metadata.modelId))
+            {
+                SherpaLog.Warning("Custom model entry missing modelId. Entry skipped.", category: "Catalog");
+                return;
+            }
+
+            if (metadata.moduleType == SherpaONNXModuleType.Undefined && !string.IsNullOrWhiteSpace(metadata.moduleTypeHint))
+            {
+                if (Enum.TryParse(metadata.moduleTypeHint.Trim(), true, out SherpaONNXModuleType hinted))
+                {
+                    metadata.moduleType = hinted;
+                }
+            }
+
+            if (metadata.moduleType == SherpaONNXModuleType.Undefined)
+            {
+                metadata.moduleType = SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId);
+            }
+
+            if (metadata.moduleType == SherpaONNXModuleType.Undefined)
+            {
+                SherpaLog.Warning($"Custom model '{metadata.modelId}' has undefined module type. Entry skipped.", category: "Catalog");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
+            {
+                SherpaLog.Warning($"Custom model '{metadata.modelId}' has no downloadUrl. Model preparation may fail.", category: "Catalog");
+            }
+
+            var list = _manifest?.models;
+            if (list == null)
+            {
+                return;
+            }
+
+            var index = list.FindIndex(m =>
+                m != null
+                && string.Equals(m.modelId, metadata.modelId, StringComparison.OrdinalIgnoreCase)
+                && m.moduleType == metadata.moduleType);
+
+            if (index >= 0)
+            {
+                if (overwriteExisting)
+                {
+                    list[index] = metadata;
+                }
+            }
+            else
+            {
+                list.Add(metadata);
+            }
+
+            _modelData[metadata.modelId] = metadata;
+            _customModelTypeOverrides[metadata.modelId] = metadata.moduleType;
+        }
 
     }
 }

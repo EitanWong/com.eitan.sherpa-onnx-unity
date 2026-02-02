@@ -32,7 +32,7 @@
   ],
   "version": "0.1.2-exp.3",
   "unity": "2021.3",
-  "documentationUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/README.md",
+  "documentationUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/Documentation~/README.md",
   "changelogUrl": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/blob/main/SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md",
   "license": "MIT",
   "samples": [
@@ -44,7 +44,7 @@
   ],
   "repository": {
     "type": "git",
-    "repository": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git"
+    "url": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git"
   },
   "author": {
     "name": "Eitan",

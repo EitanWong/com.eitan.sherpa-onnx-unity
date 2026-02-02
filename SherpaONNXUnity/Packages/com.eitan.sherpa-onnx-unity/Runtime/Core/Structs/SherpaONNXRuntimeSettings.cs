@@ -15,6 +15,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         public const string AssetPath = "Assets/Resources/" + ResourceName + ".asset";
         internal const string FetchLatestManifestPropertyName = nameof(_fetchLatestManifest);
         internal const string AutoDownloadModelsPropertyName = nameof(_autoDownloadModels);
+        internal const string AutoDeleteCorruptedModelsPropertyName = nameof(_autoDeleteCorruptedModels);
         internal const string GithubProxyUrlPropertyName = nameof(_githubProxyUrl);
         internal const string ChecksumCacheDirectoryPropertyName = nameof(_checksumCacheDirectory);
         internal const string ChecksumCacheTtlSecondsPropertyName = nameof(_checksumCacheTtlSeconds);
@@ -22,6 +23,14 @@ namespace Eitan.SherpaONNXUnity.Runtime
         internal const string LoggingLevelPropertyName = nameof(_loggingLevel);
         internal const string LoggingTraceStacksPropertyName = nameof(_traceWithStacks);
         internal const string GithubProxyEnvironmentVariable = "SHERPA_ONNX_GITHUB_PROXY";
+        internal const string FetchLatestManifestEnvironmentVariable = "SHERPA_ONNX_FETCH_LATEST_MANIFEST";
+        internal const string AutoDownloadModelsEnvironmentVariable = "SHERPA_ONNX_AUTO_DOWNLOAD";
+        internal const string AutoDeleteCorruptedModelsEnvironmentVariable = "SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS";
+        internal const string ChecksumCacheDirectoryEnvironmentVariable = "SHERPA_ONNX_CHECKSUM_CACHE_DIR";
+        internal const string ChecksumCacheTtlSecondsEnvironmentVariable = "SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS";
+        internal const string LoggingEnabledEnvironmentVariable = "SHERPA_ONNX_LOGGING_ENABLED";
+        internal const string LoggingLevelEnvironmentVariable = "SHERPA_ONNX_LOGGING_LEVEL";
+        internal const string LoggingTraceStacksEnvironmentVariable = "SHERPA_ONNX_LOGGING_TRACE_STACKS";
 
         [SerializeField]
         [Tooltip("When enabled (default), the manifest download routine will always try to fetch the latest checksum.txt list.")]
@@ -30,6 +39,10 @@ namespace Eitan.SherpaONNXUnity.Runtime
         [SerializeField]
         [Tooltip("When disabled, the prepare pipeline skips remote downloads and expects models to exist locally.")]
         private bool _autoDownloadModels = true;
+
+        [SerializeField]
+        [Tooltip("When enabled (default), corrupted model artifacts are deleted after initialization or verification failures.")]
+        private bool _autoDeleteCorruptedModels = true;
 
         [SerializeField]
         [Tooltip("Optional proxy (e.g., https://ghfast.top/) prepended to github.com downloads. Environment variable SHERPA_ONNX_GITHUB_PROXY takes priority.")]
@@ -97,6 +110,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             SetBool(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, _fetchLatestManifest);
             SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, _autoDownloadModels);
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, _autoDeleteCorruptedModels);
             ApplyGithubProxyValue(ResolveProxyValue(_githubProxyUrl));
             SetStringOrClear(
                 SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory,
@@ -116,6 +130,46 @@ namespace Eitan.SherpaONNXUnity.Runtime
             SherpaLog.Configure(_loggingLevel, _loggingEnabled, _traceWithStacks);
         }
 
+        internal static void ApplyEnvironmentOverridesFromProcess()
+        {
+            ApplyBoolEnvironmentOverride(
+                FetchLatestManifestEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest);
+            ApplyBoolEnvironmentOverride(
+                AutoDownloadModelsEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels);
+            ApplyBoolEnvironmentOverride(
+                AutoDeleteCorruptedModelsEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels);
+            ApplyBoolEnvironmentOverride(
+                LoggingEnabledEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.LoggingEnabled);
+            ApplyBoolEnvironmentOverride(
+                LoggingTraceStacksEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.LoggingTraceStacks);
+
+            ApplyStringEnvironmentOverride(
+                LoggingLevelEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.LoggingLevel);
+
+            ApplyIntEnvironmentOverride(
+                ChecksumCacheTtlSecondsEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
+                minimum: 0);
+
+            ApplyStringEnvironmentOverride(
+                ChecksumCacheDirectoryEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory,
+                trim: true,
+                clearWhenEmpty: true);
+
+            var proxyValue = Environment.GetEnvironmentVariable(GithubProxyEnvironmentVariable);
+            if (!string.IsNullOrWhiteSpace(proxyValue))
+            {
+                ApplyGithubProxyValue(proxyValue);
+            }
+        }
+
         private static void SetBool(string key, bool value) =>
             SherpaONNXEnvironment.Set(key, value ? bool.TrueString : bool.FalseString);
 
@@ -128,6 +182,91 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
 
             SherpaONNXEnvironment.Set(key, value.Trim());
+        }
+
+        private static void ApplyBoolEnvironmentOverride(string envKey, string targetKey)
+        {
+            var raw = Environment.GetEnvironmentVariable(envKey);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return;
+            }
+
+            if (TryParseBool(raw, out var value))
+            {
+                SetBool(targetKey, value);
+            }
+        }
+
+        private static void ApplyIntEnvironmentOverride(string envKey, string targetKey, int minimum = int.MinValue)
+        {
+            var raw = Environment.GetEnvironmentVariable(envKey);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return;
+            }
+
+            if (int.TryParse(raw.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
+            {
+                if (value < minimum)
+                {
+                    value = minimum;
+                }
+
+                SherpaONNXEnvironment.Set(targetKey, value.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        private static void ApplyStringEnvironmentOverride(
+            string envKey,
+            string targetKey,
+            bool trim = true,
+            bool clearWhenEmpty = false)
+        {
+            var raw = Environment.GetEnvironmentVariable(envKey);
+            if (raw == null)
+            {
+                return;
+            }
+
+            var value = trim ? raw.Trim() : raw;
+            if (string.IsNullOrEmpty(value) && clearWhenEmpty)
+            {
+                SherpaONNXEnvironment.Remove(targetKey);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(value))
+            {
+                SherpaONNXEnvironment.Set(targetKey, value);
+            }
+        }
+
+        private static bool TryParseBool(string raw, out bool value)
+        {
+            if (bool.TryParse(raw, out value))
+            {
+                return true;
+            }
+
+            switch (raw.Trim().ToLowerInvariant())
+            {
+                case "1":
+                case "yes":
+                case "y":
+                case "on":
+                    value = true;
+                    return true;
+                case "0":
+                case "no":
+                case "n":
+                case "off":
+                    value = false;
+                    return true;
+                default:
+                    value = false;
+                    return false;
+            }
         }
 
         internal static string ResolveProxyValue(string serializedValue)
@@ -193,6 +332,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 SherpaONNXRuntimeSettings.ApplyGithubProxyValue(SherpaONNXRuntimeSettings.ResolveProxyValue(string.Empty));
             }
 
+            SherpaONNXRuntimeSettings.ApplyEnvironmentOverridesFromProcess();
             // Always honor environment overrides for logging even when no asset exists.
             SherpaLog.ConfigureFromEnvironment();
         }

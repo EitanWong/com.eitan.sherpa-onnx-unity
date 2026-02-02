@@ -30,7 +30,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-                var modelType = Utilities.SherpaUtils.Model.GetSpeechSynthesisModelType(metadata.modelId);
+                var modelType = Utilities.SherpaUtils.Model.ResolveSpeechSynthesisModelType(metadata);
                 var ttsConfig = await CreateTtsConfig(modelType, metadata, isMobilePlatform, reporter, ct);
 
                 return await runner.RunAsync<bool>(cancellationToken =>
@@ -121,7 +121,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     {
                         var vocoderMetadata = await SherpaONNXModelRegistry.Instance.GetMetadataAsync("vocos-22khz-univ", ct);
 
-                        await SherpaUtils.Prepare.PrepareAndLoadModelAsync(vocoderMetadata, reporter, ct);
+                        var vocoderPrepare = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(vocoderMetadata, reporter, ct).ConfigureAwait(false);
+                        if (!vocoderPrepare.Success)
+                        {
+                            if (vocoderPrepare.ErrorCode == PrepareErrorCode.Cancelled)
+                            {
+                                throw new OperationCanceledException("Vocoder preparation canceled.", ct);
+                            }
+
+                            throw new InvalidOperationException($"Vocoder prepare failed ({vocoderPrepare.ErrorCode}): {vocoderPrepare.Message}");
+                        }
                         var vocoderFallback = CreateFallbackReporter(vocoderMetadata, reporter);
 
                         ttsModelConfig.Model.Matcha.AcousticModel = ModelFileResolver.ResolveRequiredFile(

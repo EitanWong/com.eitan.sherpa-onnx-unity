@@ -771,6 +771,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         private DateTime _lastProgressTimestamp = DateTime.UtcNow;
 
         public event Action<IFeedback> Feedback;
+        public long LastResponseCode { get; private set; }
+        public UnityWebRequest.Result? LastResult { get; private set; }
+        public string LastError { get; private set; }
+        public bool LastWasTimeout { get; private set; }
+        public bool LastWasTransient { get; private set; }
 
         public SherpaFileDownloader(
             SherpaONNXModelMetadata metadata = null,
@@ -869,10 +874,30 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
             catch (Exception ex)
             {
+                RecordLastFailure(ex);
                 ReportProgress(ex.ToString());
                 SherpaLog.Exception(ex, category: "Download", message: $"[SherpaFileDownloader] Download failed for {_modelMetadata?.modelId ?? "<unknown>"} from {url}");
                 return false;
             }
+        }
+
+        private void RecordLastFailure(Exception ex)
+        {
+            if (ex is ChunkDownloadException chunkException)
+            {
+                LastResponseCode = chunkException.ResponseCode;
+                LastResult = chunkException.Result;
+                LastError = chunkException.WebError;
+                LastWasTimeout = chunkException.IsTimeout;
+                LastWasTransient = chunkException.IsTransient;
+                return;
+            }
+
+            LastResponseCode = 0;
+            LastResult = null;
+            LastError = ex?.Message ?? string.Empty;
+            LastWasTimeout = false;
+            LastWasTransient = false;
         }
 
         private async Task DownloadChunksAsync(IEnumerable<ChunkInfo> chunks, CancellationToken userToken)

@@ -45,6 +45,15 @@
   var asr = new SpeechRecognition("your-model-id", 16000);
   var text = await asr.SpeechTranscriptionAsync(samples, sampleRate);
   ```
+- **Prepare pipeline (structured result):**
+  ```csharp
+  var result = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(metadata, reporter);
+  if (!result.Success)
+  {
+      Debug.LogError($"Prepare failed: {result.ErrorCode} - {result.Message}");
+  }
+  ```
+  Advanced: pass `PrepareOptions` to override verify/download/extract/cleanup steps.
 - **Scripting (Zero-shot TTS):**
   ```csharp
   var tts = new SpeechSynthesis("zipvoice-demo", -1);
@@ -66,6 +75,20 @@ SherpaONNXUnityAPI.SetChecksumCacheDirectory(
     Path.Combine(Application.persistentDataPath, "SherpaCache"));
 SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);
 ```
+If you change process environment variables at runtime, call:
+```csharp
+SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
+```
+**Process environment overrides (highest priority):**
+- `SHERPA_ONNX_FETCH_LATEST_MANIFEST` (true/false)
+- `SHERPA_ONNX_AUTO_DOWNLOAD` (true/false)
+- `SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS` (true/false)
+- `SHERPA_ONNX_GITHUB_PROXY` (url)
+- `SHERPA_ONNX_CHECKSUM_CACHE_DIR` (absolute path)
+- `SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS` (int)
+- `SHERPA_ONNX_LOGGING_ENABLED` (true/false)
+- `SHERPA_ONNX_LOGGING_LEVEL` (Off|Error|Warning|Info|Verbose|Trace)
+- `SHERPA_ONNX_LOGGING_TRACE_STACKS` (true/false)
 
 ### 3. Modules & APIs
 - `SpeechRecognition` — `SpeechTranscriptionAsync(float[] samples, int sampleRate)` supports online/offline models automatically.
@@ -131,6 +154,15 @@ SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);
   var asr = new SpeechRecognition("your-model-id", 16000);
   var text = await asr.SpeechTranscriptionAsync(samples, sampleRate);
   ```
+- **模型准备（结构化结果）：**
+  ```csharp
+  var result = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(metadata, reporter);
+  if (!result.Success)
+  {
+      Debug.LogError($"Prepare failed: {result.ErrorCode} - {result.Message}");
+  }
+  ```
+  高级用法：通过 `PrepareOptions` 自定义验证/下载/解压/清理步骤。
 - **脚本示例（零样本 TTS）：**
   ```csharp
   var tts = new SpeechSynthesis("zipvoice-demo", -1);
@@ -152,6 +184,20 @@ SherpaONNXUnityAPI.SetChecksumCacheDirectory(
     Path.Combine(Application.persistentDataPath, "SherpaCache"));
 SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);
 ```
+如果在运行时修改进程环境变量，请调用：
+```csharp
+SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
+```
+**进程环境变量（最高优先级）：**
+- `SHERPA_ONNX_FETCH_LATEST_MANIFEST`（true/false）
+- `SHERPA_ONNX_AUTO_DOWNLOAD`（true/false）
+- `SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS`（true/false）
+- `SHERPA_ONNX_GITHUB_PROXY`（url）
+- `SHERPA_ONNX_CHECKSUM_CACHE_DIR`（绝对路径）
+- `SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS`（int）
+- `SHERPA_ONNX_LOGGING_ENABLED`（true/false）
+- `SHERPA_ONNX_LOGGING_LEVEL`（Off|Error|Warning|Info|Verbose|Trace）
+- `SHERPA_ONNX_LOGGING_TRACE_STACKS`（true/false）
 
 ### 3. 模块与API
 - `SpeechRecognition` — `SpeechTranscriptionAsync` 支持在线/离线模型自动切换。

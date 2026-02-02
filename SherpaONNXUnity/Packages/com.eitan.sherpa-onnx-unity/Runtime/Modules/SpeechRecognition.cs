@@ -95,6 +95,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
 
+                _modelType = SherpaUtils.Model.ResolveSpeechRecognitionModelType(metadata, out var isOnline);
+                IsOnlineModel = isOnline;
+
                 _modelSampleRate = metadata?.sampleRate > 0 ? metadata.sampleRate : sampleRate;
 
                 if (IsOnlineModel)
