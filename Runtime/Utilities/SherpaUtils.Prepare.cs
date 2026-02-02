@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Net.Http;
 using Eitan.SherpaONNXUnity.Runtime.Constants;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Utilities
@@ -16,7 +15,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
     /// </summary>
     public partial class SherpaUtils
     {
-        public class Prepare
+        public partial class Prepare
         {
             #region Constants
             private const int MAX_ATTEMPTS = 3;
@@ -107,25 +106,46 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             /// <summary>
             /// Verifies existing model files or downloads and extracts the model if needed.
+            /// Returns a structured result with an error code for easier diagnostics.
             /// </summary>
-            /// <param name="reporter">Callback for progress feedback. Can be null.</param>
-            /// <param name="cancellationToken">Token to cancel the operation.</param>
-            /// <returns>True if the model was successfully prepared, false otherwise.</returns>
-            /// <exception cref="ObjectDisposedException">Thrown when the object has been disposed.</exception>
-            /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-            public static async Task<bool> PrepareAndLoadModelAsync(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken = default)
+            public static async Task<PrepareResult> PrepareAndLoadModelWithResultAsync(
+                SherpaONNXModelMetadata metadata,
+                SherpaONNXFeedbackReporter reporter,
+                CancellationToken cancellationToken = default,
+                PrepareOptions options = null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
 
-                if (!ValidateMetadata(metadata, reporter))
+                if (!ValidateMetadata(metadata, reporter, out var validationError, out var validationMessage))
                 {
-                    return false;
+                    var errorCode = validationError == PrepareErrorCode.None
+                        ? PrepareErrorCode.MetadataMissing
+                        : validationError;
+                    var message = string.IsNullOrWhiteSpace(validationMessage)
+                        ? "Invalid or missing model metadata."
+                        : validationMessage;
+                    ReportSafe(reporter, new FailedFeedback(metadata, message, errorCode: errorCode));
+                    return PrepareResult.Fail(errorCode, message);
                 }
 
                 var paths = GetModelPaths(metadata);
+                options ??= new PrepareOptions();
+                var context = new PrepareContext(
+                    metadata,
+                    paths.ModuleDirectory,
+                    paths.ModelDirectory,
+                    paths.DownloadFilePath,
+                    paths.DownloadFileName,
+                    paths.IsCompressed);
+                var verifyExistingAsync = options.VerifyExistingAsync;
+                var downloadAsync = options.DownloadAsync;
+                var extractAsync = options.ExtractAsync;
+                var cleanupAsync = options.CleanupAsync;
                 var modelDirectoryExisted = Directory.Exists(paths.ModelDirectory);
                 var downloadAttempted = false;
+                var lastFailure = PrepareErrorCode.UnexpectedError;
+
                 SherpaLog.Verbose(
                     $"[Prepare] Begin model prepare for '{metadata.modelId}'. Archive={paths.DownloadFileName} Target={paths.ModelDirectory}",
                     category: "Prepare");
@@ -138,8 +158,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                     if (!CheckDiskSpace(metadata, paths.ModuleDirectory, reporter, cancellationToken))
                     {
-                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"Insufficient disk space for model {metadata.modelId}. Minimum required: {MIN_DISK_SPACE_GB}GB."));
-                        return false;
+                        var message = $"Insufficient disk space for model {metadata.modelId}. Minimum required: {MIN_DISK_SPACE_GB}GB.";
+                        ReportSafe(reporter, new FailedFeedback(metadata, message, errorCode: PrepareErrorCode.InsufficientDiskSpace));
+                        return PrepareResult.Fail(PrepareErrorCode.InsufficientDiskSpace, message);
                     }
 
                     var autoDownloadEnabled = IsAutoDownloadEnabled();
@@ -151,81 +172,137 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                             $"[Prepare] Attempt {attempt + 1}/{MAX_ATTEMPTS} for {metadata.modelId} (autoDownload={autoDownloadEnabled}, compressed={paths.IsCompressed})",
                             category: "Prepare");
 
-                        if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false))
+                        var verified = verifyExistingAsync != null
+                            ? await verifyExistingAsync(context, reporter, attempt, cancellationToken).ConfigureAwait(false)
+                            : await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false);
+
+                        if (verified)
                         {
                             SherpaLog.Info($"[Prepare] Model '{metadata.modelId}' already verified on disk.", category: "Prepare");
-                            return true;
+                            return PrepareResult.Ok();
                         }
 
                         if (!autoDownloadEnabled)
                         {
                             ReportAutoDownloadDisabled(metadata, reporter, paths.ModelDirectory);
-                            return false;
+                            var message = $"Automatic download is disabled for {metadata.modelId}.";
+                            lastFailure = PrepareErrorCode.AutoDownloadDisabled;
+                            return PrepareResult.Fail(lastFailure, message);
+                        }
+
+                        if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
+                        {
+                            var message = $"Download URL is missing for {metadata.modelId}. Please install the model locally.";
+                            ReportSafe(reporter, new FailedFeedback(metadata, message, errorCode: PrepareErrorCode.DownloadUrlMissing));
+                            lastFailure = PrepareErrorCode.DownloadUrlMissing;
+                            return PrepareResult.Fail(lastFailure, message);
                         }
 
                         downloadAttempted = true;
-                        var downloadSucceeded = await DownloadModelAsync(metadata, paths.DownloadFilePath, reporter, attempt, cancellationToken).ConfigureAwait(false);
-
-                        if (!downloadSucceeded)
+                        var downloadError = downloadAsync != null
+                            ? await downloadAsync(context, reporter, attempt, cancellationToken).ConfigureAwait(false)
+                            : await DownloadModelAsync(metadata, paths.DownloadFilePath, reporter, attempt, cancellationToken).ConfigureAwait(false);
+                        if (downloadError != PrepareErrorCode.None)
                         {
+                            lastFailure = downloadError;
+                            if (downloadError == PrepareErrorCode.Cancelled)
+                            {
+                                var message = "Download canceled.";
+                                return PrepareResult.Fail(downloadError, message);
+                            }
+                            if (downloadError == PrepareErrorCode.DownloadUrlInvalid ||
+                                downloadError == PrepareErrorCode.DownloadInsecureRejected)
+                            {
+                                var message = $"Download URL rejected for {metadata.modelId}.";
+                                ReportSafe(reporter, new FailedFeedback(metadata, message, errorCode: downloadError));
+                                return PrepareResult.Fail(downloadError, message);
+                            }
+
                             await ApplyExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                             continue;
                         }
 
                         if (paths.IsCompressed)
                         {
-                            var extracted = await ExtractModelAsync(
-                                metadata,
-                                paths.DownloadFilePath,
-                                metadata.downloadFileHash,
-                                paths.ModuleDirectory,
-                                paths.DownloadFileName,
-                                reporter,
-                                attempt,
-                                cancellationToken).ConfigureAwait(false);
+                            var extracted = extractAsync != null
+                                ? await extractAsync(context, reporter, attempt, cancellationToken).ConfigureAwait(false)
+                                : await ExtractModelAsync(
+                                    metadata,
+                                    paths.DownloadFilePath,
+                                    metadata.downloadFileHash,
+                                    paths.ModuleDirectory,
+                                    paths.DownloadFileName,
+                                    reporter,
+                                    attempt,
+                                    cancellationToken).ConfigureAwait(false);
 
                             if (!extracted)
                             {
                                 SherpaLog.Warning($"[Prepare] Extraction failed for '{metadata.modelId}'. Retrying.", category: "Prepare");
+                                lastFailure = PrepareErrorCode.ExtractionFailed;
                                 await ApplyExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                                 continue;
                             }
                         }
 
-                        if (await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false))
+                        verified = verifyExistingAsync != null
+                            ? await verifyExistingAsync(context, reporter, attempt, cancellationToken).ConfigureAwait(false)
+                            : await VerifyExistingModelAsync(metadata, paths, reporter, attempt, cancellationToken).ConfigureAwait(false);
+
+                        if (verified)
                         {
                             SherpaLog.Info($"[Prepare] Model '{metadata.modelId}' prepared successfully after download.", category: "Prepare");
-                            return true;
+                            return PrepareResult.Ok();
                         }
 
+                        lastFailure = PrepareErrorCode.VerificationFailed;
                         await ApplyExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                     }
 
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"Failed to prepare model {metadata.modelId} after {MAX_ATTEMPTS} attempts. Please download and install the model manually."));
+                    var exhaustedMessage = $"Failed to prepare model {metadata.modelId} after {MAX_ATTEMPTS} attempts. Please download and install the model manually.";
+                    ReportSafe(reporter, new FailedFeedback(metadata, exhaustedMessage, errorCode: lastFailure));
                     var cleanupTargets = GetCleanupTargets(paths, modelDirectoryExisted, downloadAttempted);
-                    if (cleanupTargets.Length > 0)
+                    var cleanupAttempted = false;
+                    if (cleanupTargets.Length > 0 && IsAutoDeleteCorruptedEnabled())
                     {
-                        await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        cleanupAttempted = true;
+                        if (cleanupAsync != null)
+                        {
+                            await cleanupAsync(context, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        }
                     }
                     SherpaLog.Error($"[Prepare] Exhausted retries while preparing '{metadata.modelId}'. Cleaned temp data.", category: "Prepare");
-
-                    return false;
+                    return PrepareResult.Fail(lastFailure, exhaustedMessage, cleanupAttempted: cleanupAttempted);
                 }
                 catch (OperationCanceledException)
                 {
-                    ReportSafe(reporter, new CancelFeedback(metadata, message: "PrepareModel canceled"));
-                    throw;
+                    var message = "PrepareModel canceled";
+                    ReportSafe(reporter, new CancelFeedback(metadata, message));
+                    return PrepareResult.Fail(PrepareErrorCode.Cancelled, message);
                 }
                 catch (Exception ex)
                 {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
+                    ReportSafe(reporter, new FailedFeedback(metadata, ex.Message, ex, PrepareErrorCode.UnexpectedError));
                     var cleanupTargets = GetCleanupTargets(paths, modelDirectoryExisted, downloadAttempted);
-                    if (cleanupTargets.Length > 0)
+                    var cleanupAttempted = false;
+                    if (cleanupTargets.Length > 0 && IsAutoDeleteCorruptedEnabled())
                     {
-                        await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        cleanupAttempted = true;
+                        if (cleanupAsync != null)
+                        {
+                            await cleanupAsync(context, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await CleanPathAsync(metadata, cleanupTargets, reporter, cancellationToken).ConfigureAwait(false);
+                        }
                     }
                     SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Unexpected failure for '{metadata.modelId}'.");
-                    throw;
+                    return PrepareResult.Fail(PrepareErrorCode.UnexpectedError, ex.Message, ex, cleanupAttempted);
                 }
             }
             #endregion
@@ -256,29 +333,39 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             #region Private Methods
 
-            private static bool ValidateMetadata(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter)
+            private static bool ValidateMetadata(
+                SherpaONNXModelMetadata metadata,
+                SherpaONNXFeedbackReporter reporter,
+                out PrepareErrorCode errorCode,
+                out string errorMessage)
             {
+                errorCode = PrepareErrorCode.None;
+                errorMessage = string.Empty;
                 var forceHashValidation = IsHashValidationForced();
 
                 if (metadata == null)
                 {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: "No model metadata supplied."));
+                    errorCode = PrepareErrorCode.MetadataMissing;
+                    errorMessage = "No model metadata supplied.";
+                    ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
                     SherpaLog.Error("[Prepare] Metadata missing for prepare call.", category: "Prepare");
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.modelId))
                 {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: "Model metadata is missing a modelId."));
+                    errorCode = PrepareErrorCode.ModelIdMissing;
+                    errorMessage = "Model metadata is missing a modelId.";
+                    ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
                     SherpaLog.Error("[Prepare] Model metadata is missing modelId.", category: "Prepare");
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
                 {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download URL is missing."));
-                    SherpaLog.Error($"[Prepare] {metadata.modelId} has empty download URL.", category: "Prepare");
-                    return false;
+                    ReportSafe(reporter, new VerifyFeedback(metadata, message: $"{metadata.modelId}: Download URL is missing. Assuming local-only model.", filePath: SherpaPathResolver.GetModelRootPath(metadata.modelId)));
+                    SherpaLog.Warning($"[Prepare] {metadata.modelId} has empty download URL. Assuming local-only model.", category: "Prepare");
+                    return true;
                 }
 
                 // We no longer require listing specific model file names or per-file hashes.
@@ -289,7 +376,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     if (downloadHashMissing)
                     {
-                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download file hash is required when {FORCE_HASH_VALIDATION_KEY}=true."));
+                        errorCode = PrepareErrorCode.HashMissing;
+                        errorMessage = $"{metadata.modelId}: Download file hash is required when {FORCE_HASH_VALIDATION_KEY}=true.";
+                        ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
                         return false;
                     }
                 }
@@ -305,9 +394,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                         if (downloadHashMissing)
                         {
-                            var message = $"{metadata.modelId}: Missing download hash; cannot safely load model. Please provide downloadFileHash or set {FORCE_HASH_VALIDATION_KEY}=true to enforce verification.";
-                            ReportSafe(reporter, new FailedFeedback(metadata, message: message));
-                            SherpaLog.Warning(message);
+                            errorCode = PrepareErrorCode.HashMissing;
+                            errorMessage = $"{metadata.modelId}: Missing download hash; cannot safely load model. Please provide downloadFileHash or set {FORCE_HASH_VALIDATION_KEY}=true to enforce verification.";
+                            ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
+                            SherpaLog.Warning(errorMessage);
                             return false;
                         }
                     }
@@ -331,19 +421,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 var modelDirectoryPath = SanitizePath(Path.Combine(moduleDirectoryPath, metadata.modelId));
 
                 string downloadFileName = string.Empty;
-                if (Uri.TryCreate(metadata.downloadUrl, UriKind.Absolute, out var downloadUri))
+                if (!string.IsNullOrWhiteSpace(metadata.downloadUrl))
                 {
-                    downloadFileName = Path.GetFileName(downloadUri.LocalPath);
+                    if (Uri.TryCreate(metadata.downloadUrl, UriKind.Absolute, out var downloadUri))
+                    {
+                        downloadFileName = Path.GetFileName(downloadUri.LocalPath);
+                    }
+
+                    if (string.IsNullOrEmpty(downloadFileName))
+                    {
+                        downloadFileName = Path.GetFileName(metadata.downloadUrl);
+                    }
                 }
 
                 if (string.IsNullOrEmpty(downloadFileName))
                 {
-                    downloadFileName = Path.GetFileName(metadata.downloadUrl);
-                }
-
-                if (string.IsNullOrEmpty(downloadFileName))
-                {
-                    throw new InvalidOperationException($"Could not determine download file name for model {metadata.modelId}.");
+                    downloadFileName = metadata.modelId + ".onnx";
                 }
 
                 var isCompressed = IsCompressedFile(downloadFileName);
@@ -448,404 +541,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
 
-            private static async Task<bool> VerifyExistingModelAsync(SherpaONNXModelMetadata metadata,
-                ModelPaths paths,
-                SherpaONNXFeedbackReporter reporter, int attempt, CancellationToken cancellationToken)
-            {
-                ReportSafe(reporter, new VerifyFeedback(
-                    metadata,
-                    message: $"Validating model {metadata.modelId} (attempt {attempt + 1}/{MAX_ATTEMPTS})",
-                    filePath: paths.ModelDirectory,
-                    progress: 0));
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!Directory.Exists(paths.ModelDirectory))
-                {
-                    ReportSafe(reporter, new VerifyFeedback(
-                        metadata,
-                        message: $"Model directory does not exist (attempt {attempt + 1}/{MAX_ATTEMPTS}): {paths.ModelDirectory}",
-                        filePath: paths.ModelDirectory,
-                        progress: 0));
-                    return false;
-                }
-
-                try
-                {
-                    // Detection rule: consider the model "installed" if we can find at least one
-                    // signature model file (e.g., *.onnx) inside the model directory (recursive scan).
-                    bool hasSignature = false;
-
-                    foreach (var ext in MODEL_SIGNATURE_EXTENSIONS)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        // Enumerate lazily to reduce memory pressure on large folders.
-                        var any = Directory.EnumerateFiles(paths.ModelDirectory, "*" + ext, SearchOption.AllDirectories)
-                                           .Any(p => !p.EndsWith(".meta", StringComparison.OrdinalIgnoreCase));
-                        if (any)
-                        {
-                            hasSignature = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasSignature)
-                    {
-                        ReportSafe(reporter, new VerifyFeedback(
-                            metadata,
-                            message: $"No signature model files found (looking for {string.Join(", ", MODEL_SIGNATURE_EXTENSIONS)}) in {paths.ModelDirectory}.",
-                            filePath: paths.ModelDirectory,
-                            progress: 0));
-                        SherpaLog.Trace($"[Prepare] No signature files found for {metadata.modelId} in {paths.ModelDirectory}", category: "Prepare");
-                        return false;
-                    }
-
-                    ReportSafe(reporter, new VerifyFeedback(
-                        metadata,
-                        message: "Model files detected. Verification succeeded.",
-                        filePath: paths.ModelDirectory,
-                        progress: 1f));
-
-                    // Optional cleanup: if the download was a compressed archive and it still exists, delete it.
-                    if (paths.IsCompressed && SherpaFileUtils.PathExists(paths.DownloadFilePath))
-                    {
-                        ReportSafe(reporter, new CleanFeedback(metadata, filePath: paths.DownloadFilePath, message: $"Cleaning up {paths.DownloadFilePath}"));
-                        SherpaFileUtils.Delete(paths.DownloadFilePath);
-                    }
-
-                    await Task.Yield(); // keep method truly async
-                    return true;
-                }
-                catch (OperationCanceledException)
-                {
-                    ReportSafe(reporter, new CancelFeedback(metadata, message: "Verification canceled"));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    return false;
-                }
-            }
-
-            // TODO: 重构VerifyFileWithIndexAsync 使其作为SherpaONNXModel层的通用文件验证方法，可以批量传入filePaths 以及expiatedSha256Array,进行批量验证，等待全部验证完毕后再返回结果。
-            private static async Task<(int Index, FileVerificationEventArgs Result)> VerifyFileWithIndexAsync(SherpaONNXModelMetadata metadata,
-                int index, string filePath, string expectedSha256, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken)
-            {
-                Progress<FileVerificationEventArgs> progressAdapter = new Progress<FileVerificationEventArgs>(args =>
-                {
-                    ReportSafe(reporter, new VerifyFeedback(metadata, message: args.Message, filePath: filePath, progress: args.Progress));
-                });
-
-                var result = await SherpaFileUtils.VerifyFileAsync(filePath, expectedSha256, progress: progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                ReportSafe(reporter, new VerifyFeedback(metadata, message: result.Message, filePath: filePath, progress: result.Progress));
-                return (index, result);
-            }
-
-            private static async Task<bool> DownloadModelAsync(SherpaONNXModelMetadata metadata, string downloadFilePath,
-                SherpaONNXFeedbackReporter reporter, int retryCount, CancellationToken cancellationToken)
-            {
-                try
-                {
-                    if (!IsAutoDownloadEnabled())
-                    {
-                        var directory = Path.GetDirectoryName(downloadFilePath) ?? downloadFilePath;
-                        ReportAutoDownloadDisabled(metadata, reporter, directory);
-                        return false;
-                    }
-
-                    // Check if the file is already downloaded with hash verification
-                    var (_, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, metadata.downloadFileHash, reporter, cancellationToken).ConfigureAwait(false);
-                    if (downloadedFileCheckResult.Status == FileVerificationStatus.Success)
-                    {
-                        SherpaLog.Info($"[Prepare] Reusing previously downloaded archive for {metadata.modelId}.", category: "Prepare");
-                        return true;
-                    }
-
-                    if (!TryResolveDownloadUri(metadata, reporter, out var downloadUri))
-                    {
-                        return false;
-                    }
-                    using var downloader = new SherpaFileDownloader(metadata);
-                    SherpaLog.Verbose($"[Prepare] Downloading '{metadata.modelId}' from {downloadUri} -> {downloadFilePath}", category: "Prepare");
-
-                        if (reporter != null)
-                        {
-                            downloader.Feedback += reporter.Report;
-                        }
-
-                        try
-                        {
-                            var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                            // If the downloader was canceled (e.g., app quit) skip fallback paths and surface cancellation feedback.
-                            if (downloader.WasCanceled || cancellationToken.IsCancellationRequested)
-                            {
-                                ReportSafe(reporter, new CancelFeedback(metadata, message: "Download canceled."));
-                                return false;
-                            }
-
-                            if (!downloadSuccess)
-                            {
-                                SherpaLog.Warning($"[{metadata.modelId}] UnityWebRequest download failed. Falling back to HttpClient.");
-                                downloadSuccess = await DownloadWithHttpClientAsync(metadata, downloadUri.ToString(), downloadFilePath, reporter, cancellationToken).ConfigureAwait(false);
-                        }
-
-                        if (!downloadSuccess)
-                        {
-                            SherpaFileUtils.Delete(downloadFilePath);
-                            ReportSafe(reporter, new FailedFeedback(metadata, message: $"Failed downloading {downloadUri} to {downloadFilePath}"));
-                            SherpaLog.Error($"[Prepare] Download failed for {metadata.modelId} from {downloadUri}", category: "Prepare");
-                            return false;
-                        }
-
-                        SherpaLog.Info($"[Prepare] Download complete for {metadata.modelId}. Verifying...", category: "Prepare");
-                        return true;
-                    }
-                    finally
-                    {
-                        if (reporter != null)
-                        {
-                            downloader.Feedback -= reporter.Report;
-                        }
-                    }
-                }
-                catch (OperationCanceledException ex)
-                {
-                    ReportSafe(reporter, new CancelFeedback(metadata, message: ex.Message, exception: ex));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    SherpaFileUtils.Delete(downloadFilePath);
-                    SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Download pipeline crashed for {metadata?.modelId ?? "<unknown>"}.");
-                    return false;
-                }
-            }
-
-            private static async Task<bool> ExtractModelAsync(SherpaONNXModelMetadata metadata, string zipFilePath, string zipFileHash,
-                string moduleDirectoryPath, string zipFileName, SherpaONNXFeedbackReporter reporter,
-                int retryCount, CancellationToken cancellationToken)
-            {
-                try
-                {
-                    var (_, zipVerifyResult) = await VerifyFileWithIndexAsync(metadata, 0, zipFilePath, zipFileHash, reporter, cancellationToken).ConfigureAwait(false);
-
-                    if (zipVerifyResult.Status != FileVerificationStatus.Success)
-                    {
-                        SherpaLog.Warning($"[Prepare] Zip verification failed for {metadata.modelId}: {zipVerifyResult.Message}", category: "Prepare");
-                        return false;
-                    }
-
-                    // SherpaLog.Info($"zip VerifyResult {zipVerifyResult.Status} : {zipVerifyResult.Message}");
-                    var progressAdapter = new Progress<DecompressionEventArgs>(args =>
-                    {
-                        ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: args.Progress, message: $"Extracting {zipFileName} ({args.Progress * 100:F1}%) Duration: [{args.ElapsedTime}]"));
-                    });
-                    SherpaLog.Trace($"[Prepare] Extracting archive for {metadata.modelId}: {zipFileName}", category: "Prepare");
-                    var result = await SherpaDecompressHelper.DecompressAsync(zipFilePath, moduleDirectoryPath, progressAdapter, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                    if (result.Success)
-                    {
-                        ReportSafe(reporter, new DecompressFeedback(metadata, filePath: zipFilePath, progress: result.Progress, message: $"Extract Success: {zipFileName} Duration: [{result.ElapsedTime}]"));
-                        SherpaLog.Info($"[Prepare] Extracted archive for {metadata.modelId} in {result.ElapsedTime}.", category: "Prepare");
-                        return true;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException(result.ErrorMessage);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    ReportSafe(reporter, new CancelFeedback(metadata, message: $"Extract: {zipFileHash} Canceled"));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    // _logger.LogError($"Extraction failed: {ex.Message}");
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Extraction failed for {metadata.modelId}.");
-                    throw;
-                }
-            }
-
-            private static async Task<bool> DownloadWithHttpClientAsync(
-                SherpaONNXModelMetadata metadata,
-                string url,
-                string destinationPath,
-                SherpaONNXFeedbackReporter reporter,
-                CancellationToken cancellationToken)
-            {
-                try
-                {
-                    var tempPath = destinationPath + ".tmp";
-                    var directory = Path.GetDirectoryName(destinationPath);
-                    if (!string.IsNullOrEmpty(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                    }
-
-                    using var httpClient = new HttpClient();
-                    using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-
-                    var total = response.Content.Headers.ContentLength ?? -1;
-                    await using var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                    await using var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-
-                    var buffer = new byte[81920];
-                    long written = 0;
-                    int read;
-                    while ((read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
-                    {
-                        await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
-                        written += read;
-                        if (total > 0)
-                        {
-                            ReportSafe(reporter, new DownloadFeedback(metadata, Path.GetFileName(destinationPath), written, total, 0));
-                        }
-                    }
-
-                    output.Close();
-
-                    if (File.Exists(destinationPath))
-                    {
-                        File.Delete(destinationPath);
-                    }
-                    File.Move(tempPath, destinationPath);
-                    return true;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    try { if (File.Exists(destinationPath)) File.Delete(destinationPath); } catch { }
-                    return false;
-                }
-            }
-
-            private static async Task CleanPathAsync(SherpaONNXModelMetadata metadata, string[] filePaths, SherpaONNXFeedbackReporter reporter, CancellationToken cancellationToken)
-            {
-                if (filePaths == null || filePaths.Length == 0)
-                { return; }
-
-                try
-                {
-                    var expanded = new List<string>();
-                    foreach (var path in filePaths)
-                    {
-                        if (string.IsNullOrEmpty(path))
-                        { continue; }
-
-                        expanded.Add(path);
-
-                        // Also clean up downloader artifacts (temp file, metadata, chunk directory).
-                        expanded.Add(path + ".download");
-                        expanded.Add(path + ".download.metadata");
-                        expanded.Add(path + ".chunks");
-                    }
-
-                    // Remove duplicates and filter existing paths
-                    var distinctPaths = expanded
-                        .Where(path => !string.IsNullOrEmpty(path))
-                        .Distinct()
-                        .Where(SherpaFileUtils.PathExists)
-                        .ToArray();
-
-                    if (distinctPaths.Length == 0)
-                    { return; }
-
-                    // Create tasks for parallel deletion
-                    var deletionTasks = distinctPaths.Select(path =>
-                        Task.Run(() =>
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-
-                            ReportSafe(reporter, new CleanFeedback(metadata, filePath: path, message: $"Cleaning up: {path}"));
-
-                            try
-                            {
-                                SherpaFileUtils.Delete(path);
-                                SherpaLog.Trace($"[Prepare] Deleted artifact: {path}", category: "Prepare");
-                            }
-                            catch (Exception ex)
-                            {
-                                // _logger.LogWarning($"Failed to delete path {path}: {ex.Message}");
-                                ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                                throw;
-                            }
-                        }, cancellationToken));
-
-                    await Task.WhenAll(deletionTasks).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    // _logger.LogError($"Error during cleanup: {ex.Message}");
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                    throw;
-                }
-            }
-
-            private static bool TryResolveDownloadUri(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, out Uri downloadUri)
-            {
-                downloadUri = null;
-
-                if (metadata == null)
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: "Cannot resolve download URL without metadata."));
-                    return false;
-                }
-
-                var rawUrl = metadata.downloadUrl?.Trim();
-                if (string.IsNullOrEmpty(rawUrl))
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"{metadata.modelId}: Download URL is empty."));
-                    return false;
-                }
-
-                if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var resolvedUri))
-                {
-                    ReportSafe(reporter, new FailedFeedback(metadata, message: $"Invalid download URL: {rawUrl}"));
-                    return false;
-                }
-
-                if (!IsSecureDownloadScheme(resolvedUri))
-                {
-                    if (!IsInsecureDownloadAllowed())
-                    {
-                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"Rejected insecure download scheme '{resolvedUri.Scheme}'. Set {ALLOW_INSECURE_DOWNLOAD_KEY}=true to override."));
-                        return false;
-                    }
-
-                    ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Allowing insecure download for {resolvedUri} because {ALLOW_INSECURE_DOWNLOAD_KEY}=true.", filePath: resolvedUri.ToString()));
-                    SherpaLog.Warning($"[{metadata.modelId}] Allowing insecure download for {resolvedUri} (override enabled).");
-                }
-
-                downloadUri = resolvedUri;
-                return true;
-            }
-
-            private static bool IsSecureDownloadScheme(Uri uri)
-            {
-                if (uri is null)
-                {
-                    return false;
-                }
-
-                return uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeFile;
-            }
-
             private static bool IsInsecureDownloadAllowed() =>
                 SherpaONNXEnvironment.GetBool(ALLOW_INSECURE_DOWNLOAD_KEY, @default: false);
 
@@ -854,6 +549,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             private static bool IsAutoDownloadEnabled() =>
                 SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, @default: true);
+
+            private static bool IsAutoDeleteCorruptedEnabled() =>
+                SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, @default: true);
 
             private static void ReportAutoDownloadDisabled(SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, string targetDirectory)
             {

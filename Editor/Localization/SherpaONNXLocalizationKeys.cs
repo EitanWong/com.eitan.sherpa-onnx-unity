@@ -22,6 +22,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string TooltipRescan = "common.tooltip.rescan";
             internal const string TooltipEntryRescan = "common.tooltip.entryRescan";
             internal const string TooltipReveal = "common.tooltip.reveal";
+            internal const string OptionAuto = "common.option.auto";
             internal const string LanguageOther = "common.language.other";
             internal const string LanguageChinese = "common.language.chinese";
             internal const string LanguageCantonese = "common.language.cantonese";
@@ -81,6 +82,8 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string FetchLatestTooltip = "settings.fetchLatest.tooltip";
             internal const string AutoDownloadLabel = "settings.autoDownload.label";
             internal const string AutoDownloadTooltip = "settings.autoDownload.tooltip";
+            internal const string AutoDeleteCorruptedLabel = "settings.autoDeleteCorrupted.label";
+            internal const string AutoDeleteCorruptedTooltip = "settings.autoDeleteCorrupted.tooltip";
             internal const string GithubProxyLabel = "settings.githubProxy.label";
             internal const string GithubProxyTooltip = "settings.githubProxy.tooltip";
             internal const string CacheDirectoryLabel = "settings.cacheDirectory.label";
@@ -92,6 +95,57 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string CacheClearSuccess = "settings.cacheClear.success";
             internal const string CacheClearEmpty = "settings.cacheClear.empty";
             internal const string CacheClearError = "settings.cacheClear.error";
+
+            internal const string CustomModelsTitle = "settings.customModels.title";
+            internal const string CustomModelsListLabel = "settings.customModels.list.label";
+            internal const string CustomModelsListTooltip = "settings.customModels.list.tooltip";
+            internal const string CustomModelsRemoteLabel = "settings.customModels.remote.label";
+            internal const string CustomModelsRemoteTooltip = "settings.customModels.remote.tooltip";
+            internal const string CustomModelsHelp = "settings.customModels.help";
+            internal const string CustomModelsHelpMissing = "settings.customModels.helpMissing";
+            internal const string CustomModelsGuide = "settings.customModels.guide";
+            internal const string CustomModelsImportButton = "settings.customModels.import.button";
+            internal const string CustomModelsImportTooltip = "settings.customModels.import.tooltip";
+            internal const string CustomModelsImportDialogTitle = "settings.customModels.import.dialog.title";
+            internal const string CustomModelsImportDialogBody = "settings.customModels.import.dialog.body";
+            internal const string CustomModelsImportSelectModuleTitle = "settings.customModels.import.selectModule.title";
+            internal const string CustomModelsImportSelectModuleLabel = "settings.customModels.import.selectModule.label";
+            internal const string CustomModelsImportSelectModuleConfirm = "settings.customModels.import.selectModule.confirm";
+            internal const string CustomModelsImportErrorOutsideProject = "settings.customModels.import.error.outsideProject";
+            internal const string CustomModelsImportErrorNotUnderRoot = "settings.customModels.import.error.notUnderRoot";
+            internal const string CustomModelsImportErrorInvalidLayout = "settings.customModels.import.error.invalidLayout";
+            internal const string CustomModelsImportWarnMissingModel = "settings.customModels.import.warn.missingModel";
+            internal const string CustomModelsImportWarnMissingTokens = "settings.customModels.import.warn.missingTokens";
+            internal const string CustomModelsImportWarnModuleDefaulted = "settings.customModels.import.warn.moduleDefaulted";
+            internal const string CustomModelsImportSuccess = "settings.customModels.import.success";
+            internal const string CustomModelsDisabledLabel = "settings.customModels.disabled";
+            internal const string CustomModelsFieldEntryName = "settings.customModels.field.name";
+            internal const string CustomModelsFieldEntryTypeTooltip = "settings.customModels.field.entryType.tooltip";
+            internal const string CustomModelsFieldEntryNameTooltip = "settings.customModels.field.name.tooltip";
+            internal const string CustomModelsFieldManifestUrl = "settings.customModels.field.manifestUrl";
+            internal const string CustomModelsFieldManifestUrlTooltip = "settings.customModels.field.manifestUrl.tooltip";
+            internal const string CustomModelsFieldModelId = "settings.customModels.field.modelId";
+            internal const string CustomModelsFieldModelIdTooltip = "settings.customModels.field.modelId.tooltip";
+            internal const string CustomModelsFieldModuleType = "settings.customModels.field.moduleType";
+            internal const string CustomModelsFieldModuleTypeTooltip = "settings.customModels.field.moduleType.tooltip";
+            internal const string CustomModelsFieldModuleTypeHint = "settings.customModels.field.moduleTypeHint";
+            internal const string CustomModelsFieldModuleTypeHintTooltip = "settings.customModels.field.moduleTypeHint.tooltip";
+            internal const string CustomModelsFieldDownloadUrl = "settings.customModels.field.downloadUrl";
+            internal const string CustomModelsFieldDownloadUrlTooltip = "settings.customModels.field.downloadUrl.tooltip";
+            internal const string CustomModelsFieldDownloadHash = "settings.customModels.field.downloadHash";
+            internal const string CustomModelsFieldDownloadHashTooltip = "settings.customModels.field.downloadHash.tooltip";
+            internal const string CustomModelsFieldModelTypeHint = "settings.customModels.field.modelTypeHint";
+            internal const string CustomModelsFieldModelTypeHintTooltip = "settings.customModels.field.modelTypeHint.tooltip";
+            internal const string CustomModelsFieldSpeakers = "settings.customModels.field.numberOfSpeakers";
+            internal const string CustomModelsFieldSpeakersTooltip = "settings.customModels.field.numberOfSpeakers.tooltip";
+            internal const string CustomModelsFieldSampleRate = "settings.customModels.field.sampleRate";
+            internal const string CustomModelsFieldSampleRateTooltip = "settings.customModels.field.sampleRate.tooltip";
+            internal const string CustomModelsFieldBindings = "settings.customModels.field.fileBindings";
+            internal const string CustomModelsFieldBindingsTooltip = "settings.customModels.field.fileBindings.tooltip";
+            internal const string CustomModelsFieldBindingKeyLabel = "settings.customModels.field.fileBindings.key";
+            internal const string CustomModelsFieldBindingKeyTooltip = "settings.customModels.field.fileBindings.key.tooltip";
+            internal const string CustomModelsFieldBindingPathLabel = "settings.customModels.field.fileBindings.path";
+            internal const string CustomModelsFieldBindingPathTooltip = "settings.customModels.field.fileBindings.path.tooltip";
         }
 
         internal static class Welcome

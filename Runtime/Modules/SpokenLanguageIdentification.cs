@@ -27,7 +27,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 // ignore the prarmeter sampleRate it's not correct.
 
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
-                var modelType = SherpaUtils.Model.GetSpokenLanguageIdentificationModelType(metadata.modelId);
+                var modelType = SherpaUtils.Model.ResolveSpokenLanguageIdentificationModelType(metadata);
                 this.SampleRate = metadata.sampleRate;
 
                 var sliConfig = CreateSliConfig(modelType, metadata, this.SampleRate, isMobilePlatform, reporter, ct);

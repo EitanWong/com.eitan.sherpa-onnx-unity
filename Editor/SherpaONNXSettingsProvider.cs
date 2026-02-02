@@ -6,10 +6,12 @@ namespace Eitan.SherpaONNXUnity.Editor
 
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using Eitan.SherpaONNXUnity.Editor.Localization;
     using Eitan.SherpaONNXUnity.Runtime;
     using UnityEditor;
     using UnityEditor.UIElements;
+    using UnityEditorInternal;
     using UnityEngine;
     using UnityEngine.UIElements;
 
@@ -23,8 +25,11 @@ namespace Eitan.SherpaONNXUnity.Editor
             (SherpaONNXEditorLanguage[])Enum.GetValues(typeof(SherpaONNXEditorLanguage));
 
         private SerializedObject _runtimeSettingsObject;
+        private SerializedObject _customModelsObject;
+        private ReorderableList _customCatalogList;
         private VisualElement _rootElement;
         private string _runtimeSettingsAssetPath = string.Empty;
+        private string _customModelsAssetPath = string.Empty;
 
         public SherpaONNXSettingsProvider() : base(kPath, SettingsScope.Project) { }
 
@@ -35,6 +40,7 @@ namespace Eitan.SherpaONNXUnity.Editor
         {
             _rootElement = rootElement;
             EnsureRuntimeSettingsObject();
+            EnsureCustomModelsObject();
             SherpaONNXLocalization.LanguageChanged += OnLanguageChanged;
             BuildUi();
         }
@@ -44,6 +50,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             SherpaONNXLocalization.LanguageChanged -= OnLanguageChanged;
             _rootElement = null;
             _runtimeSettingsObject = null;
+            _customModelsObject = null;
         }
 
         private void BuildUi()
@@ -55,12 +62,31 @@ namespace Eitan.SherpaONNXUnity.Editor
 
             _rootElement.Clear();
             var buildSettings = SherpaONNXBuildSettings.Instance;
+            if (_customCatalogList == null)
+            {
+                BuildCustomCatalogList();
+            }
+
+            _rootElement.style.flexGrow = 1;
+            _rootElement.style.flexDirection = FlexDirection.Column;
+            _rootElement.style.minHeight = 0;
+            var scrollView = new ScrollView
+            {
+                horizontalScrollerVisibility = ScrollerVisibility.Hidden,
+                verticalScrollerVisibility = ScrollerVisibility.Auto
+            };
+            scrollView.style.flexGrow = 1;
+            scrollView.style.flexShrink = 1;
+            scrollView.style.minHeight = 0;
+            _rootElement.Add(scrollView);
 
             var paddedContainer = new VisualElement();
             paddedContainer.style.paddingLeft = 10;
             paddedContainer.style.paddingRight = 10;
             paddedContainer.style.flexDirection = FlexDirection.Column;
-            _rootElement.Add(paddedContainer);
+            paddedContainer.style.flexGrow = 0;
+            paddedContainer.style.flexShrink = 0;
+            scrollView.Add(paddedContainer);
 
             var header = new Label(SherpaONNXLocalization.Tr(
                 SherpaONNXL10n.Settings.HeaderTitle,
@@ -142,6 +168,13 @@ namespace Eitan.SherpaONNXUnity.Editor
                         "Disable to enforce offline/manual installations. Verification still runs."));
 
                     section.Add(CreatePropertyField(
+                        SherpaONNXRuntimeSettings.AutoDeleteCorruptedModelsPropertyName,
+                        SherpaONNXL10n.Settings.AutoDeleteCorruptedLabel,
+                        "Auto-delete corrupted models",
+                        SherpaONNXL10n.Settings.AutoDeleteCorruptedTooltip,
+                        "When enabled, corrupted model folders are deleted after initialization or verification failures."));
+
+                    section.Add(CreatePropertyField(
                         SherpaONNXRuntimeSettings.GithubProxyUrlPropertyName,
                         SherpaONNXL10n.Settings.GithubProxyLabel,
                         "GitHub proxy URL (optional)",
@@ -188,6 +221,55 @@ namespace Eitan.SherpaONNXUnity.Editor
                         HelpBoxMessageType.None);
                     runtimeHelp.style.marginTop = 6;
                     section.Add(runtimeHelp);
+                }));
+
+            paddedContainer.Add(CreateSectionCard(
+                SherpaONNXL10n.Settings.CustomModelsTitle,
+                "Custom Models",
+                section =>
+                {
+                    var guide = new HelpBox(
+                        SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsGuide,
+                            "Tips: Use Module Type Hint/Model Type Hint only when auto-detection fails. Hints must match enum names (case-insensitive).\n" +
+                            "File Bindings map SherpaONNXModelFileKey to files; paths are relative to the model folder unless absolute."),
+                        HelpBoxMessageType.Info);
+                    guide.style.marginBottom = 6;
+                    section.Add(guide);
+
+                    var importRow = new VisualElement();
+                    importRow.style.flexDirection = FlexDirection.Row;
+                    importRow.style.flexWrap = Wrap.Wrap;
+                    importRow.style.marginBottom = 4;
+
+                    var importButton = new Button(ImportCustomModelFolder)
+                    {
+                        text = SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsImportButton,
+                            "Import Model Folder"),
+                        tooltip = SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsImportTooltip,
+                            "Select a model folder under Assets/StreamingAssets/sherpa-onnx/models to auto-fill a custom entry.")
+                    };
+                    importButton.style.marginRight = 6;
+                    importRow.Add(importButton);
+
+                    section.Add(importRow);
+                    section.Add(CreateCustomCatalogListElement());
+
+                    var customHelp = new HelpBox(
+                        string.Format(
+                            SherpaONNXLocalization.Tr(
+                                SherpaONNXL10n.Settings.CustomModelsHelp,
+                                "Custom models are merged into the catalog at runtime. Custom entries override built-in models when modelId + module match.\nCurrent asset: {0}"),
+                            string.IsNullOrEmpty(_customModelsAssetPath)
+                                ? SherpaONNXLocalization.Tr(
+                                    SherpaONNXL10n.Settings.CustomModelsHelpMissing,
+                                    "Asset will be created automatically.")
+                                : _customModelsAssetPath),
+                        HelpBoxMessageType.None);
+                    customHelp.style.marginTop = 6;
+                    section.Add(customHelp);
                 }));
 
             paddedContainer.Add(CreateSectionCard(
@@ -375,6 +457,473 @@ namespace Eitan.SherpaONNXUnity.Editor
             _runtimeSettingsAssetPath = AssetDatabase.GetAssetPath(runtimeSettings);
         }
 
+        private void EnsureCustomModelsObject()
+        {
+            if (_customModelsObject != null)
+            {
+                return;
+            }
+
+            var customSettings = SherpaONNXCustomModelSettingsUtility.LoadOrCreateSettingsAsset();
+            _customModelsObject = new SerializedObject(customSettings);
+            _customModelsAssetPath = AssetDatabase.GetAssetPath(customSettings);
+            BuildCustomCatalogList();
+        }
+
+        private void BuildCustomCatalogList()
+        {
+            if (_customModelsObject == null)
+            {
+                return;
+            }
+
+            var entriesProp = _customModelsObject.FindProperty(SherpaONNXCustomModelSettings.EntriesPropertyName);
+            _customCatalogList = new ReorderableList(_customModelsObject, entriesProp, draggable: true, displayHeader: true, displayAddButton: true, displayRemoveButton: true);
+            _customCatalogList.drawHeaderCallback = rect =>
+            {
+                var label = SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsListLabel,
+                    "Custom catalog entries");
+                var tooltip = SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsListTooltip,
+                    "Add model entries or remote manifest entries. Model entries should include modelId, moduleType, downloadUrl, and downloadFileHash.");
+                EditorGUI.LabelField(rect, new GUIContent(label, tooltip));
+            };
+            _customCatalogList.elementHeightCallback = index =>
+            {
+                var element = entriesProp.GetArrayElementAtIndex(index);
+                return EditorGUI.GetPropertyHeight(element, includeChildren: true);
+            };
+            _customCatalogList.drawElementCallback = (rect, index, isActive, isFocused) =>
+            {
+                var element = entriesProp.GetArrayElementAtIndex(index);
+                rect.height = EditorGUI.GetPropertyHeight(element, includeChildren: true);
+                EditorGUI.PropertyField(rect, element, GUIContent.none, includeChildren: true);
+            };
+            _customCatalogList.footerHeight = EditorGUIUtility.singleLineHeight + 2f;
+        }
+
+        private void ImportCustomModelFolder()
+        {
+            var dialogTitle = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.CustomModelsImportDialogTitle,
+                "SherpaONNX");
+            var folder = EditorUtility.OpenFolderPanel(
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsImportDialogBody,
+                    "Select model folder"),
+                Application.dataPath,
+                string.Empty);
+
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                return;
+            }
+
+            folder = folder.Replace('\\', '/').TrimEnd('/');
+            var modelRoot = "Assets/StreamingAssets/sherpa-onnx/models";
+            var relative = FileUtil.GetProjectRelativePath(folder);
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsImportErrorOutsideProject,
+                        "Selected folder must be inside this Unity project."),
+                    "OK");
+                return;
+            }
+
+            relative = relative.Replace('\\', '/').TrimEnd('/');
+            if (!relative.StartsWith(modelRoot + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    string.Format(
+                        SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsImportErrorNotUnderRoot,
+                            "Selected folder must be under:\n{0}"),
+                        modelRoot),
+                    "OK");
+                return;
+            }
+
+            var segments = relative.Substring(modelRoot.Length).Trim('/').Split('/');
+            if (segments.Length < 2)
+            {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsImportErrorInvalidLayout,
+                        "Please select a model folder inside a module folder (e.g., speech-synthesis/your-model-id)."),
+                    "OK");
+                return;
+            }
+
+            var moduleFolder = segments[segments.Length - 2];
+            var modelId = segments[segments.Length - 1];
+            var moduleType = TryParseModuleTypeFromFolder(moduleFolder, out var parsedType)
+                ? parsedType
+                : SherpaONNXModuleType.Undefined;
+
+            if (moduleType == SherpaONNXModuleType.Undefined)
+            {
+                ModuleTypePickerWindow.Show(
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsImportSelectModuleTitle,
+                        "Select Module Type"),
+                    selected =>
+                    {
+                        if (selected == SherpaONNXModuleType.Undefined)
+                        {
+                            return;
+                        }
+
+                        CreateCustomEntryFromImport(dialogTitle, folder, modelId, selected);
+                    });
+                return;
+            }
+
+            CreateCustomEntryFromImport(dialogTitle, folder, modelId, moduleType);
+        }
+
+        private void CreateCustomEntryFromImport(string dialogTitle, string folder, string modelId, SherpaONNXModuleType moduleType)
+        {
+            if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(modelId))
+            {
+                return;
+            }
+
+            EnsureCustomModelsObject();
+            _customModelsObject.Update();
+
+            var entriesProp = _customModelsObject.FindProperty(SherpaONNXCustomModelSettings.EntriesPropertyName);
+            var newIndex = entriesProp.arraySize;
+            entriesProp.arraySize += 1;
+            var entryProp = entriesProp.GetArrayElementAtIndex(newIndex);
+
+            entryProp.FindPropertyRelative("enabled").boolValue = true;
+            entryProp.FindPropertyRelative("entryType").enumValueIndex = (int)SherpaONNXCustomCatalogEntryType.Model;
+            entryProp.FindPropertyRelative("name").stringValue = modelId;
+            entryProp.FindPropertyRelative("modelId").stringValue = modelId;
+            entryProp.FindPropertyRelative("moduleType").enumValueIndex = (int)moduleType;
+            entryProp.FindPropertyRelative("moduleTypeHint").stringValue = string.Empty;
+            entryProp.FindPropertyRelative("downloadUrl").stringValue = string.Empty;
+            entryProp.FindPropertyRelative("downloadFileHash").stringValue = string.Empty;
+            entryProp.FindPropertyRelative("numberOfSpeakers").intValue = 0;
+            entryProp.FindPropertyRelative("sampleRate").intValue = 16000;
+            entryProp.FindPropertyRelative("modelTypeHint").stringValue = InferModelTypeHint(moduleType, modelId);
+
+            var bindingsProp = entryProp.FindPropertyRelative("fileBindings");
+            if (bindingsProp != null)
+            {
+                bindingsProp.ClearArray();
+                var bindings = CollectBindings(folder);
+                for (int i = 0; i < bindings.Count; i++)
+                {
+                    var binding = bindings[i];
+                    var index = bindingsProp.arraySize;
+                    bindingsProp.InsertArrayElementAtIndex(index);
+                    var bindingProp = bindingsProp.GetArrayElementAtIndex(index);
+                    bindingProp.FindPropertyRelative("key").enumValueIndex = (int)binding.key;
+                    bindingProp.FindPropertyRelative("path").stringValue = binding.path;
+                }
+            }
+
+            _customModelsObject.ApplyModifiedProperties();
+
+            var warnings = new List<string>();
+            var hasModel = HasBinding(entryProp, SherpaONNXModelFileKey.Model);
+            var hasTokens = HasBinding(entryProp, SherpaONNXModelFileKey.Tokens);
+            if (!hasModel)
+            {
+                warnings.Add(SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsImportWarnMissingModel,
+                    "Model file (.onnx) not detected. Please bind it manually."));
+            }
+            if (!hasTokens)
+            {
+                warnings.Add(SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsImportWarnMissingTokens,
+                    "Tokens file not detected. Please bind tokens.txt manually if required."));
+            }
+
+            var success = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.CustomModelsImportSuccess,
+                "Custom model entry created.");
+            if (warnings.Count > 0)
+            {
+                success += "\n\n" + string.Join("\n", warnings);
+            }
+
+            EditorUtility.DisplayDialog(dialogTitle, success, "OK");
+            BuildCustomCatalogList();
+            BuildUi();
+        }
+
+        private static bool TryParseModuleTypeFromFolder(string folderName, out SherpaONNXModuleType moduleType)
+        {
+            moduleType = SherpaONNXModuleType.Undefined;
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                return false;
+            }
+
+            var normalized = folderName.Trim().ToLowerInvariant();
+            foreach (SherpaONNXModuleType candidate in Enum.GetValues(typeof(SherpaONNXModuleType)))
+            {
+                if (candidate == SherpaONNXModuleType.Undefined)
+                {
+                    continue;
+                }
+
+                var kebab = System.Text.RegularExpressions.Regex.Replace(candidate.ToString(), @"([a-z])([A-Z])", "$1-$2").ToLowerInvariant();
+                if (string.Equals(kebab, normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    moduleType = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string InferModelTypeHint(SherpaONNXModuleType moduleType, string modelId)
+        {
+            if (string.IsNullOrWhiteSpace(modelId))
+            {
+                return string.Empty;
+            }
+
+            var lower = modelId.ToLowerInvariant();
+            switch (moduleType)
+            {
+                case SherpaONNXModuleType.SpeechSynthesis:
+                    if (lower.Contains("vits")) return "Vits";
+                    if (lower.Contains("matcha")) return "Matcha";
+                    if (lower.Contains("kokoro")) return "Kokoro";
+                    if (lower.Contains("kitten")) return "KittenTTS";
+                    if (lower.Contains("zipvoice")) return "ZipVoice";
+                    break;
+                case SherpaONNXModuleType.VoiceActivityDetection:
+                    if (lower.Contains("silero")) return "SileroVad";
+                    if (lower.Contains("ten")) return "TenVad";
+                    break;
+                case SherpaONNXModuleType.SpokenLanguageIdentification:
+                    if (lower.Contains("whisper")) return "Whisper";
+                    break;
+                case SherpaONNXModuleType.AudioTagging:
+                    if (lower.Contains("ced")) return "Ced";
+                    if (lower.Contains("zipformer")) return "Zipformer";
+                    break;
+                default:
+                    break;
+            }
+
+            return string.Empty;
+        }
+
+        private static bool HasBinding(SerializedProperty entryProp, SherpaONNXModelFileKey key)
+        {
+            var bindingsProp = entryProp.FindPropertyRelative("fileBindings");
+            if (bindingsProp == null || !bindingsProp.isArray)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < bindingsProp.arraySize; i++)
+            {
+                var binding = bindingsProp.GetArrayElementAtIndex(i);
+                var keyProp = binding.FindPropertyRelative("key");
+                if (keyProp != null && keyProp.enumValueIndex == (int)key)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static List<(SherpaONNXModelFileKey key, string path)> CollectBindings(string folder)
+        {
+            var results = new List<(SherpaONNXModelFileKey key, string path)>();
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+            {
+                return results;
+            }
+
+            var seen = new HashSet<SherpaONNXModelFileKey>();
+            var entries = Directory.EnumerateFileSystemEntries(folder, "*", SearchOption.AllDirectories);
+            foreach (var entry in entries)
+            {
+                var relative = GetRelativePath(folder, entry);
+                if (string.IsNullOrEmpty(relative))
+                {
+                    continue;
+                }
+
+                var isDir = Directory.Exists(entry);
+                var key = MapBindingKey(Path.GetFileName(entry), relative, isDir);
+                if (key == SherpaONNXModelFileKey.None)
+                {
+                    continue;
+                }
+
+                if (key == SherpaONNXModelFileKey.RuleFsts || key == SherpaONNXModelFileKey.RuleFars)
+                {
+                    results.Add((key, relative));
+                    continue;
+                }
+
+                if (seen.Add(key))
+                {
+                    results.Add((key, relative));
+                }
+            }
+
+            return results;
+        }
+
+        private static string GetRelativePath(string root, string fullPath)
+        {
+            if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(fullPath))
+            {
+                return string.Empty;
+            }
+
+            var normalizedRoot = root.Replace('\\', '/').TrimEnd('/') + "/";
+            var normalizedPath = fullPath.Replace('\\', '/');
+            if (!normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            return normalizedPath.Substring(normalizedRoot.Length);
+        }
+
+        private static SherpaONNXModelFileKey MapBindingKey(string name, string relativePath, bool isDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return SherpaONNXModelFileKey.None;
+            }
+
+            var lowerName = name.ToLowerInvariant();
+            var lowerPath = relativePath.ToLowerInvariant();
+
+            if (isDirectory)
+            {
+                if (lowerName.Contains("dict")) return SherpaONNXModelFileKey.DictDir;
+                if (lowerName.Contains("espeak-ng-data") || lowerName == "data") return SherpaONNXModelFileKey.DataDir;
+                if (lowerName.Contains("tokenizer") || lowerName.Contains("qwen")) return SherpaONNXModelFileKey.Tokenizer;
+                if (lowerName.Contains("voices")) return SherpaONNXModelFileKey.Voices;
+                return SherpaONNXModelFileKey.None;
+            }
+
+            var ext = Path.GetExtension(lowerName);
+            if (ext == ".fst") return SherpaONNXModelFileKey.RuleFsts;
+            if (ext == ".far") return SherpaONNXModelFileKey.RuleFars;
+
+            if (lowerName.Contains("tokens")) return SherpaONNXModelFileKey.Tokens;
+            if (lowerName.Contains("lexicon")) return SherpaONNXModelFileKey.Lexicon;
+            if (lowerName.Contains("vocos") || lowerName.Contains("vocoder")) return SherpaONNXModelFileKey.Vocoder;
+            if (lowerName.Contains("acoustic") || lowerName.Contains("matcha")) return SherpaONNXModelFileKey.AcousticModel;
+            if (lowerName.Contains("fm") || lowerName.Contains("flow")) return SherpaONNXModelFileKey.FlowMatchingModel;
+            if (lowerName.Contains("text")) return SherpaONNXModelFileKey.TextModel;
+            if (lowerName.Contains("preprocess")) return SherpaONNXModelFileKey.Preprocessor;
+            if (lowerName.Contains("cached")) return SherpaONNXModelFileKey.CachedDecoder;
+            if (lowerName.Contains("uncached")) return SherpaONNXModelFileKey.UncachedDecoder;
+            if (lowerName.Contains("embedding")) return SherpaONNXModelFileKey.Embedding;
+            if (lowerName.Contains("tokenizer")) return SherpaONNXModelFileKey.Tokenizer;
+            if (lowerName.Contains("llm")) return SherpaONNXModelFileKey.Llm;
+            if (lowerName.Contains("adaptor") || lowerName.Contains("adapter")) return SherpaONNXModelFileKey.EncoderAdaptor;
+            if (lowerName.Contains("labels")) return SherpaONNXModelFileKey.Labels;
+            if (lowerName.Contains("keywords")) return SherpaONNXModelFileKey.Keywords;
+            if (lowerName.Contains("hotwords")) return SherpaONNXModelFileKey.Hotwords;
+            if (lowerName.Contains("pinyin")) return SherpaONNXModelFileKey.Pinyin;
+            if (lowerName.Contains("silero")) return SherpaONNXModelFileKey.SileroVad;
+            if (lowerName.Contains("ten")) return SherpaONNXModelFileKey.TenVad;
+            if (lowerName.Contains("tdnn")) return SherpaONNXModelFileKey.Tdnn;
+            if (lowerName.Contains("gtcrn")) return SherpaONNXModelFileKey.Gtcrn;
+            if (lowerName.Contains("ced")) return SherpaONNXModelFileKey.Ced;
+            if (lowerName.Contains("zipformer")) return SherpaONNXModelFileKey.Zipformer;
+            if (lowerName.Contains("encoder") || lowerName.Contains("encode")) return SherpaONNXModelFileKey.Encoder;
+            if (lowerName.Contains("decoder")) return SherpaONNXModelFileKey.Decoder;
+            if (lowerName.Contains("joiner")) return SherpaONNXModelFileKey.Joiner;
+
+            if (ext == ".onnx") return SherpaONNXModelFileKey.Model;
+
+            return SherpaONNXModelFileKey.None;
+        }
+
+        private sealed class ModuleTypePickerWindow : EditorWindow
+        {
+            private static readonly List<SherpaONNXModuleType> s_Options = BuildOptions();
+            private static readonly string[] s_Labels = s_Options.ConvertAll(t => t.ToString()).ToArray();
+            private Action<SherpaONNXModuleType> _onConfirm;
+            private int _selectedIndex;
+
+            public static void Show(string title, Action<SherpaONNXModuleType> onConfirm)
+            {
+                var window = CreateInstance<ModuleTypePickerWindow>();
+                window.titleContent = new GUIContent(title);
+                window._onConfirm = onConfirm;
+                window._selectedIndex = 0;
+                window.minSize = new Vector2(320f, 120f);
+                window.maxSize = new Vector2(420f, 160f);
+                window.ShowUtility();
+            }
+
+            private void OnGUI()
+            {
+                EditorGUILayout.Space(6);
+                EditorGUILayout.LabelField(
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsImportSelectModuleLabel,
+                        "Module Type"),
+                    EditorStyles.boldLabel);
+                EditorGUILayout.Space(2);
+                _selectedIndex = EditorGUILayout.Popup(_selectedIndex, s_Labels);
+                EditorGUILayout.Space(8);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button(
+                        SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsImportSelectModuleConfirm,
+                            "Create"),
+                        GUILayout.Width(90)))
+                    {
+                        _onConfirm?.Invoke(s_Options[_selectedIndex]);
+                        Close();
+                    }
+                    if (GUILayout.Button(
+                        SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Common.ButtonCancel,
+                            "Cancel"),
+                        GUILayout.Width(90)))
+                    {
+                        Close();
+                    }
+                }
+            }
+
+            private static List<SherpaONNXModuleType> BuildOptions()
+            {
+                var list = new List<SherpaONNXModuleType>();
+                foreach (SherpaONNXModuleType candidate in Enum.GetValues(typeof(SherpaONNXModuleType)))
+                {
+                    if (candidate == SherpaONNXModuleType.Undefined)
+                    {
+                        continue;
+                    }
+                    list.Add(candidate);
+                }
+                return list;
+            }
+        }
+
         private void OnLanguageChanged()
         {
             BuildUi();
@@ -400,6 +949,73 @@ namespace Eitan.SherpaONNXUnity.Editor
             field.Bind(_runtimeSettingsObject);
             field.style.marginBottom = 4;
             return field;
+        }
+
+        private PropertyField CreatePropertyField(SerializedObject serializedObject, string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
+        {
+            if (serializedObject == null)
+            {
+                return new PropertyField();
+            }
+
+            var prop = serializedObject.FindProperty(propertyName);
+            var field = new PropertyField(
+                prop,
+                SherpaONNXLocalization.Tr(labelKey, labelFallback))
+            {
+                tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback)
+            };
+            field.Bind(serializedObject);
+            field.style.marginBottom = 4;
+            field.style.flexShrink = 0;
+            return field;
+        }
+
+        private IMGUIContainer CreateIMGUIPropertyField(SerializedObject serializedObject, string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
+        {
+            var container = new IMGUIContainer(() =>
+            {
+                if (serializedObject == null)
+                {
+                    return;
+                }
+
+                serializedObject.Update();
+                var prop = serializedObject.FindProperty(propertyName);
+                if (prop == null)
+                {
+                    return;
+                }
+
+                var content = new GUIContent(
+                    SherpaONNXLocalization.Tr(labelKey, labelFallback),
+                    SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback));
+                EditorGUILayout.PropertyField(prop, content, true);
+                serializedObject.ApplyModifiedProperties();
+            });
+
+            container.style.marginBottom = 4;
+            container.style.flexShrink = 0;
+            return container;
+        }
+
+        private VisualElement CreateCustomCatalogListElement()
+        {
+            var container = new IMGUIContainer(() =>
+            {
+                if (_customModelsObject == null)
+                {
+                    return;
+                }
+
+                _customModelsObject.Update();
+                _customCatalogList?.DoLayoutList();
+                _customModelsObject.ApplyModifiedProperties();
+            });
+
+            container.style.marginBottom = 4;
+            container.style.flexShrink = 0;
+            return container;
         }
 
         private void ApplyLoggingVisibility(VisualElement loggingDetails, VisualElement toggleField)
@@ -521,6 +1137,12 @@ namespace Eitan.SherpaONNXUnity.Editor
                         "Automatically download missing models",
                         SherpaONNXL10n.Settings.AutoDownloadTooltip,
                         "Disable this to keep manual/offline installations untouched.");
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.AutoDeleteCorruptedModelsPropertyName,
+                        SherpaONNXL10n.Settings.AutoDeleteCorruptedLabel,
+                        "Auto-delete corrupted models",
+                        SherpaONNXL10n.Settings.AutoDeleteCorruptedTooltip,
+                        "When enabled, corrupted model folders are deleted after initialization or verification failures.");
                     DrawRuntimeProperty(
                         SherpaONNXRuntimeSettings.GithubProxyUrlPropertyName,
                         SherpaONNXL10n.Settings.GithubProxyLabel,
@@ -651,6 +1273,8 @@ namespace Eitan.SherpaONNXUnity.Editor
             card.style.paddingBottom = 6;
             card.style.paddingLeft = 4;
             card.style.paddingRight = 4;
+            card.style.flexDirection = FlexDirection.Column;
+            card.style.flexShrink = 0;
         }
 
 

@@ -73,7 +73,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         {
             try
             {
-                var modelType = SherpaUtils.Model.GetVoiceActivityDetectionModelType(metadata.modelId);
+                var modelType = SherpaUtils.Model.ResolveVoiceActivityDetectionModelType(metadata);
                 var vadConfig = CreateVadConfig(modelType, metadata, sampleRate, isMobilePlatform, reporter);
 
                 _windowSize = GetWindowSize(modelType, vadConfig);

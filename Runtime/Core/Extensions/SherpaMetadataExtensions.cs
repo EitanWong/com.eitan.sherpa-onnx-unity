@@ -91,6 +91,152 @@ namespace Eitan.SherpaONNXUnity.Runtime
             return string.IsNullOrEmpty(ext) ? 0 : 10;
         }
 
+        private static string ResolveBindingPath(SherpaONNXModelMetadata metadata, string rawPath)
+        {
+            if (metadata == null || string.IsNullOrWhiteSpace(rawPath))
+            {
+                return string.Empty;
+            }
+
+            if (System.IO.Path.IsPathRooted(rawPath))
+            {
+                return rawPath;
+            }
+
+            var modelFolderPath = SherpaPathResolver.GetModelRootPath(metadata.modelId);
+            return System.IO.Path.Combine(modelFolderPath, rawPath);
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<SherpaONNXModelFileKey, string[]> s_BindingKeywords =
+            new System.Collections.Generic.Dictionary<SherpaONNXModelFileKey, string[]>
+            {
+                { SherpaONNXModelFileKey.Model, new [] { "model", ".onnx" } },
+                { SherpaONNXModelFileKey.Encoder, new [] { "encoder", "encode" } },
+                { SherpaONNXModelFileKey.Decoder, new [] { "decoder" } },
+                { SherpaONNXModelFileKey.Joiner, new [] { "joiner" } },
+                { SherpaONNXModelFileKey.Tokens, new [] { "tokens", "tokens.txt" } },
+                { SherpaONNXModelFileKey.Lexicon, new [] { "lexicon" } },
+                { SherpaONNXModelFileKey.DictDir, new [] { "dict" } },
+                { SherpaONNXModelFileKey.DataDir, new [] { "espeak-ng-data", "data" } },
+                { SherpaONNXModelFileKey.Vocoder, new [] { "vocoder", "vocos", "vocos_24khz" } },
+                { SherpaONNXModelFileKey.AcousticModel, new [] { "acoustic", "matcha" } },
+                { SherpaONNXModelFileKey.FlowMatchingModel, new [] { "flow", "flow-matching", "flow_matching", "fm", "fm_decoder" } },
+                { SherpaONNXModelFileKey.TextModel, new [] { "text", "language", "text_encoder" } },
+                { SherpaONNXModelFileKey.Preprocessor, new [] { "preprocessor", "preprocess" } },
+                { SherpaONNXModelFileKey.CachedDecoder, new [] { "cached", "cached-decoder", "cached_decode" } },
+                { SherpaONNXModelFileKey.UncachedDecoder, new [] { "uncached", "uncached-decoder", "uncached_decode" } },
+                { SherpaONNXModelFileKey.Embedding, new [] { "embedding" } },
+                { SherpaONNXModelFileKey.Tokenizer, new [] { "tokenizer", "tokenizer.json", "tokenizer.model", "bpe", "spm", "qwen3-0.6b" } },
+                { SherpaONNXModelFileKey.Llm, new [] { "llm" } },
+                { SherpaONNXModelFileKey.EncoderAdaptor, new [] { "encoder-adaptor", "encoder_adaptor", "adaptor", "adapter" } },
+                { SherpaONNXModelFileKey.Labels, new [] { "labels", "class_labels_indices" } },
+                { SherpaONNXModelFileKey.Keywords, new [] { "keywords", "keywords.txt" } },
+                { SherpaONNXModelFileKey.Hotwords, new [] { "hotwords" } },
+                { SherpaONNXModelFileKey.Voices, new [] { "voices" } },
+                { SherpaONNXModelFileKey.RuleFsts, new [] { "rule", "fst" } },
+                { SherpaONNXModelFileKey.RuleFars, new [] { "rule", "far" } },
+                { SherpaONNXModelFileKey.Pinyin, new [] { "pinyin" } },
+                { SherpaONNXModelFileKey.Fst, new [] { "fst" } },
+                { SherpaONNXModelFileKey.Far, new [] { "far" } },
+                { SherpaONNXModelFileKey.SileroVad, new [] { "silero", "silero-vad", "silero_vad" } },
+                { SherpaONNXModelFileKey.TenVad, new [] { "ten", "ten-vad", "ten_vad" } },
+                { SherpaONNXModelFileKey.Tdnn, new [] { "tdnn" } },
+                { SherpaONNXModelFileKey.Gtcrn, new [] { "gtcrn" } },
+                { SherpaONNXModelFileKey.Ced, new [] { "ced" } },
+                { SherpaONNXModelFileKey.Zipformer, new [] { "zipformer" } },
+            };
+
+        private static bool KeywordsMatchBinding(string keyword, SherpaONNXModelFileKey bindingKey)
+        {
+            if (bindingKey == SherpaONNXModelFileKey.None || string.IsNullOrWhiteSpace(keyword))
+            {
+                return false;
+            }
+
+            var trimmed = keyword.Trim().ToLowerInvariant();
+            if (string.Equals(trimmed, bindingKey.ToString(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (s_BindingKeywords.TryGetValue(bindingKey, out var synonyms))
+            {
+                for (int i = 0; i < synonyms.Length; i++)
+                {
+                    var synonym = synonyms[i];
+                    if (string.IsNullOrWhiteSpace(synonym))
+                    {
+                        continue;
+                    }
+
+                    var norm = synonym.ToLowerInvariant();
+                    if (trimmed == norm || trimmed.Contains(norm) || norm.Contains(trimmed))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static string[] GetBoundPathsByKeywords(SherpaONNXModelMetadata metadata, string[] keywords)
+        {
+            if (metadata?.fileBindings == null || metadata.fileBindings.Count == 0 || keywords == null || keywords.Length == 0)
+            {
+                return System.Array.Empty<string>();
+            }
+
+            var results = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < metadata.fileBindings.Count; i++)
+            {
+                var binding = metadata.fileBindings[i];
+                if (binding == null || binding.key == SherpaONNXModelFileKey.None || string.IsNullOrWhiteSpace(binding.path))
+                {
+                    continue;
+                }
+
+                for (int k = 0; k < keywords.Length; k++)
+                {
+                    var keyword = keywords[k];
+                    if (string.IsNullOrWhiteSpace(keyword))
+                    {
+                        continue;
+                    }
+
+                    if (KeywordsMatchBinding(keyword, binding.key))
+                    {
+                        var resolved = ResolveBindingPath(metadata, binding.path);
+                        if (!string.IsNullOrWhiteSpace(resolved))
+                        {
+                            results.Add(resolved);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return results.ToArray();
+        }
+
+        private static bool ContainsPath(System.Collections.Generic.List<string> list, string value)
+        {
+            if (list == null || list.Count == 0 || string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (string.Equals(list[i], value, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         internal static string GetModelFilePath(this SherpaONNXModelMetadata metadata, string modelFile)
         {
             if (string.IsNullOrEmpty(modelFile))
@@ -236,11 +382,13 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 return null;
             }
 
+            var boundCandidates = GetBoundPathsByKeywords(metadata, validKeywords);
+
             // Enumerate actual file names on disk (filename only for matching)
             var fileNames = metadata.ListModelFiles(fileNameOnly: true);
             if (fileNames == null || fileNames.Length == 0)
             {
-                return null;
+                return boundCandidates.Length > 0 ? boundCandidates : null;
             }
 
             // Collect candidates with scores
@@ -290,7 +438,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             if (candidates.Count == 0)
             {
-                return null;
+                return boundCandidates.Length > 0 ? boundCandidates : null;
             }
 
             // Order by: (1) matched keywords DESC, (2) priority DESC,
@@ -304,7 +452,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 .Select(c => metadata.GetModelFilePath(c.Name))
                 .ToArray();
 
-            return ordered;
+            return boundCandidates.Length > 0 ? boundCandidates : ordered;
         }
 
         internal static string[] GetModelFilesByExtensionName(this SherpaONNXModelMetadata metadata, params string[] extensions)
@@ -339,6 +487,36 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 .Where(name => validExtensions.Contains(System.IO.Path.GetExtension(name)))
                 .Select(name => metadata.GetModelFilePath(name))
                 .ToArray();
+
+            if (metadata.fileBindings != null && metadata.fileBindings.Count > 0)
+            {
+                var boundMatches = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < metadata.fileBindings.Count; i++)
+                {
+                    var binding = metadata.fileBindings[i];
+                    if (binding == null || string.IsNullOrWhiteSpace(binding.path))
+                    {
+                        continue;
+                    }
+
+                    var resolved = ResolveBindingPath(metadata, binding.path);
+                    if (string.IsNullOrWhiteSpace(resolved))
+                    {
+                        continue;
+                    }
+
+                    var ext = System.IO.Path.GetExtension(resolved);
+                    if (validExtensions.Contains(ext))
+                    {
+                        boundMatches.Add(resolved);
+                    }
+                }
+
+                if (boundMatches.Count > 0)
+                {
+                    results = boundMatches.ToArray();
+                }
+            }
 
             // Deterministic ordering
             System.Array.Sort(results, System.StringComparer.OrdinalIgnoreCase);

@@ -307,7 +307,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             bool isMobilePlatform,
             SherpaONNXFeedbackReporter reporter)
         {
-            var _modelType = SherpaUtils.Model.GetAudioTaggingModelType(metadata.modelId);
+            var _modelType = SherpaUtils.Model.ResolveAudioTaggingModelType(metadata);
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var preferInt8 = isMobilePlatform ? "int8" : null;

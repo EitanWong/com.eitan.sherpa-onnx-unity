@@ -87,6 +87,84 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             #region Methods
 
+            private static bool TryParseEnum<TEnum>(string raw, out TEnum value) where TEnum : struct
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    value = default;
+                    return false;
+                }
+
+                return Enum.TryParse(raw.Trim(), true, out value);
+            }
+
+            internal static SpeechRecognitionModelType ResolveSpeechRecognitionModelType(SherpaONNXModelMetadata metadata, out bool isOnline)
+            {
+                SpeechRecognitionModelType modelType = SpeechRecognitionModelType.None;
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SpeechRecognitionModelType hinted) && hinted != SpeechRecognitionModelType.None)
+                {
+                    modelType = hinted;
+                }
+                else if (metadata != null)
+                {
+                    modelType = GetSpeechRecognitionModelType(metadata.modelId);
+                }
+
+                isOnline = IsOnlineSpeechRecognitionModelType(modelType) ||
+                           (modelType == SpeechRecognitionModelType.None && metadata != null && IsOnlineModel(metadata.modelId));
+                return modelType;
+            }
+
+            internal static SpeechSynthesisModelType ResolveSpeechSynthesisModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SpeechSynthesisModelType hinted) && hinted != SpeechSynthesisModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? SpeechSynthesisModelType.None : GetSpeechSynthesisModelType(metadata.modelId);
+            }
+
+            internal static VoiceActivityDetectionModelType ResolveVoiceActivityDetectionModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out VoiceActivityDetectionModelType hinted) && hinted != VoiceActivityDetectionModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? VoiceActivityDetectionModelType.None : GetVoiceActivityDetectionModelType(metadata.modelId);
+            }
+
+            internal static SpokenLanguageIdentificationModelType ResolveSpokenLanguageIdentificationModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SpokenLanguageIdentificationModelType hinted) && hinted != SpokenLanguageIdentificationModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? SpokenLanguageIdentificationModelType.None : GetSpokenLanguageIdentificationModelType(metadata.modelId);
+            }
+
+            internal static AudioTaggingModelType ResolveAudioTaggingModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out AudioTaggingModelType hinted) && hinted != AudioTaggingModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? AudioTaggingModelType.None : GetAudioTaggingModelType(metadata.modelId);
+            }
+
+            private static bool IsOnlineSpeechRecognitionModelType(SpeechRecognitionModelType modelType)
+            {
+                return modelType == SpeechRecognitionModelType.Online_Transducer
+                       || modelType == SpeechRecognitionModelType.Online_Paraformer
+                       || modelType == SpeechRecognitionModelType.Online_Ctc
+                       || modelType == SpeechRecognitionModelType.Online_Nemo_Ctc
+                       || modelType == SpeechRecognitionModelType.Online_Zipformer2Ctc
+                       || modelType == SpeechRecognitionModelType.Online_Tone_Ctc;
+            }
+
             internal static SherpaONNXModuleType GetModuleTypeByModelId(string modelID)
             {
                 if (string.IsNullOrEmpty(modelID))

@@ -857,14 +857,43 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 {
                     modelId = item.modelId,
                     moduleType = item.moduleType,
+                    moduleTypeHint = item.moduleTypeHint,
                     downloadUrl = item.downloadUrl,
                     downloadFileHash = item.downloadFileHash,
+                    modelTypeHint = item.modelTypeHint,
+                    fileBindings = CloneBindings(item.fileBindings),
                     numberOfSpeakers = item.numberOfSpeakers,
                     sampleRate = item.sampleRate,
                 });
             }
 
             return list.ToArray();
+        }
+
+        private static List<SherpaONNXModelFileBinding> CloneBindings(List<SherpaONNXModelFileBinding> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return new List<SherpaONNXModelFileBinding>();
+            }
+
+            var list = new List<SherpaONNXModelFileBinding>(source.Count);
+            for (int i = 0; i < source.Count; i++)
+            {
+                var binding = source[i];
+                if (binding == null)
+                {
+                    continue;
+                }
+
+                list.Add(new SherpaONNXModelFileBinding
+                {
+                    key = binding.key,
+                    path = binding.path
+                });
+            }
+
+            return list;
         }
 
         private static SherpaONNXModelMetadata[] GetFallbackModels(SherpaONNXModuleType moduleType)

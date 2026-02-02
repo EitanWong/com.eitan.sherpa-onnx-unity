@@ -136,6 +136,45 @@ public static class SherpaONNXUnityAPI
         return SherpaONNXEnvironment.GetInt(SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds, @default: 3600);
     }
 
+    /// <summary>
+    /// Reads OS environment variables (SHERPA_ONNX_*) and applies overrides to the runtime store.
+    /// Call this if you change environment variables at runtime and want them to take effect immediately.
+    /// </summary>
+    public static void ApplyEnvironmentOverridesFromProcess()
+    {
+        SherpaONNXRuntimeSettings.ApplyEnvironmentOverridesFromProcess();
+        SherpaLog.ConfigureFromEnvironment();
+    }
+
+    /// <summary>
+    /// Registers a custom model entry at runtime (in-memory only).
+    /// </summary>
+    public static void RegisterCustomModel(SherpaONNXModelMetadata metadata, bool overwriteExisting = true)
+    {
+        SherpaONNXModelRegistry.Instance.RegisterCustomMetadata(metadata, overwriteExisting);
+    }
+
+    /// <summary>
+    /// Registers multiple custom models at runtime (in-memory only).
+    /// </summary>
+    public static void RegisterCustomModels(System.Collections.Generic.IEnumerable<SherpaONNXModelMetadata> models, bool overwriteExisting = true)
+    {
+        if (models == null)
+        {
+            return;
+        }
+
+        foreach (var metadata in models)
+        {
+            if (metadata == null)
+            {
+                continue;
+            }
+
+            SherpaONNXModelRegistry.Instance.RegisterCustomMetadata(metadata, overwriteExisting);
+        }
+    }
+
     public static string SherpaONNXLibVersion => VersionInfo.Version;
     public static string SherpaONNXLibGitDate => VersionInfo.GitDate;
     public static string SherpaONNXLibGitSha1 => VersionInfo.GitSha1;
