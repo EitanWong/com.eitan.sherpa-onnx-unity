@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.2-exp.3** (2025-12-08)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.3-exp.1** (2026-02-05)
 
 </div>
 
@@ -35,25 +35,23 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.2-exp.3 (2025-12-08)
+## 🆕 What's New in v0.1.3-exp.1 (2026-02-05)
 
 ### 🚀 Highlights
-- **Codebase Restructure & Stability Improvements**
-  Major refactoring across multiple subsystems to improve readability, maintainability, and overall architectural robustness.
+- **Customizable Model Preparation Pipeline**
+  New `PrepareOptions`/`PrepareContext`/`PrepareResult` flow with structured error codes and `PrepareAndLoadModelWithResultAsync(...)` for clearer failure handling and rollback.
 
-- **Performance Enhancements**
-  Core modules were optimized to reduce overhead and improve overall runtime responsiveness.
+- **Runtime Overrides for SHERPA_ONNX Settings**
+  `SherpaONNXUnityAPI` now exposes overrides for `SHERPA_ONNX_*` environment variables so you can control downloads and caching at runtime.
 
-- **Updated Sherpa-ONNX Native Library**
-  Upgraded to **v1.12.19**, bringing enhanced compatibility and alignment with the latest upstream improvements.
+- **Custom Model Catalog in the Editor**
+  Define custom model entries and bindings from editor settings for easier local or enterprise model workflows.
 
-- **Editor Window Improvements**
-  Editor UI rendering and interaction performance have been improved for a smoother workflow.
-  Additional UI refinements deliver a more polished and consistent editing experience.
+- **Updated sherpa-onnx v1.12.23 + Expanded ASR Model Types**
+  Native binaries refreshed and `SpeechRecognitionModelType` coverage improved for better model selection.
 
-- **New SherpaONNX Profiler Tool**
-  A dedicated editor utility for **real-time module performance monitoring** and **activity tracing** of Sherpa ONNX components.
-  Includes an integrated logging system to assist with debugging, diagnostics, and performance analysis.
+- **FunASR Initialization Fixes**
+  Stability fixes for FunASR init and safer Unity path resolution on the main thread.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

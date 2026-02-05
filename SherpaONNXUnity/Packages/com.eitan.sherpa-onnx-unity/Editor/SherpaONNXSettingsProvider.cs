@@ -254,6 +254,18 @@ namespace Eitan.SherpaONNXUnity.Editor
                     importButton.style.marginRight = 6;
                     importRow.Add(importButton);
 
+                    var exportButton = new Button(ExportCustomManifest)
+                    {
+                        text = SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsExportButton,
+                            "Export Manifest"),
+                        tooltip = SherpaONNXLocalization.Tr(
+                            SherpaONNXL10n.Settings.CustomModelsExportTooltip,
+                            "Export enabled model entries to a SherpaONNXModelManifest JSON file.")
+                    };
+                    exportButton.style.marginRight = 6;
+                    importRow.Add(exportButton);
+
                     section.Add(importRow);
                     section.Add(CreateCustomCatalogListElement());
 
@@ -585,6 +597,146 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             CreateCustomEntryFromImport(dialogTitle, folder, modelId, moduleType);
+        }
+
+        private void ExportCustomManifest()
+        {
+            EnsureCustomModelsObject();
+            var dialogTitle = SherpaONNXLocalization.Tr(
+                SherpaONNXL10n.Settings.CustomModelsExportDialogTitle,
+                "SherpaONNX");
+
+            var settings = SherpaONNXCustomModelSettingsUtility.LoadOrCreateSettingsAsset();
+            if (settings == null)
+            {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsExportDialogMissing,
+                        "Custom model settings asset not found. Create one at Assets/Resources/SherpaONNXCustomModels.asset."),
+                    "OK");
+                return;
+            }
+
+            var manifest = BuildCustomManifest(settings);
+            if (manifest.models == null || manifest.models.Count == 0)
+            {
+                EditorUtility.DisplayDialog(
+                    dialogTitle,
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsExportDialogEmpty,
+                        "No enabled custom model entries found. Add at least one Model entry."),
+                    "OK");
+                return;
+            }
+
+            var defaultDirectory = Path.GetDirectoryName(Application.dataPath) ?? Application.dataPath;
+            var outputPath = EditorUtility.SaveFilePanel(
+                SherpaONNXLocalization.Tr(
+                    SherpaONNXL10n.Settings.CustomModelsExportDialogSaveTitle,
+                    "Export SherpaONNX Manifest"),
+                defaultDirectory,
+                "manifest",
+                "json");
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                return;
+            }
+
+            var json = JsonUtility.ToJson(manifest, true);
+            File.WriteAllText(outputPath, json);
+            AssetDatabase.Refresh();
+
+            EditorUtility.DisplayDialog(
+                dialogTitle,
+                string.Format(
+                    SherpaONNXLocalization.Tr(
+                        SherpaONNXL10n.Settings.CustomModelsExportDialogSaved,
+                        "Manifest exported:\n{0}"),
+                    outputPath),
+                "OK");
+        }
+
+        private static SherpaONNXModelManifest BuildCustomManifest(SherpaONNXCustomModelSettings settings)
+        {
+            var manifest = new SherpaONNXModelManifest();
+            if (settings == null || settings.Entries == null)
+            {
+                return manifest;
+            }
+
+            for (int i = 0; i < settings.Entries.Count; i++)
+            {
+                var entry = settings.Entries[i];
+                if (entry == null || !entry.enabled || !entry.IsModel)
+                {
+                    continue;
+                }
+
+                var metadata = entry.ToMetadata();
+                if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
+                {
+                    continue;
+                }
+
+                manifest.models.Add(NormalizeMetadata(metadata));
+            }
+
+            return manifest;
+        }
+
+        private static SherpaONNXModelMetadata NormalizeMetadata(SherpaONNXModelMetadata metadata)
+        {
+            if (metadata == null)
+            {
+                return null;
+            }
+
+            return new SherpaONNXModelMetadata
+            {
+                modelId = metadata.modelId?.Trim(),
+                moduleType = metadata.moduleType,
+                moduleTypeHint = metadata.moduleTypeHint?.Trim(),
+                downloadUrl = metadata.downloadUrl?.Trim(),
+                downloadFileHash = metadata.downloadFileHash?.Trim(),
+                modelTypeHint = metadata.modelTypeHint?.Trim(),
+                numberOfSpeakers = metadata.numberOfSpeakers,
+                sampleRate = metadata.sampleRate,
+                fileBindings = NormalizeBindings(metadata.fileBindings)
+            };
+        }
+
+        private static List<SherpaONNXModelFileBinding> NormalizeBindings(List<SherpaONNXModelFileBinding> bindings)
+        {
+            var results = new List<SherpaONNXModelFileBinding>();
+            if (bindings == null)
+            {
+                return results;
+            }
+
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                var binding = bindings[i];
+                if (binding == null)
+                {
+                    continue;
+                }
+
+                var path = binding.path?.Trim();
+                if (binding.key == SherpaONNXModelFileKey.None || string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
+
+                results.Add(new SherpaONNXModelFileBinding
+                {
+                    key = binding.key,
+                    path = path
+                });
+            }
+
+            return results;
         }
 
         private void CreateCustomEntryFromImport(string dialogTitle, string folder, string modelId, SherpaONNXModuleType moduleType)

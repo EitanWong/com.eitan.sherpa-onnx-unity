@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.3-exp.1] - 2026-02-05
+
+### Added
+- Customizable model preparation pipeline with `PrepareOptions`, `PrepareContext`, and `PrepareResult`, plus structured error codes surfaced through `PrepareAndLoadModelWithResultAsync(...)`.
+- Editor support for custom model catalogs and bindings, enabling user-defined model entries in the model manager/settings.
+- Runtime override APIs for `SHERPA_ONNX_*` environment variables via `SherpaONNXUnityAPI` and runtime settings.
+- New Zero-Shot Speech Synthesis sample prompt assets ("Samantha").
+- Additional tests covering prepare rollback and runtime environment overrides.
+
+### Changed
+- Updated sherpa-onnx native dependency to v1.12.23 and refreshed platform binaries.
+- Expanded `SpeechRecognitionModelType` coverage to improve model selection.
+- Model preparation now uses the new result-based API; `PrepareAndLoadModelAsync(...)` is replaced by `PrepareAndLoadModelWithResultAsync(...)`.
+
+### Fixed
+- Resolved FunASR model initialization failures.
+- Guarded Unity path resolution to run on the main thread to avoid threading errors.
+
 ## [0.1.2-exp.3] - 2025-12-08
 
 ### Changed

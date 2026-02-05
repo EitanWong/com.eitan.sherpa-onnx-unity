@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.2-exp.3** (2025-12-07)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.3-exp.1** (2026-02-05)
 
 </div>
 
@@ -35,25 +35,23 @@
 
 ---
 
-## 🆕 v0.1.2-exp.3 更新内容 (2025-12-08)
+## 🆕 v0.1.3-exp.1 更新内容 (2026-02-05)
 
 ### 🚀 本次更新亮点
-- **代码结构全面优化 & 稳定性增强**
-  对多个子系统进行了大规模重构，提升了代码的可读性、可维护性，并增强了整体架构的鲁棒性。
+- **可定制的模型准备流程**
+  新增 `PrepareOptions`/`PrepareContext`/`PrepareResult`，并提供 `PrepareAndLoadModelWithResultAsync(...)` 和结构化错误码，便于失败回滚与诊断。
 
-- **性能优化**
-  优化核心模块以减少开销，整体运行效率进一步提升。
+- **SHERPA_ONNX 运行时设置可覆盖**
+  `SherpaONNXUnityAPI` 暴露 `SHERPA_ONNX_*` 环境变量的运行时覆盖接口，可动态控制下载与缓存策略。
 
-- **更新 Sherpa-ONNX 原生库**
-  升级至 **v1.12.19**，与上游最新版本保持一致，并提升兼容性与功能支持。
+- **编辑器自定义模型目录**
+  可在编辑器设置中定义自定义模型条目与绑定，方便本地或企业模型管理。
 
-- **编辑器窗口优化**
-  提升了编辑器窗口的渲染效率与交互流畅度。
-  对界面细节进行了进一步美化，使整体使用体验更加流畅、统一。
+- **升级 sherpa-onnx v1.12.23 + 扩展 ASR 模型类型**
+  原生二进制已刷新，`SpeechRecognitionModelType` 覆盖更完整，便于模型选择。
 
-- **新增 SherpaONNX Profiler 工具**
-  面向编辑器的新工具，可用于 **Sherpa ONNX 模块的实时性能监控与活动追踪**。
-  集成日志系统，可用于调试、诊断及性能分析。
+- **FunASR 初始化修复**
+  修复 FunASR 初始化失败，并确保 Unity 路径解析在主线程执行，降低线程相关错误。
 
 [📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

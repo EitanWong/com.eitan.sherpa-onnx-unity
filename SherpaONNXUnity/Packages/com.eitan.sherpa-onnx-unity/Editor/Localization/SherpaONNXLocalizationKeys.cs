@@ -118,6 +118,13 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string CustomModelsImportWarnMissingTokens = "settings.customModels.import.warn.missingTokens";
             internal const string CustomModelsImportWarnModuleDefaulted = "settings.customModels.import.warn.moduleDefaulted";
             internal const string CustomModelsImportSuccess = "settings.customModels.import.success";
+            internal const string CustomModelsExportButton = "settings.customModels.export.button";
+            internal const string CustomModelsExportTooltip = "settings.customModels.export.tooltip";
+            internal const string CustomModelsExportDialogTitle = "settings.customModels.export.dialog.title";
+            internal const string CustomModelsExportDialogSaveTitle = "settings.customModels.export.dialog.saveTitle";
+            internal const string CustomModelsExportDialogMissing = "settings.customModels.export.dialog.missing";
+            internal const string CustomModelsExportDialogEmpty = "settings.customModels.export.dialog.empty";
+            internal const string CustomModelsExportDialogSaved = "settings.customModels.export.dialog.saved";
             internal const string CustomModelsDisabledLabel = "settings.customModels.disabled";
             internal const string CustomModelsFieldEntryName = "settings.customModels.field.name";
             internal const string CustomModelsFieldEntryTypeTooltip = "settings.customModels.field.entryType.tooltip";
