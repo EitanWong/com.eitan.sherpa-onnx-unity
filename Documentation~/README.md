@@ -2,21 +2,23 @@
 
 > Bilingual quick reference for the sherpa-onnx Unity package.
 
-## Table of Contents / 目录
+## Table of Contents / Ŀ¼
 - [English Guide](#english-guide)
   - [1. Installation](#1-installation)
   - [2. Quick Start](#2-quick-start)
+  - [2.5 Custom Manifests](#25-custom-manifests)
   - [3. Modules & APIs](#3-modules--apis)
   - [4. Mono Components](#4-mono-components)
   - [5. Samples](#5-samples)
   - [6. Troubleshooting](#6-troubleshooting)
-- [中文指南](#中文指南)
-  - [1. 安装](#1-安装)
-  - [2. 快速上手](#2-快速上手)
-  - [3. 模块与API](#3-模块与api)
-  - [4. 拖拽式组件](#4-拖拽式组件)
-  - [5. 示例场景](#5-示例场景)
-  - [6. 常见问题](#6-常见问题)
+- [����ָ��](#����ָ��)
+  - [1. ��װ](#1-��װ)
+  - [2. ��������](#2-��������)
+  - [2.5 �Զ����嵥](#25-�Զ����嵥)
+  - [3. ģ����API](#3-ģ����api)
+  - [4. ��קʽ���](#4-��קʽ���)
+  - [5. ʾ������](#5-ʾ������)
+  - [6. ��������](#6-��������)
 
 ---
 
@@ -24,7 +26,7 @@
 
 ### 1. Installation
 - Unity 2021.3 LTS or newer.
-- OpenUPM registry (Package Manager → Project Settings):
+- OpenUPM registry (Package Manager �?Project Settings):
   - Name: `OpenUPM`
   - URL: `https://package.openupm.com`
   - Scope: `com.eitan.sherpa-onnx-unity`
@@ -64,7 +66,7 @@
       speed: 1f,
       numSteps: 4);
   ```
-- **Model Manager:** Window → Sherpa ONNX → Model Manager. Use `SherpaONNXUnityAPI.SetGithubProxy("https://your-proxy/")` if downloads are slow.
+- **Model Manager:** Window �?Sherpa ONNX �?Model Manager. Use `SherpaONNXUnityAPI.SetGithubProxy("https://your-proxy/")` if downloads are slow.
 
 #### Runtime configuration API
 These helpers mirror the ScriptableObject/environment keys (e.g., SHERPA_ONNX_AUTO_DOWNLOAD):
@@ -90,16 +92,50 @@ SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
 - `SHERPA_ONNX_LOGGING_LEVEL` (Off|Error|Warning|Info|Verbose|Trace)
 - `SHERPA_ONNX_LOGGING_TRACE_STACKS` (true/false)
 
+### 2.5 Custom Manifests
+Custom manifests let you publish additional models without rebuilding the package. A remote manifest is a JSON file that matches `SherpaONNXModelManifest` and is fetched via HTTP/HTTPS at runtime.
+
+**Minimum JSON structure:**
+```json
+{
+  "models": [
+    {
+      "modelId": "your-model-id",
+      "moduleType": 1,
+      "moduleTypeHint": "SpeechRecognition",
+      "downloadUrl": "https://your.cdn/path/to/model.zip",
+      "downloadFileHash": "sha256-hex",
+      "modelTypeHint": "",
+      "fileBindings": [],
+      "numberOfSpeakers": 0,
+      "sampleRate": 16000
+    }
+  ]
+}
+```
+
+**Field guidance:**
+- `modelId` must be unique and should match your model folder name under `StreamingAssets/sherpa-onnx`.
+- `moduleType` is the numeric `SherpaONNXModuleType` enum value. `moduleTypeHint` is optional but recommended (string enum name) and can override inference.
+- `downloadUrl` should be a direct file URL (zip or model file). HTML pages will fail to download.
+- `downloadFileHash` is the SHA256 of the download file for integrity checks.
+- `fileBindings` maps `SherpaONNXModelFileKey` to filenames (relative to the model folder unless absolute).
+- `modelTypeHint` is optional and can force model type detection (e.g., `Offline_Transducer`, `Vits`, `SileroVad`).
+
+**Editor export tool:**
+- Menu: `SherpaONNX/Custom Models/Export Manifest...`
+- Exports all enabled **Model** entries from `SherpaONNXCustomModels.asset` into a `manifest.json` file.
+- Host the exported JSON on any HTTP/HTTPS server (GitHub raw, S3, CDN, etc.) and paste the URL into a **Remote Manifest** entry.
 ### 3. Modules & APIs
-- `SpeechRecognition` — `SpeechTranscriptionAsync(float[] samples, int sampleRate)` supports online/offline models automatically.
-- `Punctuation` — `AddPunctuationAsync(string text)` to restore punctuation/casing.
-- `KeywordSpotting` — configure keywords in constructor; call `DetectAsync(samples, sampleRate)` and subscribe to `OnKeywordDetected`.
-- `AudioTagging` — `TagAsync(samples, sampleRate, topK)` for one-shot or `TagStreamAsync(...)` for rolling windows.
-- `SpeechEnhancement` — `EnhanceAsync` / `EnhanceSync` / Span overloads for in-place denoise.
-- `SpeechSynthesis` — `GenerateAsync(text, voiceId, speed)`, `GenerateWithProgressCallbackAsync(...)`, `GenerateZeroShotAsync(text, promptText, promptClip, speed, steps)`.
-- `SpokenLanguageIdentification` — `IdentifyAsync(float[] samples, int sampleRate)` or `IdentifyAsync(AudioClip clip)`.
-- `VoiceActivityDetection` — tune thresholds, call `StreamDetect(float[] samples)`, listen to `OnSpeechSegmentDetected` / `OnSpeakingStateChanged`.
-- `SherpaONNXUnityAPI` — set GitHub proxy, clear checksum cache, query model IDs by module type.
+- `SpeechRecognition` �?`SpeechTranscriptionAsync(float[] samples, int sampleRate)` supports online/offline models automatically.
+- `Punctuation` �?`AddPunctuationAsync(string text)` to restore punctuation/casing.
+- `KeywordSpotting` �?configure keywords in constructor; call `DetectAsync(samples, sampleRate)` and subscribe to `OnKeywordDetected`.
+- `AudioTagging` �?`TagAsync(samples, sampleRate, topK)` for one-shot or `TagStreamAsync(...)` for rolling windows.
+- `SpeechEnhancement` �?`EnhanceAsync` / `EnhanceSync` / Span overloads for in-place denoise.
+- `SpeechSynthesis` �?`GenerateAsync(text, voiceId, speed)`, `GenerateWithProgressCallbackAsync(...)`, `GenerateZeroShotAsync(text, promptText, promptClip, speed, steps)`.
+- `SpokenLanguageIdentification` �?`IdentifyAsync(float[] samples, int sampleRate)` or `IdentifyAsync(AudioClip clip)`.
+- `VoiceActivityDetection` �?tune thresholds, call `StreamDetect(float[] samples)`, listen to `OnSpeechSegmentDetected` / `OnSpeakingStateChanged`.
+- `SherpaONNXUnityAPI` �?set GitHub proxy, clear checksum cache, query model IDs by module type.
 
 ### 4. Mono Components
 - **Audio Input:** `SherpaMicrophoneInput` (auto-start option, `ChunkReady` event, preferred device, mono downmix).
@@ -132,23 +168,23 @@ SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
 ## 中文指南
 
 ### 1. 安装
-- 需要 Unity 2021.3 LTS 及以上版本。
-- OpenUPM 注册表（Package Manager → Project Settings）：
+- 需�?Unity 2021.3 LTS 及以上版本�?
+- OpenUPM 注册表（Package Manager �?Project Settings）：
   - Name: `OpenUPM`
   - URL: `https://package.openupm.com`
   - Scope: `com.eitan.sherpa-onnx-unity`
   - 参考图：`images/package-manager-scopes.png`
-- Git URL（实验分支）：
+- Git URL（实验分支）�?
   ```
   https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm
   ```
 
-### 2. 快速上手
+### 2. 快速上�?
 - **拖拽式组件：**
-  1) 在场景中添加 `SherpaMicrophoneInput`。  
-  2) 添加对应模块组件（如 `SpeechRecognizerComponent`、`AudioTaggingComponent`、`VoiceActivityDetectionComponent`、`ZeroShotSpeechSynthesisComponent`），填写 `Model Id`。  
-  3) 订阅 UnityEvents（`TranscriptionReadyEvent`、`ClipReadyEvent`、`OnKeywordDetected` 等）。  
-  4) 进入 Play；模型加载完成后自动开始采集。
+  1) 在场景中添加 `SherpaMicrophoneInput`�? 
+  2) 添加对应模块组件（如 `SpeechRecognizerComponent`、`AudioTaggingComponent`、`VoiceActivityDetectionComponent`、`ZeroShotSpeechSynthesisComponent`），填写 `Model Id`�? 
+  3) 订阅 UnityEvents（`TranscriptionReadyEvent`、`ClipReadyEvent`、`OnKeywordDetected` 等）�? 
+  4) 进入 Play；模型加载完成后自动开始采集�?
 - **脚本示例（ASR）：**
   ```csharp
   var asr = new SpeechRecognition("your-model-id", 16000);
@@ -162,21 +198,21 @@ SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
       Debug.LogError($"Prepare failed: {result.ErrorCode} - {result.Message}");
   }
   ```
-  高级用法：通过 `PrepareOptions` 自定义验证/下载/解压/清理步骤。
+  高级用法：通过 `PrepareOptions` 自定义验�?下载/解压/清理步骤�?
 - **脚本示例（零样本 TTS）：**
   ```csharp
   var tts = new SpeechSynthesis("zipvoice-demo", -1);
   var clip = await tts.GenerateZeroShotAsync(
-      "你好，世界",
+      "你好，世�?,
       "参考提示词",
       promptClip,
       speed: 1f,
       numSteps: 4);
   ```
-- **模型管理器：** 菜单 Window → Sherpa ONNX → Model Manager。如下载缓慢，可调用 `SherpaONNXUnityAPI.SetGithubProxy("https://你的代理/")`。
+- **模型管理器：** 菜单 Window �?Sherpa ONNX �?Model Manager。如下载缓慢，可调用 `SherpaONNXUnityAPI.SetGithubProxy("https://你的代理/")`�?
 
-#### 运行时配置 API
-这些接口与 ScriptableObject/环境变量保持一致（如 SHERPA_ONNX_AUTO_DOWNLOAD）：
+#### 运行时配�?API
+这些接口�?ScriptableObject/环境变量保持一致（�?SHERPA_ONNX_AUTO_DOWNLOAD）：
 ```csharp
 SherpaONNXUnityAPI.SetAutoDownloadModels(false);
 SherpaONNXUnityAPI.SetFetchLatestManifest(true);
@@ -184,37 +220,71 @@ SherpaONNXUnityAPI.SetChecksumCacheDirectory(
     Path.Combine(Application.persistentDataPath, "SherpaCache"));
 SherpaONNXUnityAPI.SetChecksumCacheTtlSeconds(0);
 ```
-如果在运行时修改进程环境变量，请调用：
+如果在运行时修改进程环境变量，请调用�?
 ```csharp
 SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
 ```
 **进程环境变量（最高优先级）：**
-- `SHERPA_ONNX_FETCH_LATEST_MANIFEST`（true/false）
-- `SHERPA_ONNX_AUTO_DOWNLOAD`（true/false）
-- `SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS`（true/false）
-- `SHERPA_ONNX_GITHUB_PROXY`（url）
+- `SHERPA_ONNX_FETCH_LATEST_MANIFEST`（true/false�?
+- `SHERPA_ONNX_AUTO_DOWNLOAD`（true/false�?
+- `SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS`（true/false�?
+- `SHERPA_ONNX_GITHUB_PROXY`（url�?
 - `SHERPA_ONNX_CHECKSUM_CACHE_DIR`（绝对路径）
-- `SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS`（int）
-- `SHERPA_ONNX_LOGGING_ENABLED`（true/false）
-- `SHERPA_ONNX_LOGGING_LEVEL`（Off|Error|Warning|Info|Verbose|Trace）
-- `SHERPA_ONNX_LOGGING_TRACE_STACKS`（true/false）
+- `SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS`（int�?
+- `SHERPA_ONNX_LOGGING_ENABLED`（true/false�?
+- `SHERPA_ONNX_LOGGING_LEVEL`（Off|Error|Warning|Info|Verbose|Trace�?
+- `SHERPA_ONNX_LOGGING_TRACE_STACKS`（true/false�?
 
+### 2.5 �Զ����嵥
+�Զ����嵥�����ڲ����´��������·�������ģ�͡�Զ���嵥��һ������ `SherpaONNXModelManifest` �ṹ�� JSON �ļ�������ʱͨ�� HTTP/HTTPS ��ȡ��
+
+**��С JSON �ṹ��**
+```json
+{
+  "models": [
+    {
+      "modelId": "your-model-id",
+      "moduleType": 1,
+      "moduleTypeHint": "SpeechRecognition",
+      "downloadUrl": "https://your.cdn/path/to/model.zip",
+      "downloadFileHash": "sha256-hex",
+      "modelTypeHint": "",
+      "fileBindings": [],
+      "numberOfSpeakers": 0,
+      "sampleRate": 16000
+    }
+  ]
+}
+```
+
+**�ֶ�˵����**
+- `modelId` ����Ψһ���������� `StreamingAssets/sherpa-onnx` �µ�ģ��Ŀ¼��һ�¡�
+- `moduleType` Ϊ `SherpaONNXModuleType` ����ֵö�٣�`moduleTypeHint` Ϊ��ѡ���ַ���ö�������Ƽ����
+- `downloadUrl` ����Ϊֱ����zip ��ģ���ļ�����ָ����ҳ�ᵼ������ʧ�ܡ�
+- `downloadFileHash` Ϊ�����ļ��� SHA256������У�������ԡ�
+- `fileBindings` ���ڽ� `SherpaONNXModelFileKey` ӳ�䵽�����ļ��������·�������·������
+- `modelTypeHint` ��ѡ������ǿ��ģ������ʶ���� `Offline_Transducer`��`Vits`��`SileroVad`����
+
+**�༭���������ߣ�**
+- �˵���`SherpaONNX/Custom Models/Export Manifest...`
+- ��� `SherpaONNXCustomModels.asset` ���������õ� **Model** ��Ŀ����Ϊ `manifest.json`��
+- �������� JSON �йܵ����� HTTP/HTTPS ����GitHub raw��S3��CDN �ȣ����ٰ� URL � **Remote Manifest** �
 ### 3. 模块与API
-- `SpeechRecognition` — `SpeechTranscriptionAsync` 支持在线/离线模型自动切换。
-- `Punctuation` — `AddPunctuationAsync` 为识别文本补充标点与大小写。
-- `KeywordSpotting` — 构造时配置关键词，调用 `DetectAsync`，监听 `OnKeywordDetected`。
-- `AudioTagging` — `TagAsync`（整段）或 `TagStreamAsync`（滑窗）获取 TopK 标签。
-- `SpeechEnhancement` — `EnhanceAsync` / `EnhanceSync` / Span 重载，原地降噪。
-- `SpeechSynthesis` — `GenerateAsync`、`GenerateWithProgressCallbackAsync`、`GenerateZeroShotAsync`（文本+提示词音频，支持调整速度与步数）。
-- `SpokenLanguageIdentification` — `IdentifyAsync(float[]/AudioClip)` 识别语种。
-- `VoiceActivityDetection` — 调整阈值，调用 `StreamDetect`，监听 `OnSpeechSegmentDetected` 与 `OnSpeakingStateChanged`。
-- `SherpaONNXUnityAPI` — 设置 GitHub 代理、清理校验缓存、按模块类型查询模型 ID。
+- `SpeechRecognition` �?`SpeechTranscriptionAsync` 支持在线/离线模型自动切换�?
+- `Punctuation` �?`AddPunctuationAsync` 为识别文本补充标点与大小写�?
+- `KeywordSpotting` �?构造时配置关键词，调用 `DetectAsync`，监�?`OnKeywordDetected`�?
+- `AudioTagging` �?`TagAsync`（整段）�?`TagStreamAsync`（滑窗）获取 TopK 标签�?
+- `SpeechEnhancement` �?`EnhanceAsync` / `EnhanceSync` / Span 重载，原地降噪�?
+- `SpeechSynthesis` �?`GenerateAsync`、`GenerateWithProgressCallbackAsync`、`GenerateZeroShotAsync`（文�?提示词音频，支持调整速度与步数）�?
+- `SpokenLanguageIdentification` �?`IdentifyAsync(float[]/AudioClip)` 识别语种�?
+- `VoiceActivityDetection` �?调整阈值，调用 `StreamDetect`，监�?`OnSpeechSegmentDetected` �?`OnSpeakingStateChanged`�?
+- `SherpaONNXUnityAPI` �?设置 GitHub 代理、清理校验缓存、按模块类型查询模型 ID�?
 
-### 4. 拖拽式组件
-- **音频输入：** `SherpaMicrophoneInput`（自动启动、`ChunkReady` 事件、首选设备、单声道混音）。
-- **基础类：** `SherpaModuleComponent<T>` 管理模块生命周期与反馈；`SherpaAudioStreamingComponent<T>` 负责音频绑定与自动捕获。
-- **可直接使用的组件：** `SpeechRecognizerComponent`、`OfflineSpeechRecognizerComponent`、`VoiceActivityDetectionComponent`、`KeywordSpottingComponent`、`PunctuationComponent`、`AudioTaggingComponent`、`SpeechEnhancementComponent`、`SpeechSynthesizerComponent`、`ZeroShotSpeechSynthesisComponent`、`SpokenLanguageIdentificationComponent`。
-- **编辑器：** Inspector 支持中英文，提供模型选择、麦克风选择及快捷菜单。
+### 4. 拖拽式组�?
+- **音频输入�?* `SherpaMicrophoneInput`（自动启动、`ChunkReady` 事件、首选设备、单声道混音）�?
+- **基础类：** `SherpaModuleComponent<T>` 管理模块生命周期与反馈；`SherpaAudioStreamingComponent<T>` 负责音频绑定与自动捕获�?
+- **可直接使用的组件�?* `SpeechRecognizerComponent`、`OfflineSpeechRecognizerComponent`、`VoiceActivityDetectionComponent`、`KeywordSpottingComponent`、`PunctuationComponent`、`AudioTaggingComponent`、`SpeechEnhancementComponent`、`SpeechSynthesizerComponent`、`ZeroShotSpeechSynthesisComponent`、`SpokenLanguageIdentificationComponent`�?
+- **编辑器：** Inspector 支持中英文，提供模型选择、麦克风选择及快捷菜单�?
 
 ### 5. 示例场景
 - `Samples~/Collection/RealtimeSpeechRecognition/RealtimeSpeechRecognition.unity`
@@ -229,9 +299,13 @@ SherpaONNXUnityAPI.ApplyEnvironmentOverridesFromProcess();
 - `Samples~/Collection/ZeroShotSpeechSynthesis/ZeroShotSpeechSynthesis.unity`
 
 ### 6. 常见问题
-- **下载缓慢/失败**：使用代理或通过 Model Manager 重新下载。
-- **模型缺失**：确认 `Model Id` 存在并下载成功（查看反馈信息）。
-- **麦克风无声**：检查系统权限并在 `SherpaMicrophoneInput` 设置 `preferredDevice`。
-- **性能过高**：降低 VAD/降噪阈值，或在不用时调用 `DisposeModule()` 释放模块。
-- **关闭自动下载**：设置环境变量 `SHERPA_ONNX_AUTO_DOWNLOAD=false`，或在运行时设置资产中取消勾选 `AutoDownloadModels`，仅使用本地模型（参考 issue #4）。
-- **清单刷新/代理**：`SHERPA_ONNX_FETCH_LATEST_MANIFEST=true/false` 控制清单拉取，`SHERPA_ONNX_GITHUB_PROXY` 配置代理，可用 `SherpaONNXUnityAPI.ClearChecksumCache()` 清理校验缓存。
+- **下载缓慢/失败**：使用代理或通过 Model Manager 重新下载�?
+- **模型缺失**：确�?`Model Id` 存在并下载成功（查看反馈信息）�?
+- **麦克风无�?*：检查系统权限并�?`SherpaMicrophoneInput` 设置 `preferredDevice`�?
+- **性能过高**：降�?VAD/降噪阈值，或在不用时调�?`DisposeModule()` 释放模块�?
+- **关闭自动下载**：设置环境变�?`SHERPA_ONNX_AUTO_DOWNLOAD=false`，或在运行时设置资产中取消勾�?`AutoDownloadModels`，仅使用本地模型（参�?issue #4）�?
+- **清单刷新/代理**：`SHERPA_ONNX_FETCH_LATEST_MANIFEST=true/false` 控制清单拉取，`SHERPA_ONNX_GITHUB_PROXY` 配置代理，可�?`SherpaONNXUnityAPI.ClearChecksumCache()` 清理校验缓存�?
+
+
+
+
