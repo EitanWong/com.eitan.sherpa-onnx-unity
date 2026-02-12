@@ -60,8 +60,6 @@ namespace Eitan.SherpaONNXUnity.Tests
         [Test]
         public async Task Prepare_RemovesModelDirectory_OnDownloadFailure()
         {
-            SherpaUtils.Prepare.EnsureUnityThreadInfrastructure();
-
             SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, bool.TrueString);
             SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, bool.TrueString);
 
@@ -107,8 +105,6 @@ namespace Eitan.SherpaONNXUnity.Tests
         [Test]
         public async Task Prepare_MissingHash_AllowsWhenNotForced()
         {
-            SherpaUtils.Prepare.EnsureUnityThreadInfrastructure();
-
             var prevForceHash = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation);
             var prevFetchLatest = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest);
             var prevAutoDownload = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels);
@@ -145,8 +141,6 @@ namespace Eitan.SherpaONNXUnity.Tests
         [Test]
         public async Task Prepare_MissingHash_FailsWhenForced()
         {
-            SherpaUtils.Prepare.EnsureUnityThreadInfrastructure();
-
             var prevForceHash = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation);
             var prevFetchLatest = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest);
             var prevAutoDownload = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels);

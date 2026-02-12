@@ -71,8 +71,6 @@ namespace Eitan.SherpaONNXUnity.Runtime
         public SherpaONNXModule(string modelID, int sampleRate = 16000, SherpaONNXFeedbackReporter reporter = null, bool startImmediately = true, int maxConcurrentTasks = 0)
         {
             _rootThreadContext = SynchronizationContext.Current;
-            // Pre-warm Unity download infrastructure on the main thread so background tasks can safely use UnityWebRequest.
-            SherpaUtils.Prepare.EnsureUnityThreadInfrastructure();
             runner = new TaskRunner(maxConcurrentTasks);
 
             _modelId = modelID ?? throw new ArgumentNullException(nameof(modelID));

@@ -28,45 +28,49 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     return;
                 }
 
+                if (!IsUnityMainThread())
+                {
+                    throw new InvalidOperationException("SherpaPathResolver.PrimeUnityPaths must be called from the Unity main thread before background work uses Application paths.");
+                }
+
+                string persistentPath;
+                string streamingAssetsPath;
                 try
                 {
-                    s_PersistentDataPath = UnityEngine.Application.persistentDataPath;
-                    s_StreamingAssetsPath = UnityEngine.Application.streamingAssetsPath;
+                    persistentPath = UnityEngine.Application.persistentDataPath;
+                    streamingAssetsPath = UnityEngine.Application.streamingAssetsPath;
                 }
                 catch (Exception ex)
                 {
                     throw new InvalidOperationException("SherpaPathResolver.PrimeUnityPaths must be called from the Unity main thread before background work uses Application paths.", ex);
                 }
-                finally
+
+                if (string.IsNullOrEmpty(persistentPath) || string.IsNullOrEmpty(streamingAssetsPath))
                 {
-                    s_Primed = true;
+                    throw new InvalidOperationException("Unity application paths are unavailable. Ensure Unity main thread initialization completed before model loading.");
                 }
+
+                s_PersistentDataPath = persistentPath;
+                s_StreamingAssetsPath = streamingAssetsPath;
+                s_Primed = true;
             }
         }
 
-        internal static bool TryGetPersistentDataPath(out string persistentPath)
-        {
-            EnsurePrimedIfMainThread();
-            persistentPath = s_PersistentDataPath;
-            return !string.IsNullOrEmpty(persistentPath);
-        }
-
-        private static string GetPersistentDataPath()
+        internal static string GetPersistentDataPath()
         {
             EnsurePrimedIfMainThread();
             if (string.IsNullOrEmpty(s_PersistentDataPath))
             {
-                throw new InvalidOperationException("Application.persistentDataPath is unavailable. Call SherpaPathResolver.PrimeUnityPaths from the Unity main thread (e.g., Awake) before any background tasks.");
+                throw new InvalidOperationException("Application.persistentDataPath is unavailable. Ensure it is read on the Unity main thread before background tasks use model paths.");
             }
             return s_PersistentDataPath;
         }
-
         private static string GetStreamingAssetsPath()
         {
             EnsurePrimedIfMainThread();
             if (string.IsNullOrEmpty(s_StreamingAssetsPath))
             {
-                throw new InvalidOperationException("Application.streamingAssetsPath is unavailable. Call SherpaPathResolver.PrimeUnityPaths from the Unity main thread (e.g., Awake) before any background tasks.");
+                throw new InvalidOperationException("Application.streamingAssetsPath is unavailable. Ensure it is read on the Unity main thread before background tasks use model paths.");
             }
             return s_StreamingAssetsPath;
         }

@@ -2435,21 +2435,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             string persistentPath;
             try
             {
-                if (!SherpaPathResolver.TryGetPersistentDataPath(out persistentPath))
-                {
-                    SherpaLog.Warning("[SherpaFileDownloader] Application.persistentDataPath is not available on this thread. Call SherpaPathResolver.PrimeUnityPaths on the main thread before downloading.", category: "Download");
-                    return;
-                }
+                persistentPath = SherpaPathResolver.GetPersistentDataPath();
             }
             catch (Exception ex)
             {
                 SherpaLog.Warning($"[SherpaFileDownloader] Unable to query Application.persistentDataPath on this thread: {ex.Message}", category: "Download");
                 return;
-            }
-
-            if (string.IsNullOrEmpty(persistentPath))
-            {
-                throw new InvalidOperationException("Application.persistentDataPath is not available on this platform.");
             }
 
             var fullPath = Path.GetFullPath(filePath);
