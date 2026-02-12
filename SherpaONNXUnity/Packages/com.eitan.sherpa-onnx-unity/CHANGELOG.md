@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.3-exp.2] - 2026-02-12
+
+### Added
+- Added runtime controls for model preparation and download security: download-attempt timeout, insecure-download toggle, and strict hash-validation toggle (ScriptableObject settings, environment overrides, and `SherpaONNXUnityAPI` accessors).
+- Expanded built-in ASR model metadata catalog with additional sherpa-onnx model IDs to improve out-of-box coverage.
+- Added tests for new environment overrides and strict/non-strict hash-validation behavior in model preparation.
+
+### Changed
+- Improved model preparation metadata validation flow to support async hash population with cancellation-aware networking.
+- Updated editor settings UX and localization wiring for runtime properties, including the new download/hash security options and more robust localized property rendering.
+
+### Fixed
+- Fixed strict-hash validation messaging and non-strict fallback behavior so missing hashes can proceed with explicit warnings instead of hard failure when strict mode is disabled.
+
 ## [0.1.3-exp.1] - 2026-02-05
 
 ### Added

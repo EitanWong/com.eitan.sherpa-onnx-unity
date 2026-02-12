@@ -24,8 +24,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private const double RETRY_MULTIPLIER = 2.0;
             private const long MIN_DISK_SPACE_GB = 2;
             private const long BYTES_PER_MB = 1024 * 1024;
-            private const string ALLOW_INSECURE_DOWNLOAD_KEY = "SherpaONNX.AllowInsecureModelDownload";
-            private const string FORCE_HASH_VALIDATION_KEY = "SherpaONNX.ForceModelHashValidation";
+            private const int DEFAULT_DOWNLOAD_ATTEMPT_TIMEOUT_SECONDS = 600;
 
             private static readonly string[] COMPRESSED_EXTENSIONS = {
             ".zip", ".tar", ".tar.gz", ".tar.bz2", ".rar", ".7z",
@@ -117,14 +116,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
 
-                if (!ValidateMetadata(metadata, reporter, out var validationError, out var validationMessage))
+                var validation = await ValidateMetadataAsync(metadata, reporter, cancellationToken).ConfigureAwait(false);
+                if (!validation.IsValid)
                 {
-                    var errorCode = validationError == PrepareErrorCode.None
+                    var errorCode = validation.ErrorCode == PrepareErrorCode.None
                         ? PrepareErrorCode.MetadataMissing
-                        : validationError;
-                    var message = string.IsNullOrWhiteSpace(validationMessage)
+                        : validation.ErrorCode;
+                    var message = string.IsNullOrWhiteSpace(validation.ErrorMessage)
                         ? "Invalid or missing model metadata."
-                        : validationMessage;
+                        : validation.ErrorMessage;
                     ReportSafe(reporter, new FailedFeedback(metadata, message, errorCode: errorCode));
                     return PrepareResult.Fail(errorCode, message);
                 }
@@ -333,39 +333,36 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             #region Private Methods
 
-            private static bool ValidateMetadata(
+            private static async Task<(bool IsValid, PrepareErrorCode ErrorCode, string ErrorMessage)> ValidateMetadataAsync(
                 SherpaONNXModelMetadata metadata,
                 SherpaONNXFeedbackReporter reporter,
-                out PrepareErrorCode errorCode,
-                out string errorMessage)
+                CancellationToken cancellationToken)
             {
-                errorCode = PrepareErrorCode.None;
-                errorMessage = string.Empty;
                 var forceHashValidation = IsHashValidationForced();
 
                 if (metadata == null)
                 {
-                    errorCode = PrepareErrorCode.MetadataMissing;
-                    errorMessage = "No model metadata supplied.";
+                    var errorCode = PrepareErrorCode.MetadataMissing;
+                    var errorMessage = "No model metadata supplied.";
                     ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
                     SherpaLog.Error("[Prepare] Metadata missing for prepare call.", category: "Prepare");
-                    return false;
+                    return (false, errorCode, errorMessage);
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.modelId))
                 {
-                    errorCode = PrepareErrorCode.ModelIdMissing;
-                    errorMessage = "Model metadata is missing a modelId.";
+                    var errorCode = PrepareErrorCode.ModelIdMissing;
+                    var errorMessage = "Model metadata is missing a modelId.";
                     ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
                     SherpaLog.Error("[Prepare] Model metadata is missing modelId.", category: "Prepare");
-                    return false;
+                    return (false, errorCode, errorMessage);
                 }
 
                 if (string.IsNullOrWhiteSpace(metadata.downloadUrl))
                 {
                     ReportSafe(reporter, new VerifyFeedback(metadata, message: $"{metadata.modelId}: Download URL is missing. Assuming local-only model.", filePath: SherpaPathResolver.GetModelRootPath(metadata.modelId)));
                     SherpaLog.Warning($"[Prepare] {metadata.modelId} has empty download URL. Assuming local-only model.", category: "Prepare");
-                    return true;
+                    return (true, PrepareErrorCode.None, string.Empty);
                 }
 
                 // We no longer require listing specific model file names or per-file hashes.
@@ -376,10 +373,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     if (downloadHashMissing)
                     {
-                        errorCode = PrepareErrorCode.HashMissing;
-                        errorMessage = $"{metadata.modelId}: Download file hash is required when {FORCE_HASH_VALIDATION_KEY}=true.";
+                        var errorCode = PrepareErrorCode.HashMissing;
+                        var forceHashKey = SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation;
+                        var errorMessage = $"{metadata.modelId}: Download file hash is required when {forceHashKey}=true.";
                         ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
-                        return false;
+                        return (false, errorCode, errorMessage);
                     }
                 }
                 else
@@ -387,23 +385,27 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     if (downloadHashMissing)
                     {
                         // Try to populate the hash from checksum.txt to prevent using corrupted archives.
-                        if (SherpaONNXConstants.TryPopulateDownloadHash(metadata))
+                        if (await SherpaONNXConstants.TryPopulateDownloadHashAsync(metadata, cancellationToken).ConfigureAwait(false))
                         {
                             downloadHashMissing = string.IsNullOrWhiteSpace(metadata.downloadFileHash);
                         }
 
                         if (downloadHashMissing)
                         {
-                            errorCode = PrepareErrorCode.HashMissing;
-                            errorMessage = $"{metadata.modelId}: Missing download hash; cannot safely load model. Please provide downloadFileHash or set {FORCE_HASH_VALIDATION_KEY}=true to enforce verification.";
-                            ReportSafe(reporter, new FailedFeedback(metadata, message: errorMessage, errorCode: errorCode));
-                            SherpaLog.Warning(errorMessage);
-                            return false;
+                            var forceHashKey = SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation;
+                            var warningMessage = $"{metadata.modelId}: Missing download hash. Proceeding without hash verification. Set {forceHashKey}=true to require hashes.";
+                            ReportSafe(
+                                reporter,
+                                new VerifyFeedback(
+                                    metadata,
+                                    message: warningMessage,
+                                    filePath: SherpaPathResolver.GetModelRootPath(metadata.modelId)));
+                            SherpaLog.Warning($"[Prepare] {warningMessage}", category: "Prepare");
                         }
                     }
                 }
 
-                return true;
+                return (true, PrepareErrorCode.None, string.Empty);
             }
 
             private static ModelPaths GetModelPaths(SherpaONNXModelMetadata metadata)
@@ -542,13 +544,21 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
 
             private static bool IsInsecureDownloadAllowed() =>
-                SherpaONNXEnvironment.GetBool(ALLOW_INSECURE_DOWNLOAD_KEY, @default: false);
+                SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload, @default: false);
 
             private static bool IsHashValidationForced() =>
-                SherpaONNXEnvironment.GetBool(FORCE_HASH_VALIDATION_KEY, @default: false);
+                SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, @default: false);
 
             private static bool IsAutoDownloadEnabled() =>
                 SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, @default: true);
+
+            private static int GetDownloadAttemptTimeoutSeconds()
+            {
+                var timeoutSeconds = SherpaONNXEnvironment.GetInt(
+                    SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds,
+                    @default: DEFAULT_DOWNLOAD_ATTEMPT_TIMEOUT_SECONDS);
+                return Math.Max(0, timeoutSeconds);
+            }
 
             private static bool IsAutoDeleteCorruptedEnabled() =>
                 SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, @default: true);

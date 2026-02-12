@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.3-exp.1** (2026-02-05)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.3-exp.2** (2026-02-12)
 
 </div>
 
@@ -35,23 +35,20 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.3-exp.1 (2026-02-05)
+## 🆕 What's New in v0.1.3-exp.2 (2026-02-12)
 
 ### 🚀 Highlights
-- **Customizable Model Preparation Pipeline**
-  New `PrepareOptions`/`PrepareContext`/`PrepareResult` flow with structured error codes and `PrepareAndLoadModelWithResultAsync(...)` for clearer failure handling and rollback.
+- **New Runtime Download & Security Controls**
+  Added timeout, insecure-download, and strict hash-validation controls via runtime settings, environment variables, and `SherpaONNXUnityAPI`.
 
-- **Runtime Overrides for SHERPA_ONNX Settings**
-  `SherpaONNXUnityAPI` now exposes overrides for `SHERPA_ONNX_*` environment variables so you can control downloads and caching at runtime.
+- **Expanded Built-in ASR Model Catalog**
+  Added a large batch of additional sherpa-onnx ASR model IDs for broader out-of-box model coverage.
 
-- **Custom Model Catalog in the Editor**
-  Define custom model entries and bindings from editor settings for easier local or enterprise model workflows.
+- **Preparation Validation Behavior Refinement**
+  Model preparation now supports async hash population with cancellation-aware networking and clearer strict/non-strict hash validation behavior.
 
-- **Updated sherpa-onnx v1.12.23 + Expanded ASR Model Types**
-  Native binaries refreshed and `SpeechRecognitionModelType` coverage improved for better model selection.
-
-- **FunASR Initialization Fixes**
-  Stability fixes for FunASR init and safer Unity path resolution on the main thread.
+- **Editor Settings UX & Localization Improvements**
+  Runtime settings fields were improved for localized rendering and better handling of the new preparation/download options.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

@@ -279,6 +279,518 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     modelId = "sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-int8-2025-11-12",
                 },
 
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "icefall-asr-zipformer-streaming-wenetspeech-20230615-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-en-wenet-gigaspeech",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-en-wenet-librispeech",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-fire-red-asr-large-zh_en-fp16-2025-02-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-funasr-nano-2025-12-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-funasr-nano-fp16-2025-12-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-funasr-nano-int8-2025-12-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-lstm-en-2023-02-17",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-lstm-zh-2023-02-20",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-medasr-ctc-en-2025-12-25",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-medasr-ctc-en-int8-2025-12-25",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-ctc-punct-giga-am-v3-russian-2025-12-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-en-24500",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-en-24500-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-es-1424",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-ctc-es-1424-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-transducer-be-de-en-es-fr-hr-it-pl-ru-uk-20k",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-transducer-en-24500",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-transducer-en-de-es-fr-14288",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-fast-conformer-transducer-es-1424",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-fp16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-parakeet_tdt_transducer_110m-en-36000",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-1040ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-1040ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-480ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-480ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-1040ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-1040ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-480ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-480ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-80ms",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-80ms-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-stt_pt_fastconformer_hybrid_large_pc",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-stt_pt_fastconformer_hybrid_large_pc-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-giga-am-v3-russian-2025-12-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-stt_pt_fastconformer_hybrid_large_pc",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemo-transducer-stt_pt_fastconformer_hybrid_large_pc-int8",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-nemotron-speech-streaming-en-0.6b-int8-2026-01-14",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-int8-2026-02-05",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-v2-2026-02-05",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-v2-int8-2026-02-05",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-sense-voice-funasr-nano-2025-12-17",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-sense-voice-funasr-nano-int8-2025-12-17",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2025-09-09",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-conformer-en-2023-05-09",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-conformer-zh-2023-05-23",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-t-one-russian-2025-09-08",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ar_en_id_ja_ru_th_vi_zh-2025-02-10",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-multi-zh-hans-fp16-2023-12-13",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-multi-zh-hans-int8-2023-12-13",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-small-2024-03-18",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-zh-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-zh-fp16-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-zh-int8-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-zh-xlarge-fp16-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-ctc-zh-xlarge-int8-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-en-2023-02-21-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-en-2023-06-26-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-es-kroko-2025-08-06",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-fr-2023-04-14-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-fr-kroko-2025-08-06",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-korean-2024-06-16-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-multi-zh-hans-2023-12-12-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-multi-zh-hans-2023-12-13",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-multi-zh-hans-fp16-2023-12-13",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-multi-zh-hans-int8-2023-12-13",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-small-ru-vosk-2025-08-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23-mobile",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-zh-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-streaming-zipformer-zh-fp16-2025-06-30",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-telespeech-ctc-zh-2024-06-04",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-wenetspeech-wu-u2pp-conformer-ctc-zh-2026-02-03",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-wenetspeech-wu-u2pp-conformer-ctc-zh-int8-2026-02-03",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-wenetspeech-yue-u2pp-conformer-ctc-zh-en-cantonese-2025-09-10",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-wenetspeech-yue-u2pp-conformer-ctc-zh-en-cantonese-int8-2025-09-10",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-base.en",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-distil-large-v2",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-distil-large-v3",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-distil-large-v3.5",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-distil-medium.en",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-large",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-large-v1",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-large-v2",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-large-v3",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-medium-aishell",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-whisper-turbo",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zh-wenet-aishell",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zh-wenet-aishell2",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zh-wenet-wenetspeech",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ctc-en-2023-10-02",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ctc-small-zh-2025-07-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ctc-small-zh-fp16-2025-07-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ctc-small-zh-int8-2025-07-16",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230830-large-punct-case",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230830-medium-punct-case",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230830-small-punct-case",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230926-large",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230926-medium",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-en-libriheavy-20230926-small",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ja-en-reazonspeech-2025-01-17",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ru-2025-04-20",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-ru-int8-2025-04-20",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-vi-30M-2026-02-09",
+                },
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-zipformer-vi-30M-int8-2026-02-09",
+                },
             };
 
             public static readonly SherpaONNXModelMetadata[] VAD_MODELS_METADATA_TABLES = new[]
@@ -1892,4 +2404,3 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
         }
     }
 }
-

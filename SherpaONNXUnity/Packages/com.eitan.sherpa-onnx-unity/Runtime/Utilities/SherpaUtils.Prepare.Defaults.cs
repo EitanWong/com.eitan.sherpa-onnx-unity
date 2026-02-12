@@ -118,6 +118,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 int retryCount,
                 CancellationToken cancellationToken)
             {
+                CancellationTokenSource attemptTimeoutCts = null;
+                var effectiveCancellationToken = cancellationToken;
                 try
                 {
                     if (!IsAutoDownloadEnabled())
@@ -141,6 +143,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                             : resolveError;
                     }
 
+                    var timeoutSeconds = GetDownloadAttemptTimeoutSeconds();
+                    if (timeoutSeconds > 0)
+                    {
+                        attemptTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        attemptTimeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+                        effectiveCancellationToken = attemptTimeoutCts.Token;
+                    }
+
                     using var downloader = new SherpaFileDownloader(metadata);
                     SherpaLog.Verbose($"[Prepare] Downloading '{metadata.modelId}' from {downloadUri} -> {downloadFilePath}", category: "Prepare");
 
@@ -151,10 +161,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                     try
                     {
-                        var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: cancellationToken).ConfigureAwait(false);
+                        var downloadSuccess = await downloader.DownloadAsync(downloadUri.ToString(), downloadFilePath, cancellationToken: effectiveCancellationToken).ConfigureAwait(false);
 
-                        if (downloader.WasCanceled || cancellationToken.IsCancellationRequested)
+                        if (downloader.WasCanceled || effectiveCancellationToken.IsCancellationRequested)
                         {
+                            if (IsTimeoutCancellation(attemptTimeoutCts, cancellationToken))
+                            {
+                                return ReportDownloadTimeout(metadata, reporter, timeoutSeconds);
+                            }
+
                             ReportSafe(reporter, new CancelFeedback(metadata, message: "Download canceled."));
                             return PrepareErrorCode.Cancelled;
                         }
@@ -163,7 +178,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         {
                             var unityError = MapDownloaderFailure(downloader);
                             SherpaLog.Warning($"[{metadata.modelId}] UnityWebRequest download failed. Falling back to HttpClient.");
-                            var httpError = await DownloadWithHttpClientAsync(metadata, downloadUri.ToString(), downloadFilePath, reporter, cancellationToken).ConfigureAwait(false);
+                            var httpError = await DownloadWithHttpClientAsync(metadata, downloadUri.ToString(), downloadFilePath, reporter, effectiveCancellationToken).ConfigureAwait(false);
                             if (httpError == PrepareErrorCode.None)
                             {
                                 return PrepareErrorCode.None;
@@ -192,6 +207,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
                 catch (OperationCanceledException ex)
                 {
+                    if (IsTimeoutCancellation(attemptTimeoutCts, cancellationToken))
+                    {
+                        var timeoutSeconds = GetDownloadAttemptTimeoutSeconds();
+                        return ReportDownloadTimeout(metadata, reporter, timeoutSeconds);
+                    }
+
                     ReportSafe(reporter, new CancelFeedback(metadata, message: ex.Message, exception: ex));
                     throw;
                 }
@@ -202,6 +223,29 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     SherpaLog.Exception(ex, category: "Prepare", message: $"[Prepare] Download pipeline crashed for {metadata?.modelId ?? "<unknown>"}.");
                     return PrepareErrorCode.DownloadFailed;
                 }
+                finally
+                {
+                    attemptTimeoutCts?.Dispose();
+                }
+            }
+
+            private static bool IsTimeoutCancellation(CancellationTokenSource timeoutCts, CancellationToken callerCancellationToken)
+            {
+                return timeoutCts != null &&
+                       timeoutCts.IsCancellationRequested &&
+                       !callerCancellationToken.IsCancellationRequested;
+            }
+
+            private static PrepareErrorCode ReportDownloadTimeout(
+                SherpaONNXModelMetadata metadata,
+                SherpaONNXFeedbackReporter reporter,
+                int timeoutSeconds)
+            {
+                var key = SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds;
+                var message = $"Download timeout after {timeoutSeconds}s for {metadata.modelId}. You can adjust timeout via '{key}'.";
+                ReportSafe(reporter, new FailedFeedback(metadata, message: message, errorCode: PrepareErrorCode.DownloadTimeout));
+                SherpaLog.Warning($"[Prepare] {message}", category: "Prepare");
+                return PrepareErrorCode.DownloadTimeout;
             }
 
             private static PrepareErrorCode MapDownloaderFailure(SherpaFileDownloader downloader)
@@ -492,12 +536,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     if (!IsInsecureDownloadAllowed())
                     {
-                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"Rejected insecure download scheme '{resolvedUri.Scheme}'. Set {ALLOW_INSECURE_DOWNLOAD_KEY}=true to override.", errorCode: PrepareErrorCode.DownloadInsecureRejected));
+                        var allowInsecureKey = SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload;
+                        ReportSafe(reporter, new FailedFeedback(metadata, message: $"Rejected insecure download scheme '{resolvedUri.Scheme}'. Set {allowInsecureKey}=true to override.", errorCode: PrepareErrorCode.DownloadInsecureRejected));
                         errorCode = PrepareErrorCode.DownloadInsecureRejected;
                         return false;
                     }
 
-                    ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Allowing insecure download for {resolvedUri} because {ALLOW_INSECURE_DOWNLOAD_KEY}=true.", filePath: resolvedUri.ToString()));
+                    var insecureEnabledKey = SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload;
+                    ReportSafe(reporter, new VerifyFeedback(metadata, message: $"Allowing insecure download for {resolvedUri} because {insecureEnabledKey}=true.", filePath: resolvedUri.ToString()));
                     SherpaLog.Warning($"[{metadata.modelId}] Allowing insecure download for {resolvedUri} (override enabled).");
                 }
 

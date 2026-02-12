@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.3-exp.1** (2026-02-05)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.3-exp.2** (2026-02-12)
 
 </div>
 
@@ -35,23 +35,20 @@
 
 ---
 
-## 🆕 v0.1.3-exp.1 更新内容 (2026-02-05)
+## 🆕 v0.1.3-exp.2 更新内容 (2026-02-12)
 
 ### 🚀 本次更新亮点
-- **可定制的模型准备流程**
-  新增 `PrepareOptions`/`PrepareContext`/`PrepareResult`，并提供 `PrepareAndLoadModelWithResultAsync(...)` 和结构化错误码，便于失败回滚与诊断。
+- **新增下载与安全运行时控制项**
+  新增下载超时、不安全下载开关、强制哈希校验开关，支持通过运行时设置、环境变量和 `SherpaONNXUnityAPI` 统一控制。
 
-- **SHERPA_ONNX 运行时设置可覆盖**
-  `SherpaONNXUnityAPI` 暴露 `SHERPA_ONNX_*` 环境变量的运行时覆盖接口，可动态控制下载与缓存策略。
+- **内置 ASR 模型目录大幅扩展**
+  补充大量 sherpa-onnx ASR 模型 ID，提升开箱可选模型覆盖范围。
 
-- **编辑器自定义模型目录**
-  可在编辑器设置中定义自定义模型条目与绑定，方便本地或企业模型管理。
+- **模型准备校验流程优化**
+  支持可取消的异步哈希填充，并改进严格/非严格哈希校验行为与反馈信息。
 
-- **升级 sherpa-onnx v1.12.23 + 扩展 ASR 模型类型**
-  原生二进制已刷新，`SpeechRecognitionModelType` 覆盖更完整，便于模型选择。
-
-- **FunASR 初始化修复**
-  修复 FunASR 初始化失败，并确保 Unity 路径解析在主线程执行，降低线程相关错误。
+- **编辑器设置体验与本地化改进**
+  运行时设置项的本地化渲染与布局表现优化，对新增下载/校验相关选项支持更完善。
 
 [📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

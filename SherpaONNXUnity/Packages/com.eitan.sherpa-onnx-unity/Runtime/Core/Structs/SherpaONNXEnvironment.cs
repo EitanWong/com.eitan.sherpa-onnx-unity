@@ -245,6 +245,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
             public const string FetchLatestManifest = "SherpaONNX.FetchLatestManifest"; // bool, default true
             public const string AutoDownloadModels = "SherpaONNX.AutoDownloadModels";   // bool, default true
             public const string AutoDeleteCorruptedModels = "SherpaONNX.AutoDeleteCorruptedModels"; // bool, default true
+            public const string DownloadAttemptTimeoutSeconds = "SherpaONNX.DownloadAttemptTimeoutSeconds"; // int, default 600; 0 disables timeout
+            public const string AllowInsecureModelDownload = "SherpaONNX.AllowInsecureModelDownload"; // bool, default false
+            public const string ForceModelHashValidation = "SherpaONNX.ForceModelHashValidation"; // bool, default false
             public const string ChecksumCacheDirectory = "SherpaONNX.ChecksumCacheDirectory"; // optional override path
             public const string ChecksumCacheTtlSeconds = "SherpaONNX.ChecksumCacheTtlSeconds"; // int, default 3600 (1h)
             public const string LoggingEnabled = "SherpaONNX.Logging.Enabled"; // bool, default true

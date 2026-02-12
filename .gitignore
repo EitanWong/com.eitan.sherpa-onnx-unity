@@ -83,6 +83,8 @@ _ReSharper.Caches
 artifacts/
 StreamingAssets/
 StreamingAssets.meta
+StreamingAssets~/
+StreamingAssets~.meta
 
 # ====================== #
 # Project Specific Links #
