@@ -128,9 +128,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected virtual void Awake()
         {
-            // Capture Unity SystemInfo on the main thread to avoid background-thread access errors.
-            ThreadingUtils.PrimeUnityInfo();
-            SherpaPathResolver.PrimeUnityPaths();
 
             unityContext = SynchronizationContext.Current ?? new SynchronizationContext();
             unityThreadId = Thread.CurrentThread.ManagedThreadId;
