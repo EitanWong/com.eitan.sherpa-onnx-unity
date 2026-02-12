@@ -58,7 +58,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
         internal static string GetPersistentDataPath()
         {
-            EnsurePrimedIfMainThread();
             if (string.IsNullOrEmpty(s_PersistentDataPath))
             {
                 throw new InvalidOperationException("Application.persistentDataPath is unavailable. Ensure it is read on the Unity main thread before background tasks use model paths.");
@@ -67,20 +66,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
         }
         private static string GetStreamingAssetsPath()
         {
-            EnsurePrimedIfMainThread();
             if (string.IsNullOrEmpty(s_StreamingAssetsPath))
             {
                 throw new InvalidOperationException("Application.streamingAssetsPath is unavailable. Ensure it is read on the Unity main thread before background tasks use model paths.");
             }
             return s_StreamingAssetsPath;
-        }
-
-        private static void EnsurePrimedIfMainThread()
-        {
-            if (!s_Primed && IsUnityMainThread())
-            {
-                PrimeUnityPaths();
-            }
         }
 
         private static bool IsUnityMainThread()

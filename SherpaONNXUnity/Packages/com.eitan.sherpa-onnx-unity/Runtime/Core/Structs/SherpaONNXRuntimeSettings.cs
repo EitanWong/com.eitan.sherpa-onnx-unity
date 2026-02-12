@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Eitan.SherpaONNXUnity.Runtime.Utilities;
 using UnityEngine;
 
 namespace Eitan.SherpaONNXUnity.Runtime
@@ -355,6 +356,10 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
         private static void Apply()
         {
+            // Capture Unity SystemInfo on the main thread to avoid background-thread access errors.
+            ThreadingUtils.PrimeUnityInfo();
+            SherpaPathResolver.PrimeUnityPaths();
+
             var asset = SherpaONNXRuntimeSettings.LoadFromResources();
             if (asset != null)
             {
