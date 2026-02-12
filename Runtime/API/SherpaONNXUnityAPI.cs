@@ -137,6 +137,57 @@ public static class SherpaONNXUnityAPI
     }
 
     /// <summary>
+    /// Sets the per-attempt model download timeout in seconds. Values below zero are clamped to zero.
+    /// Zero disables the timeout safeguard.
+    /// </summary>
+    public static void SetDownloadAttemptTimeoutSeconds(int seconds)
+    {
+        var clamped = Math.Max(0, seconds);
+        SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds, clamped);
+    }
+
+    /// <summary>
+    /// Returns the per-attempt model download timeout in seconds.
+    /// </summary>
+    public static int GetDownloadAttemptTimeoutSeconds()
+    {
+        return SherpaONNXEnvironment.GetInt(SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds, @default: 600);
+    }
+
+    /// <summary>
+    /// Allows or rejects insecure model download URLs (e.g., http://).
+    /// Keep disabled unless you trust the network and source.
+    /// </summary>
+    public static void SetAllowInsecureModelDownload(bool enabled)
+    {
+        SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload, enabled ? bool.TrueString : bool.FalseString);
+    }
+
+    /// <summary>
+    /// Returns whether insecure model download URLs are allowed.
+    /// </summary>
+    public static bool GetAllowInsecureModelDownload()
+    {
+        return SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload, @default: false);
+    }
+
+    /// <summary>
+    /// Enables strict model hash enforcement. When enabled, missing downloadFileHash fails preparation.
+    /// </summary>
+    public static void SetForceModelHashValidation(bool enabled)
+    {
+        SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, enabled ? bool.TrueString : bool.FalseString);
+    }
+
+    /// <summary>
+    /// Returns whether strict model hash enforcement is enabled.
+    /// </summary>
+    public static bool GetForceModelHashValidation()
+    {
+        return SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, @default: false);
+    }
+
+    /// <summary>
     /// Reads OS environment variables (SHERPA_ONNX_*) and applies overrides to the runtime store.
     /// Call this if you change environment variables at runtime and want them to take effect immediately.
     /// </summary>

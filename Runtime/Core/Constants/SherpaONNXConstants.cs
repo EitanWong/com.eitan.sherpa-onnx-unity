@@ -518,6 +518,25 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
         /// </summary>
         public static bool TryPopulateDownloadHash(SherpaONNXModelMetadata metadata)
         {
+            try
+            {
+                return TryPopulateDownloadHashAsync(metadata, CancellationToken.None)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> TryPopulateDownloadHashAsync(
+            SherpaONNXModelMetadata metadata,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {
                 return false;
@@ -570,13 +589,13 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             var url = ApplyGithubProxyIfAny(rawUrl);
             try
             {
-                var (ok, content) = TryHttpGetTextAsync(url, 20000).GetAwaiter().GetResult();
+                var (ok, content) = await TryHttpGetTextAsync(url, 20000, cancellationToken).ConfigureAwait(false);
                 if (!ok || string.IsNullOrWhiteSpace(content))
                 {
                     // Fallback to direct URL if proxied failed
                     if (!string.Equals(url, rawUrl, StringComparison.OrdinalIgnoreCase))
                     {
-                        (ok, content) = TryHttpGetTextAsync(rawUrl, 20000).GetAwaiter().GetResult();
+                        (ok, content) = await TryHttpGetTextAsync(rawUrl, 20000, cancellationToken).ConfigureAwait(false);
                     }
                 }
 
@@ -585,6 +604,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     WriteChecksumCache(tag, content);
                     return TryResolveFromContent(content);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
@@ -656,7 +679,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
         }
 
-        private static async Task<(bool ok, string text)> TryHttpGetTextAsync(string url, int timeoutMs = 20000)
+        private static async Task<(bool ok, string text)> TryHttpGetTextAsync(
+            string url,
+            int timeoutMs = 20000,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -665,18 +691,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     uwr.downloadHandler = new DownloadHandlerBuffer();
                     var op = uwr.SendWebRequest();
 
-                    var tcs = new TaskCompletionSource<bool>();
-                    using (var cts = new CancellationTokenSource(timeoutMs))
+                    var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    using (var timeoutCts = new CancellationTokenSource(timeoutMs))
+                    using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken))
                     {
                         op.completed += _ => tcs.TrySetResult(true);
-                        using (cts.Token.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: true))
+                        using (linkedCts.Token.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false))
                         {
                             try
                             {
-                                await tcs.Task.ConfigureAwait(true);
+                                await tcs.Task.ConfigureAwait(false);
                             }
                             catch (TaskCanceledException)
                             {
+                                if (cancellationToken.IsCancellationRequested)
+                                {
+                                    throw new OperationCanceledException(cancellationToken);
+                                }
+
                                 uwr.Abort();
                                 SherpaLog.Warning($"TryHttpGetTextAsync timeout: {url}");
                                 return (false, string.Empty);
@@ -694,6 +726,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     }
                     return (true, uwr.downloadHandler.text ?? string.Empty);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

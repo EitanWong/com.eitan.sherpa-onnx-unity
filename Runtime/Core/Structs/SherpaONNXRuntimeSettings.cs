@@ -16,6 +16,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         internal const string FetchLatestManifestPropertyName = nameof(_fetchLatestManifest);
         internal const string AutoDownloadModelsPropertyName = nameof(_autoDownloadModels);
         internal const string AutoDeleteCorruptedModelsPropertyName = nameof(_autoDeleteCorruptedModels);
+        internal const string DownloadAttemptTimeoutSecondsPropertyName = nameof(_downloadAttemptTimeoutSeconds);
+        internal const string AllowInsecureModelDownloadPropertyName = nameof(_allowInsecureModelDownload);
+        internal const string ForceModelHashValidationPropertyName = nameof(_forceModelHashValidation);
         internal const string GithubProxyUrlPropertyName = nameof(_githubProxyUrl);
         internal const string ChecksumCacheDirectoryPropertyName = nameof(_checksumCacheDirectory);
         internal const string ChecksumCacheTtlSecondsPropertyName = nameof(_checksumCacheTtlSeconds);
@@ -26,6 +29,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         internal const string FetchLatestManifestEnvironmentVariable = "SHERPA_ONNX_FETCH_LATEST_MANIFEST";
         internal const string AutoDownloadModelsEnvironmentVariable = "SHERPA_ONNX_AUTO_DOWNLOAD";
         internal const string AutoDeleteCorruptedModelsEnvironmentVariable = "SHERPA_ONNX_AUTO_DELETE_CORRUPTED_MODELS";
+        internal const string DownloadAttemptTimeoutSecondsEnvironmentVariable = "SHERPA_ONNX_DOWNLOAD_ATTEMPT_TIMEOUT_SECONDS";
+        internal const string AllowInsecureModelDownloadEnvironmentVariable = "SHERPA_ONNX_ALLOW_INSECURE_MODEL_DOWNLOAD";
+        internal const string ForceModelHashValidationEnvironmentVariable = "SHERPA_ONNX_FORCE_MODEL_HASH_VALIDATION";
         internal const string ChecksumCacheDirectoryEnvironmentVariable = "SHERPA_ONNX_CHECKSUM_CACHE_DIR";
         internal const string ChecksumCacheTtlSecondsEnvironmentVariable = "SHERPA_ONNX_CHECKSUM_CACHE_TTL_SECONDS";
         internal const string LoggingEnabledEnvironmentVariable = "SHERPA_ONNX_LOGGING_ENABLED";
@@ -43,6 +49,18 @@ namespace Eitan.SherpaONNXUnity.Runtime
         [SerializeField]
         [Tooltip("When enabled (default), corrupted model artifacts are deleted after initialization or verification failures.")]
         private bool _autoDeleteCorruptedModels = true;
+
+        [SerializeField]
+        [Tooltip("Per-download-attempt timeout in seconds for model auto-download. 0 disables timeout. Default: 600.")]
+        private int _downloadAttemptTimeoutSeconds = 600;
+
+        [SerializeField]
+        [Tooltip("Allow insecure model download URLs (http). Disabled by default for security.")]
+        private bool _allowInsecureModelDownload = false;
+
+        [SerializeField]
+        [Tooltip("Require download file hashes for model preparation. If enabled, missing hash causes prepare to fail.")]
+        private bool _forceModelHashValidation = false;
 
         [SerializeField]
         [Tooltip("Optional proxy (e.g., https://ghfast.top/) prepended to github.com downloads. Environment variable SHERPA_ONNX_GITHUB_PROXY takes priority.")]
@@ -111,6 +129,12 @@ namespace Eitan.SherpaONNXUnity.Runtime
             SetBool(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, _fetchLatestManifest);
             SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, _autoDownloadModels);
             SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, _autoDeleteCorruptedModels);
+            var downloadAttemptTimeoutSeconds = Mathf.Max(0, _downloadAttemptTimeoutSeconds);
+            SherpaONNXEnvironment.Set(
+                SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds,
+                downloadAttemptTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload, _allowInsecureModelDownload);
+            SetBool(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, _forceModelHashValidation);
             ApplyGithubProxyValue(ResolveProxyValue(_githubProxyUrl));
             SetStringOrClear(
                 SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory,
@@ -141,6 +165,16 @@ namespace Eitan.SherpaONNXUnity.Runtime
             ApplyBoolEnvironmentOverride(
                 AutoDeleteCorruptedModelsEnvironmentVariable,
                 SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels);
+            ApplyIntEnvironmentOverride(
+                DownloadAttemptTimeoutSecondsEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds,
+                minimum: 0);
+            ApplyBoolEnvironmentOverride(
+                AllowInsecureModelDownloadEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload);
+            ApplyBoolEnvironmentOverride(
+                ForceModelHashValidationEnvironmentVariable,
+                SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation);
             ApplyBoolEnvironmentOverride(
                 LoggingEnabledEnvironmentVariable,
                 SherpaONNXEnvironment.BuiltinKeys.LoggingEnabled);

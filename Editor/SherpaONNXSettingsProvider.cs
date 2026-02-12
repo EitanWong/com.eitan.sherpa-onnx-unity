@@ -21,6 +21,8 @@ namespace Eitan.SherpaONNXUnity.Editor
     internal sealed class SherpaONNXSettingsProvider : SettingsProvider
     {
         private const string kPath = "Project/SherpaONNX";
+        private const string kPropertyFieldLabelClassName = "unity-property-field__label";
+        private const string kPropertyFieldInputClassName = "unity-property-field__input";
         private static readonly SherpaONNXEditorLanguage[] kLanguageOptions =
             (SherpaONNXEditorLanguage[])Enum.GetValues(typeof(SherpaONNXEditorLanguage));
 
@@ -153,42 +155,72 @@ namespace Eitan.SherpaONNXUnity.Editor
                 "Runtime Environment Defaults",
                 section =>
                 {
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.FetchLatestManifestPropertyName,
                         SherpaONNXL10n.Settings.FetchLatestLabel,
                         "Fetch latest manifest before loading models",
                         SherpaONNXL10n.Settings.FetchLatestTooltip,
                         "If disabled, registry lookups rely on cached checksum.txt content."));
 
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.AutoDownloadModelsPropertyName,
                         SherpaONNXL10n.Settings.AutoDownloadLabel,
                         "Automatically download missing models",
                         SherpaONNXL10n.Settings.AutoDownloadTooltip,
                         "Disable to enforce offline/manual installations. Verification still runs."));
 
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
+                        SherpaONNXRuntimeSettings.DownloadAttemptTimeoutSecondsPropertyName,
+                        SherpaONNXL10n.Settings.DownloadAttemptTimeoutLabel,
+                        "Model download attempt timeout (seconds)",
+                        SherpaONNXL10n.Settings.DownloadAttemptTimeoutTooltip,
+                        "Default: 600. Set 0 to disable timeout. Increase to 1800+ on slow networks."));
+
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
+                        SherpaONNXRuntimeSettings.AllowInsecureModelDownloadPropertyName,
+                        SherpaONNXL10n.Settings.AllowInsecureDownloadLabel,
+                        "Allow insecure model download (http)",
+                        SherpaONNXL10n.Settings.AllowInsecureDownloadTooltip,
+                        "Disabled by default. Enable only in trusted/internal networks."));
+
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
+                        SherpaONNXRuntimeSettings.ForceModelHashValidationPropertyName,
+                        SherpaONNXL10n.Settings.ForceHashValidationLabel,
+                        "Force model hash validation",
+                        SherpaONNXL10n.Settings.ForceHashValidationTooltip,
+                        "When enabled, missing downloadFileHash causes prepare to fail."));
+
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.AutoDeleteCorruptedModelsPropertyName,
                         SherpaONNXL10n.Settings.AutoDeleteCorruptedLabel,
                         "Auto-delete corrupted models",
                         SherpaONNXL10n.Settings.AutoDeleteCorruptedTooltip,
                         "When enabled, corrupted model folders are deleted after initialization or verification failures."));
 
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.GithubProxyUrlPropertyName,
                         SherpaONNXL10n.Settings.GithubProxyLabel,
                         "GitHub proxy URL (optional)",
                         SherpaONNXL10n.Settings.GithubProxyTooltip,
                         "Base URL prepended to github.com downloads, e.g., https://ghfast.top/. Leave empty to disable."));
 
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.ChecksumCacheDirectoryPropertyName,
                         SherpaONNXL10n.Settings.CacheDirectoryLabel,
                         "Checksum cache directory (optional)",
                         SherpaONNXL10n.Settings.CacheDirectoryTooltip,
                         "Absolute directory for checksum.txt cache files. Leave blank to use the temporary cache path."));
 
-                    section.Add(CreatePropertyField(
+                    section.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.ChecksumCacheTtlSecondsPropertyName,
                         SherpaONNXL10n.Settings.CacheTtlLabel,
                         "Checksum cache TTL (seconds)",
@@ -289,7 +321,8 @@ namespace Eitan.SherpaONNXUnity.Editor
                 "Logging",
                 section =>
                 {
-                    var loggingEnabledField = CreatePropertyField(
+                    var loggingEnabledField = CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.LoggingEnabledPropertyName,
                         SherpaONNXL10n.Settings.LoggingEnabledLabel,
                         "Enable SherpaONNX logging",
@@ -299,14 +332,16 @@ namespace Eitan.SherpaONNXUnity.Editor
 
                     var loggingDetails = new VisualElement();
                     loggingDetails.style.marginLeft = 4;
-                    loggingDetails.Add(CreatePropertyField(
+                    loggingDetails.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.LoggingLevelPropertyName,
                         SherpaONNXL10n.Settings.LoggingLevelLabel,
                         "Minimum log level",
                         SherpaONNXL10n.Settings.LoggingLevelTooltip,
                         "Trace emits detailed call stacks for initialization and model calls."));
 
-                    loggingDetails.Add(CreatePropertyField(
+                    loggingDetails.Add(CreateIMGUIPropertyField(
+                        _runtimeSettingsObject,
                         SherpaONNXRuntimeSettings.LoggingTraceStacksPropertyName,
                         SherpaONNXL10n.Settings.LoggingTraceLabel,
                         "Trace level includes call stacks",
@@ -1083,21 +1118,29 @@ namespace Eitan.SherpaONNXUnity.Editor
 
         private void DrawRuntimeProperty(string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
         {
+            var prop = _runtimeSettingsObject?.FindProperty(propertyName);
+            if (prop == null)
+            {
+                return;
+            }
+
             var content = new GUIContent(
                 SherpaONNXLocalization.Tr(labelKey, labelFallback),
                 SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback));
-            EditorGUILayout.PropertyField(_runtimeSettingsObject.FindProperty(propertyName), content);
+            DrawSerializedPropertyWithLocalizedTooltip(prop, content);
         }
 
         private PropertyField CreatePropertyField(string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
         {
             var prop = _runtimeSettingsObject.FindProperty(propertyName);
+            var tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback);
             var field = new PropertyField(
                 prop,
                 SherpaONNXLocalization.Tr(labelKey, labelFallback))
             {
-                tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback)
+                tooltip = tooltip
             };
+            ApplyLocalizedPropertyFieldTooltip(field, tooltip);
             field.Bind(_runtimeSettingsObject);
             field.style.marginBottom = 4;
             return field;
@@ -1111,16 +1154,63 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             var prop = serializedObject.FindProperty(propertyName);
+            var tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback);
             var field = new PropertyField(
                 prop,
                 SherpaONNXLocalization.Tr(labelKey, labelFallback))
             {
-                tooltip = SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback)
+                tooltip = tooltip
             };
+            ApplyLocalizedPropertyFieldTooltip(field, tooltip);
             field.Bind(serializedObject);
             field.style.marginBottom = 4;
             field.style.flexShrink = 0;
             return field;
+        }
+
+        private static void ApplyLocalizedPropertyFieldTooltip(PropertyField field, string tooltip)
+        {
+            if (field == null)
+            {
+                return;
+            }
+
+            void Apply()
+            {
+                ApplyTooltipRecursive(field, tooltip);
+
+                // Keep explicit targeting for compatibility with older UI Toolkit hierarchies.
+                var label = field.Q<Label>(className: kPropertyFieldLabelClassName);
+                if (label != null)
+                {
+                    label.tooltip = tooltip;
+                }
+
+                var input = field.Q<VisualElement>(className: kPropertyFieldInputClassName);
+                if (input != null)
+                {
+                    input.tooltip = tooltip;
+                }
+            }
+
+            Apply();
+            field.RegisterCallback<AttachToPanelEvent>(_ => field.schedule.Execute(Apply));
+            field.RegisterCallback<GeometryChangedEvent>(_ => Apply());
+        }
+
+        private static void ApplyTooltipRecursive(VisualElement element, string tooltip)
+        {
+            if (element == null)
+            {
+                return;
+            }
+
+            element.tooltip = tooltip;
+            var hierarchy = element.hierarchy;
+            for (var i = 0; i < hierarchy.childCount; i++)
+            {
+                ApplyTooltipRecursive(hierarchy[i], tooltip);
+            }
         }
 
         private IMGUIContainer CreateIMGUIPropertyField(SerializedObject serializedObject, string propertyName, string labelKey, string labelFallback, string tooltipKey, string tooltipFallback)
@@ -1142,13 +1232,132 @@ namespace Eitan.SherpaONNXUnity.Editor
                 var content = new GUIContent(
                     SherpaONNXLocalization.Tr(labelKey, labelFallback),
                     SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback));
-                EditorGUILayout.PropertyField(prop, content, true);
+                DrawSerializedPropertyWithLocalizedTooltip(prop, content, GetUnifiedSettingsPropertyLabelWidth());
                 serializedObject.ApplyModifiedProperties();
             });
 
             container.style.marginBottom = 4;
+            container.style.flexGrow = 1;
             container.style.flexShrink = 0;
             return container;
+        }
+
+        private static void DrawSerializedPropertyWithLocalizedTooltip(SerializedProperty prop, GUIContent content, float preferredLabelWidth = -1f)
+        {
+            if (prop == null)
+            {
+                return;
+            }
+
+            var previousLabelWidth = EditorGUIUtility.labelWidth;
+            var desiredLabelWidth = preferredLabelWidth > 0f
+                ? preferredLabelWidth
+                : CalculateLocalizedLabelWidth(content);
+            if (desiredLabelWidth > previousLabelWidth)
+            {
+                EditorGUIUtility.labelWidth = desiredLabelWidth;
+            }
+
+            try
+            {
+                EditorGUI.BeginChangeCheck();
+                switch (prop.propertyType)
+                {
+                    case SerializedPropertyType.Boolean:
+                    {
+                        var next = EditorGUILayout.Toggle(content, prop.boolValue);
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            prop.boolValue = next;
+                        }
+                        return;
+                    }
+                    case SerializedPropertyType.Integer:
+                    {
+                        var next = EditorGUILayout.IntField(content, prop.intValue);
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            prop.intValue = next;
+                        }
+                        return;
+                    }
+                    case SerializedPropertyType.String:
+                    {
+                        var next = EditorGUILayout.TextField(content, prop.stringValue);
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            prop.stringValue = next;
+                        }
+                        return;
+                    }
+                    case SerializedPropertyType.Enum:
+                    {
+                        var next = EditorGUILayout.Popup(content, prop.enumValueIndex, prop.enumDisplayNames);
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            prop.enumValueIndex = next;
+                        }
+                        return;
+                    }
+                    default:
+                        EditorGUILayout.PropertyField(prop, content, includeChildren: true);
+                        EditorGUI.EndChangeCheck();
+                        return;
+                }
+            }
+            finally
+            {
+                EditorGUIUtility.labelWidth = previousLabelWidth;
+            }
+        }
+
+        private static float CalculateLocalizedLabelWidth(GUIContent content)
+        {
+            if (content == null || string.IsNullOrEmpty(content.text))
+            {
+                return EditorGUIUtility.labelWidth;
+            }
+
+            var measured = EditorStyles.label.CalcSize(new GUIContent(content.text)).x + 24f;
+            var maxAllowed = Mathf.Max(220f, EditorGUIUtility.currentViewWidth * 0.62f);
+            return Mathf.Clamp(measured, 220f, maxAllowed);
+        }
+
+        private static float GetUnifiedSettingsPropertyLabelWidth()
+        {
+            var labels = new[]
+            {
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.FetchLatestLabel, "Fetch latest manifest before loading models"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.AutoDownloadLabel, "Automatically download missing models"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.DownloadAttemptTimeoutLabel, "Model download attempt timeout (seconds)"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.AllowInsecureDownloadLabel, "Allow insecure model download (http)"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.ForceHashValidationLabel, "Force model hash validation"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.AutoDeleteCorruptedLabel, "Auto-delete corrupted models"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.GithubProxyLabel, "GitHub proxy URL (optional)"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.CacheDirectoryLabel, "Checksum cache directory (optional)"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.CacheTtlLabel, "Checksum cache TTL (seconds)"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.LoggingEnabledLabel, "Enable SherpaONNX logging"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.LoggingLevelLabel, "Minimum log level"),
+                SherpaONNXLocalization.Tr(SherpaONNXL10n.Settings.LoggingTraceLabel, "Trace level includes call stacks")
+            };
+
+            var widest = 220f;
+            foreach (var label in labels)
+            {
+                if (string.IsNullOrEmpty(label))
+                {
+                    continue;
+                }
+
+                var width = EditorStyles.label.CalcSize(new GUIContent(label)).x + 24f;
+                if (width > widest)
+                {
+                    widest = width;
+                }
+            }
+
+            var maxAllowed = Mathf.Max(220f, EditorGUIUtility.currentViewWidth * 0.62f);
+            return Mathf.Clamp(widest, 220f, maxAllowed);
         }
 
         private VisualElement CreateCustomCatalogListElement()
@@ -1185,6 +1394,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             toggleField.RegisterCallback<SerializedPropertyChangeEvent>(_ => SyncVisibility());
+            toggleField.schedule.Execute(SyncVisibility).Every(120);
             SyncVisibility();
         }
 
@@ -1289,6 +1499,24 @@ namespace Eitan.SherpaONNXUnity.Editor
                         "Automatically download missing models",
                         SherpaONNXL10n.Settings.AutoDownloadTooltip,
                         "Disable this to keep manual/offline installations untouched.");
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.DownloadAttemptTimeoutSecondsPropertyName,
+                        SherpaONNXL10n.Settings.DownloadAttemptTimeoutLabel,
+                        "Model download attempt timeout (seconds)",
+                        SherpaONNXL10n.Settings.DownloadAttemptTimeoutTooltip,
+                        "Default: 600. Set 0 to disable timeout. Increase to 1800+ on slow networks.");
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.AllowInsecureModelDownloadPropertyName,
+                        SherpaONNXL10n.Settings.AllowInsecureDownloadLabel,
+                        "Allow insecure model download (http)",
+                        SherpaONNXL10n.Settings.AllowInsecureDownloadTooltip,
+                        "Disabled by default. Enable only in trusted/internal networks.");
+                    DrawRuntimeProperty(
+                        SherpaONNXRuntimeSettings.ForceModelHashValidationPropertyName,
+                        SherpaONNXL10n.Settings.ForceHashValidationLabel,
+                        "Force model hash validation",
+                        SherpaONNXL10n.Settings.ForceHashValidationTooltip,
+                        "When enabled, missing downloadFileHash causes prepare to fail.");
                     DrawRuntimeProperty(
                         SherpaONNXRuntimeSettings.AutoDeleteCorruptedModelsPropertyName,
                         SherpaONNXL10n.Settings.AutoDeleteCorruptedLabel,

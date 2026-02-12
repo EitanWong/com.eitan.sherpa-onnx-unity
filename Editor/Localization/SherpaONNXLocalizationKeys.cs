@@ -84,6 +84,12 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string AutoDownloadTooltip = "settings.autoDownload.tooltip";
             internal const string AutoDeleteCorruptedLabel = "settings.autoDeleteCorrupted.label";
             internal const string AutoDeleteCorruptedTooltip = "settings.autoDeleteCorrupted.tooltip";
+            internal const string DownloadAttemptTimeoutLabel = "settings.downloadAttemptTimeout.label";
+            internal const string DownloadAttemptTimeoutTooltip = "settings.downloadAttemptTimeout.tooltip";
+            internal const string AllowInsecureDownloadLabel = "settings.allowInsecureDownload.label";
+            internal const string AllowInsecureDownloadTooltip = "settings.allowInsecureDownload.tooltip";
+            internal const string ForceHashValidationLabel = "settings.forceHashValidation.label";
+            internal const string ForceHashValidationTooltip = "settings.forceHashValidation.tooltip";
             internal const string GithubProxyLabel = "settings.githubProxy.label";
             internal const string GithubProxyTooltip = "settings.githubProxy.tooltip";
             internal const string CacheDirectoryLabel = "settings.cacheDirectory.label";

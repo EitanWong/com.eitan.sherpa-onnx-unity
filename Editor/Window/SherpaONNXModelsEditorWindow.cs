@@ -1292,77 +1292,11 @@ namespace Eitan.SherpaONNXUnity.Editor
             EditorGUILayout.BeginVertical();
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(availableHeight));
 
-            // Simple virtualization: calculate visible range
-            float scrollY = _scrollPosition.y;
-            float viewBottom = scrollY + availableHeight;
-            float bufferSize = LayoutConstants.VirtualizationBuffer;
-
-            float accumulatedY = 0;
-            int firstVisible = -1;
-            int lastVisible = -1;
-
-            // First pass: find visible range
+            // Keep IMGUI control layout deterministic across Layout/Repaint passes.
+            // Dynamic virtualization can cause mismatched control counts when card height/status changes mid-frame.
             for (int i = 0; i < _filteredModels.Count; i++)
             {
-                var entry = _filteredModels[i];
-                float cardHeight = GetCardHeight(entry, viewWidth);
-                float cardTop = accumulatedY;
-                float cardBottom = accumulatedY + cardHeight;
-
-                if (firstVisible < 0 && cardBottom >= scrollY - bufferSize)
-                {
-                    firstVisible = i;
-                }
-
-                if (cardTop <= viewBottom + bufferSize)
-                {
-                    lastVisible = i;
-                }
-
-                accumulatedY += cardHeight;
-            }
-
-            float totalHeight = accumulatedY;
-
-            // Calculate pre-space
-            float preSpace = 0;
-            if (firstVisible > 0)
-            {
-                for (int i = 0; i < firstVisible; i++)
-                {
-                    preSpace += GetCardHeight(_filteredModels[i], viewWidth);
-                }
-            }
-
-            // Draw pre-space
-            if (preSpace > 0)
-            {
-                GUILayout.Space(preSpace);
-            }
-
-            // Draw visible cards
-            if (firstVisible >= 0 && lastVisible >= 0)
-            {
-                for (int i = firstVisible; i <= lastVisible && i < _filteredModels.Count; i++)
-                {
-                    DrawModelCard(_filteredModels[i], viewWidth);
-                }
-            }
-
-            // Calculate post-space
-            float drawnHeight = 0;
-            if (firstVisible >= 0 && lastVisible >= 0)
-            {
-                for (int i = firstVisible; i <= lastVisible && i < _filteredModels.Count; i++)
-                {
-                    drawnHeight += GetCardHeight(_filteredModels[i], viewWidth);
-                }
-            }
-
-            float postSpace = totalHeight - preSpace - drawnHeight;
-            if (postSpace > 0)
-            {
-                GUILayout.Space(postSpace);
+                DrawModelCard(_filteredModels[i], viewWidth);
             }
 
             EditorGUILayout.EndScrollView();
