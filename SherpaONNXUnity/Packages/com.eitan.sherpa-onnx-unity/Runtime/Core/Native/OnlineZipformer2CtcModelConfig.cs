@@ -9,15 +9,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineZipformer2CtcModelConfig
     {
-        public OnlineZipformer2CtcModelConfig(bool initializeDefaults = true)
+        public OnlineZipformer2CtcModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
 

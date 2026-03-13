@@ -10,15 +10,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineModelConfig
     {
-        public OnlineModelConfig(bool initializeDefaults = true)
+        public OnlineModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Transducer = new OnlineTransducerModelConfig();
             Paraformer = new OnlineParaformerModelConfig();
             Zipformer2Ctc = new OnlineZipformer2CtcModelConfig();

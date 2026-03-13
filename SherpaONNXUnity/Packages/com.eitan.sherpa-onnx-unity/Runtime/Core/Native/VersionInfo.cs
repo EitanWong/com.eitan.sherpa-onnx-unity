@@ -10,101 +10,101 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     {
         public static String Version
         {
-            get
+          get
+          {
+            IntPtr p = SherpaOnnxGetVersionStr();
+
+            string s = "";
+            int length = 0;
+
+            unsafe
             {
-                IntPtr p = SherpaOnnxGetVersionStr();
-
-                string s = "";
-                int length = 0;
-
-                unsafe
+                byte* b = (byte*)p;
+                if (b != null)
                 {
-                    byte* b = (byte*)p;
-                    if (b != null)
+                    while (*b != 0)
                     {
-                        while (*b != 0)
-                        {
-                            ++b;
-                            length += 1;
-                        }
+                        ++b;
+                        length += 1;
                     }
                 }
-
-                if (length > 0)
-                {
-                    byte[] stringBuffer = new byte[length];
-                    Marshal.Copy(p, stringBuffer, 0, length);
-                    s = Encoding.UTF8.GetString(stringBuffer);
-                }
-
-                return s;
             }
+
+            if (length > 0)
+            {
+                byte[] stringBuffer = new byte[length];
+                Marshal.Copy(p, stringBuffer, 0, length);
+                s = Encoding.UTF8.GetString(stringBuffer);
+            }
+
+            return s;
+          }
         }
 
         public static String GitSha1
         {
-            get
+          get
+          {
+            IntPtr p = SherpaOnnxGetGitSha1();
+
+            string s = "";
+            int length = 0;
+
+            unsafe
             {
-                IntPtr p = SherpaOnnxGetGitSha1();
-
-                string s = "";
-                int length = 0;
-
-                unsafe
+                byte* b = (byte*)p;
+                if (b != null)
                 {
-                    byte* b = (byte*)p;
-                    if (b != null)
+                    while (*b != 0)
                     {
-                        while (*b != 0)
-                        {
-                            ++b;
-                            length += 1;
-                        }
+                        ++b;
+                        length += 1;
                     }
                 }
-
-                if (length > 0)
-                {
-                    byte[] stringBuffer = new byte[length];
-                    Marshal.Copy(p, stringBuffer, 0, length);
-                    s = Encoding.UTF8.GetString(stringBuffer);
-                }
-
-                return s;
             }
+
+            if (length > 0)
+            {
+                byte[] stringBuffer = new byte[length];
+                Marshal.Copy(p, stringBuffer, 0, length);
+                s = Encoding.UTF8.GetString(stringBuffer);
+            }
+
+            return s;
+          }
         }
 
         public static String GitDate
         {
-            get
+          get
+          {
+            IntPtr p = SherpaOnnxGetGitDate();
+
+            string s = "";
+            int length = 0;
+
+            unsafe
             {
-                IntPtr p = SherpaOnnxGetGitDate();
-
-                string s = "";
-                int length = 0;
-
-                unsafe
+                byte* b = (byte*)p;
+                if (b != null)
                 {
-                    byte* b = (byte*)p;
-                    if (b != null)
+                    while (*b != 0)
                     {
-                        while (*b != 0)
-                        {
-                            ++b;
-                            length += 1;
-                        }
+                        ++b;
+                        length += 1;
                     }
                 }
-
-                if (length > 0)
-                {
-                    byte[] stringBuffer = new byte[length];
-                    Marshal.Copy(p, stringBuffer, 0, length);
-                    s = Encoding.UTF8.GetString(stringBuffer);
-                }
-
-                return s;
             }
+
+            if (length > 0)
+            {
+                byte[] stringBuffer = new byte[length];
+                Marshal.Copy(p, stringBuffer, 0, length);
+                s = Encoding.UTF8.GetString(stringBuffer);
+            }
+
+            return s;
+          }
         }
 
 

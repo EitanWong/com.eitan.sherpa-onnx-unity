@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineNemoCtcModelConfig
     {
-        public OnlineNemoCtcModelConfig(bool initializeDefaults = true)
+        public OnlineNemoCtcModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
 

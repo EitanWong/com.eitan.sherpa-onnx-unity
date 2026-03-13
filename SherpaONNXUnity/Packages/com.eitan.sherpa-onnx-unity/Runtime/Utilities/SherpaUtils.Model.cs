@@ -229,6 +229,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.TeleSpeech; }
                 else if (ContainsAnyKeyword(lowerModelID, tone_ctc_keywords))
                 { return SpeechRecognitionModelType.Online_Tone_Ctc; }
+
+                // NeMo family special cases
+                // Check Parakeet variants before generic NeMo CTC matching so TDT models
+                // are resolved to their intended architecture deterministically.
+                else if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_ctc_keywords))
+                { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
+                else if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_keywords))
+                { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
                 else if (ContainsAnyKeyword(lowerModelID, nemo_ctc_keywords))
                 { return isOnline ? SpeechRecognitionModelType.Online_Nemo_Ctc : SpeechRecognitionModelType.Offline_Nemo_Ctc; }
                 else if (ContainsAnyKeyword(lowerModelID, tdnn_keywords))
@@ -243,17 +251,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Offline_FunAsrNano; }
                 else if (ContainsAnyKeyword(lowerModelID, omnilingual_keywords))
                 { return SpeechRecognitionModelType.Omnilingual; }
-
-
-                // NeMo family special cases
-                // 1) Parakeet TDT CTC should map to Nemo CTC explicitly to avoid falling into generic CTC
-                if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_ctc_keywords))
-                { return SpeechRecognitionModelType.Offline_Nemo_Ctc; }
-
-                // 2) Parakeet TDT (no explicit CTC) -> treat as Transducer family
-                if (ContainsAnyKeyword(lowerModelID, nemo_parakeet_tdt_keywords))
-                { return isOnline ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer; }
-
                 // Determine architecture type
                 if (isOnline && ContainsAnyKeyword(lowerModelID, zipformer2_keywords) && ContainsAnyKeyword(lowerModelID, ctc_keywords))
                 {
@@ -496,11 +493,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
             }
 
-            public static string GetOfflineModelTypeString(SpeechRecognitionModelType modelType)
+            public static string GetOfflineModelTypeString(SpeechRecognitionModelType modelType, SherpaONNXModelMetadata metadata = null)
             {
                 switch (modelType)
                 {
-                    case SpeechRecognitionModelType.Offline_Transducer: return "transducer";
+                    case SpeechRecognitionModelType.Offline_Transducer:
+                        return IsNemoParakeetTdtModel(metadata?.modelId) ? "nemo_transducer" : "transducer";
                     case SpeechRecognitionModelType.Offline_Paraformer: return "paraformer";
                     case SpeechRecognitionModelType.Offline_ZipformerCtc: return "zipformer_ctc";
                     case SpeechRecognitionModelType.Offline_Nemo_Ctc: return "nemo_ctc";
@@ -518,6 +516,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
                     default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
                 }
+            }
+
+            private static bool IsNemoParakeetTdtModel(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return false;
+                }
+
+                return ContainsAnyKeyword(modelID.ToLowerInvariant(), nemo_parakeet_tdt_keywords);
             }
 
             #endregion

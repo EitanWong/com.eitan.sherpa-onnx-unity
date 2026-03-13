@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineSpeakerSegmentationModelConfig
     {
-        public OfflineSpeakerSegmentationModelConfig(bool initializeDefaults = true)
+        public OfflineSpeakerSegmentationModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Pyannote = new OfflineSpeakerSegmentationPyannoteModelConfig();
             NumThreads = 1;
             Debug = 0;

@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineSenseVoiceModelConfig
     {
-        public OfflineSenseVoiceModelConfig(bool initializeDefaults = true)
+        public OfflineSenseVoiceModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             Language = "";
             UseInverseTextNormalization = 0;

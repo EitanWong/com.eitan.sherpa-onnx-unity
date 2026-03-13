@@ -7,20 +7,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineWhisperModelConfig
     {
-        public OfflineWhisperModelConfig(bool initializeDefaults = true)
+        public OfflineWhisperModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Encoder = "";
             Decoder = "";
             Language = "";
             Task = "transcribe";
             TailPaddings = -1;
+            EnableTokenTimestamps = 0;
+            EnableSegmentTimestamps = 0;
         }
         [MarshalAs(UnmanagedType.LPStr)]
         public string Encoder;
@@ -35,6 +30,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public string Task;
 
         public int TailPaddings;
+        public int EnableTokenTimestamps;
+        public int EnableSegmentTimestamps;
     }
 
 }

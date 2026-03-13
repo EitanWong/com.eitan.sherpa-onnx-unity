@@ -386,10 +386,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 new SherpaONNXModelMetadata
                 {
                     modelId = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-fp16",
+                    modelTypeHint = nameof(SpeechRecognitionModelType.Offline_Transducer),
                 },
                 new SherpaONNXModelMetadata
                 {
                     modelId = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+                    modelTypeHint = nameof(SpeechRecognitionModelType.Offline_Transducer),
                 },
                 new SherpaONNXModelMetadata
                 {

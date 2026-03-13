@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct VadModelConfig
     {
-        public VadModelConfig(bool initializeDefaults = true)
+        public VadModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             SileroVad = new SileroVadModelConfig();
             SampleRate = 16000;
             NumThreads = 1;

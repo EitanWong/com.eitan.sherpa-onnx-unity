@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineFireRedAsrModelConfig
     {
-        public OfflineFireRedAsrModelConfig(bool initializeDefaults = true)
+        public OfflineFireRedAsrModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Encoder = "";
             Decoder = "";
         }

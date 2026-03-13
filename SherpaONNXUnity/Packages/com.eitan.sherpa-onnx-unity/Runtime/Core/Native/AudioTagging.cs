@@ -30,22 +30,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 
             if (p == IntPtr.Zero)
             {
-                return result.ToArray();
+              return result.ToArray();
             }
 
             int index = 0;
             while (true)
             {
-                IntPtr e = Marshal.ReadIntPtr(p, index * IntPtr.Size);
-                if (e == IntPtr.Zero)
-                {
-                    break;
-                }
+              IntPtr e = Marshal.ReadIntPtr(p, index * IntPtr.Size);
+              if (e == IntPtr.Zero)
+              {
+                break;
+              }
 
-                AudioEvent ae = new AudioEvent(e);
-                result.Add(ae);
+              AudioEvent ae = new AudioEvent(e);
+              result.Add(ae);
 
-                ++index;
+              ++index;
             }
 
             SherpaOnnxAudioTaggingFreeResults(p);

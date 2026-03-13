@@ -1,4 +1,4 @@
-/// Copyright (c)  2025  Xiaomi Corporation (authors: Fangjun Kuang)
+/// Copyright (c)  2026  Xiaomi Corporation (authors: Fangjun Kuang)
 
 using System.Runtime.InteropServices;
 
@@ -6,9 +6,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct OfflineOmnilingualAsrCtcModelConfig
+    public struct OfflineFireRedAsrCtcModelConfig
     {
-        public OfflineOmnilingualAsrCtcModelConfig(bool initialize = true)
+        public OfflineFireRedAsrCtcModelConfig(bool initialize = true)
         {
             Model = "";
         }
