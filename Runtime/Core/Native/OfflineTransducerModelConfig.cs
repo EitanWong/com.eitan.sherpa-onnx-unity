@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTransducerModelConfig
     {
-        public OfflineTransducerModelConfig(bool initializeDefaults = true)
+        public OfflineTransducerModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Encoder = "";
             Decoder = "";
             Joiner = "";

@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct AudioTaggingConfig
     {
-        public AudioTaggingConfig(bool initializeDefaults = true)
+        public AudioTaggingConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = new AudioTaggingModelConfig();
 
             Labels = "";

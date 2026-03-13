@@ -280,13 +280,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 ModelConfig = {
                     Tokens = context.TokensPath,
                     NumThreads = context.ThreadCount,
-                    ModelType = SherpaUtils.Model.GetOfflineModelTypeString(_modelType)
+                    ModelType = SherpaUtils.Model.GetOfflineModelTypeString(_modelType, metadata)
 
                 },
                 DecodingMethod = "greedy_search",
                 MaxActivePaths = 4,
                 RuleFsts = string.Empty
             };
+
 
             switch (_modelType)
             {

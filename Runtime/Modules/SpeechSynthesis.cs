@@ -227,14 +227,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 case SpeechSynthesisModelType.ZipVoice:
                     {
-                        ttsModelConfig.Model.ZipVoice.FlowMatchingModel = ModelFileResolver.ResolveRequiredFile(
+                        ttsModelConfig.Model.ZipVoice.Decoder = ModelFileResolver.ResolveRequiredFile(
                             metadata,
                             "ZipVoice flow matching model",
                             fallbackReporter,
                             ModelFileCriteria.FromKeywords("fm_decoder", int8QuantKeyword),
                             ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
                             ModelFileCriteria.FromKeywords("fm_decoder"));
-                        ttsModelConfig.Model.ZipVoice.TextModel = ModelFileResolver.ResolveRequiredFile(
+                        ttsModelConfig.Model.ZipVoice.Encoder = ModelFileResolver.ResolveRequiredFile(
                             metadata,
                             "ZipVoice text model",
                             fallbackReporter,
@@ -247,7 +247,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         var pinyinDict = ModelFileResolver.ResolveOptionalByKeywords(metadata, fallbackReporter, "pinyin.raw");
                         if (!string.IsNullOrEmpty(pinyinDict))
                         {
-                            ttsModelConfig.Model.ZipVoice.PinyinDict = pinyinDict;
+                            ttsModelConfig.Model.ZipVoice.Lexicon = pinyinDict;
                         }
 
                         var zipVoiceDataDir = ModelFileResolver.ResolveOptionalDirectoryByKeywords(metadata, fallbackReporter, "espeak-ng-data");
@@ -552,7 +552,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 combinedToken.ThrowIfCancellationRequested();
                 var tts = generationScope.Tts;
 
-                OfflineTtsGeneratedAudio generatedAudio = tts.GenerateZeroShot(text, promptText, promptSamples, promptSampleRate, speed, numSteps);
+                var generationConfig = new OfflineTtsGenerationConfig
+                {
+                    Speed = speed,
+                    ReferenceAudio = promptSamples,
+                    ReferenceSampleRate = promptSampleRate,
+                    ReferenceText = promptText ?? string.Empty,
+                    NumSteps = numSteps
+                };
+
+                OfflineTtsGeneratedAudio generatedAudio = tts.GenerateWithConfig(text, generationConfig, null);
 
                 if (generatedAudio == null)
                 {

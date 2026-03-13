@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
-    public class OfflineSpeechDenoiser : IDisposable
+    public class OfflineSpeechDenoiser: IDisposable
     {
         public OfflineSpeechDenoiser(OfflineSpeechDenoiserConfig config)
         {

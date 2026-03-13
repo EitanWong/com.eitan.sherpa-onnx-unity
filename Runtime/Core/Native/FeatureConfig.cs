@@ -10,15 +10,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct FeatureConfig
     {
-        public FeatureConfig(bool initializeDefaults = true)
+        public FeatureConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             SampleRate = 16000;
             FeatureDim = 80;
         }

@@ -2,24 +2,14 @@
 
 using System.Runtime.InteropServices;
 
-
 namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
-
 
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineModelConfig
     {
-        public OfflineModelConfig(bool initializeDefaults = true)
+        public OfflineModelConfig(bool initialize = true)
         {
-
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Transducer = new OfflineTransducerModelConfig();
             Paraformer = new OfflineParaformerModelConfig();
             NeMoCtc = new OfflineNemoEncDecCtcModelConfig();
@@ -43,6 +33,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             Omnilingual = new OfflineOmnilingualAsrCtcModelConfig();
             MedAsr = new OfflineMedAsrCtcModelConfig();
             FunAsrNano = new OfflineFunAsrNanoModelConfig();
+            FireRedAsrCtc = new OfflineFireRedAsrCtcModelConfig();
         }
         public OfflineTransducerModelConfig Transducer;
         public OfflineParaformerModelConfig Paraformer;
@@ -82,5 +73,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflineOmnilingualAsrCtcModelConfig Omnilingual;
         public OfflineMedAsrCtcModelConfig MedAsr;
         public OfflineFunAsrNanoModelConfig FunAsrNano;
+        public OfflineFireRedAsrCtcModelConfig FireRedAsrCtc;
     }
 }

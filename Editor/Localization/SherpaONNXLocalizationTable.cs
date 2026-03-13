@@ -42,12 +42,12 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
 
             foreach (var entry in table.entries)
             {
-                if (string.IsNullOrWhiteSpace(entry.key))
+                if (string.IsNullOrWhiteSpace(entry.Key))
                 {
                     continue;
                 }
 
-                dict[entry.key.Trim()] = entry.value ?? string.Empty;
+                dict[entry.Key.Trim()] = entry.Value ?? string.Empty;
             }
 
             return dict;
@@ -56,8 +56,14 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
         [Serializable]
         private struct Entry
         {
-            public string key;
-            public string value;
+            [SerializeField]
+            private string key;
+
+            [SerializeField]
+            private string value;
+
+            public string Key => key;
+            public string Value => value;
         }
     }
 }

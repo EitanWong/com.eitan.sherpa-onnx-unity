@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTdnnModelConfig
     {
-        public OfflineTdnnModelConfig(bool initializeDefaults = true)
+        public OfflineTdnnModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

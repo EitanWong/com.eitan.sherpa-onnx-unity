@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct TenVadModelConfig
     {
-        public TenVadModelConfig(bool initializeDefaults = true)
+        public TenVadModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             Threshold = 0.5F;
             MinSilenceDuration = 0.5F;

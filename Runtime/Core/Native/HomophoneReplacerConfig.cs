@@ -7,18 +7,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct HomophoneReplacerConfig
     {
-        public HomophoneReplacerConfig(bool initializeDefaults = true)
+        public HomophoneReplacerConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
-            DictDir = "";
-            Lexicon = "";
-            RuleFsts = "";
+          DictDir = "";
+          Lexicon = "";
+          RuleFsts = "";
         }
 
         [MarshalAs(UnmanagedType.LPStr)]

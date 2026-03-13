@@ -6,15 +6,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     public struct SpokenLanguageIdentificationConfig
     {
-        public SpokenLanguageIdentificationConfig(bool initializeDefaults = true)
+        public SpokenLanguageIdentificationConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Whisper = new SpokenLanguageIdentificationWhisperConfig();
             NumThreads = 1;
             Debug = 0;

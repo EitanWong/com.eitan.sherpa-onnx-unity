@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineSpeechDenoiserModelConfig
     {
-        public OfflineSpeechDenoiserModelConfig(bool initializeDefaults = true)
+        public OfflineSpeechDenoiserModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Gtcrn = new OfflineSpeechDenoiserGtcrnModelConfig();
             NumThreads = 1;
             Debug = 0;

@@ -7,20 +7,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsModelConfig
     {
-        public OfflineTtsModelConfig(bool initializeDefaults = true)
+        public OfflineTtsModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Vits = new OfflineTtsVitsModelConfig();
             Matcha = new OfflineTtsMatchaModelConfig();
             Kokoro = new OfflineTtsKokoroModelConfig();
             Kitten = new OfflineTtsKittenModelConfig();
             ZipVoice = new OfflineTtsZipVoiceModelConfig();
+            Pocket = new OfflineTtsPocketModelConfig();
+            Supertonic = new OfflineTtsSupertonicModelConfig();
             NumThreads = 1;
             Debug = 0;
             Provider = "cpu";
@@ -37,5 +32,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflineTtsKokoroModelConfig Kokoro;
         public OfflineTtsKittenModelConfig Kitten;
         public OfflineTtsZipVoiceModelConfig ZipVoice;
+        public OfflineTtsPocketModelConfig Pocket;
+        public OfflineTtsSupertonicModelConfig Supertonic;
     }
 }

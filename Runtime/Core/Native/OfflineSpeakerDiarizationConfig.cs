@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineSpeakerDiarizationConfig
     {
-        public OfflineSpeakerDiarizationConfig(bool initializeDefaults = true)
+        public OfflineSpeakerDiarizationConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Segmentation = new OfflineSpeakerSegmentationModelConfig();
             Embedding = new SpeakerEmbeddingExtractorConfig();
             Clustering = new FastClusteringConfig();

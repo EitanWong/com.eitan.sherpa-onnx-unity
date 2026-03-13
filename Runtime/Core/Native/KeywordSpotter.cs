@@ -59,7 +59,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             List<IntPtr> list = new List<IntPtr>();
             foreach (OnlineStream s in streams)
             {
-                list.Add(s.Handle);
+              list.Add(s.Handle);
             }
 
             IntPtr[] ptrs = list.ToArray();
