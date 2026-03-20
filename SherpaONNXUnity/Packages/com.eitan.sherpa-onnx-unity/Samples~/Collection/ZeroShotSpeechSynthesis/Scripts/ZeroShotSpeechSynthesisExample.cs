@@ -41,7 +41,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         [SerializeField] private ZeroShotPrompt[] prompts;
 
         [Header("Defaults")]
-        [SerializeField] private string defaultModelID = "sherpa-onnx-ced-base-audio-tagging-2024-04-19";
+        [SerializeField] private string defaultModelID = "sherpa-onnx-zipvoice-distill-zh-en-emilia";
 
         private readonly List<PromptItem> promptItems = new List<PromptItem>(8);
         private int selectedPromptIndex;

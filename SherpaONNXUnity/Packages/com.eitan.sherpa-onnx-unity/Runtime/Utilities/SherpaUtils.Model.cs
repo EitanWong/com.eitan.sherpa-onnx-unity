@@ -30,6 +30,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] whisper_keywords = { "whisper" };
             private static readonly string[] moonshine_keywords = { "moonshine" };
             private static readonly string[] sensevoice_keywords = { "sense-voice" };
+            private static readonly string[] fireredasr_ctc_keywords = { "fire-red-asr2-ctc", "fire_red_asr2_ctc", "fire-red-asr-ctc", "fire_red_asr_ctc" };
             private static readonly string[] fireredasr_keywords = { "fire-red-asr" };
             private static readonly string[] dolphin_keywords = { "dolphin" };
             private static readonly string[] telespeech_keywords = { "telespeech" };
@@ -57,6 +58,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] kitten_keywords = { "kitten" };
 
             private static readonly string[] zipvoice_keywords = { "zipvoice" };
+            private static readonly string[] pocket_keywords = { "pocket", "pocket-tts", "pockettts" };
+            private static readonly string[] supertonic_keywords = { "supertonic" };
             #endregion
 
             #region KeywordSpottingModelKeywords
@@ -64,7 +67,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             #endregion
 
             #region SpeechEnhancementModelKeyewords
-            private static readonly string[] speechEnhancement_keywords = { "gtcrn" };
+            private static readonly string[] speechEnhancement_keywords = { "gtcrn", "dpdfnet", "dpdf" };
+            private static readonly string[] speech_enhancement_gtcrn_keywords = { "gtcrn" };
+            private static readonly string[] speech_enhancement_dpdfnet_keywords = { "dpdfnet", "dpdf" };
 
             #endregion
 
@@ -81,6 +86,17 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             #region AudioTagging
             private static readonly string[] audio_tagging_ced_keywords = { "tagging", "ced" };
             private static readonly string[] audio_tagging_zipformer_keywords = { "tagging", "zipformer" };
+            #endregion
+
+            #region SpeakerDiarization
+            private static readonly string[] speaker_diarization_keywords = { "pyannote", "segmentation","reverb","diarization"};
+            #endregion
+
+            #region Embedding
+            private static readonly string[] embedding_keywords =
+            {
+                "speakerverification", "titanet", "wespeaker", "campplus", "eres2net", "3dspeaker"
+            };
             #endregion
             #endregion
 
@@ -155,6 +171,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 return metadata == null ? AudioTaggingModelType.None : GetAudioTaggingModelType(metadata.modelId);
             }
 
+            internal static SpeechEnhancementModelType ResolveSpeechEnhancementModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SpeechEnhancementModelType hinted) && hinted != SpeechEnhancementModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? SpeechEnhancementModelType.None : GetSpeechEnhancementModelType(metadata.modelId);
+            }
+
             private static bool IsOnlineSpeechRecognitionModelType(SpeechRecognitionModelType modelType)
             {
                 return modelType == SpeechRecognitionModelType.Online_Transducer
@@ -202,6 +228,13 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 if (IsPunctuationModel(modelID))
                 { return SherpaONNXModuleType.AddPunctuation; }
 
+                var diarizationType = ResolveSpeakerDiarizationModelType(modelID);
+                if (diarizationType != SpeakerDiarizationModelType.None)
+                { return SherpaONNXModuleType.SpeakerDiarization; }
+
+                if (IsEmbeddingModel(modelID))
+                { return SherpaONNXModuleType.Embedding; }
+
                 return SherpaONNXModuleType.Undefined;
             }
 
@@ -221,6 +254,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Moonshine; }
                 else if (ContainsAnyKeyword(lowerModelID, sensevoice_keywords))
                 { return SpeechRecognitionModelType.SenseVoice; }
+                else if (ContainsAnyKeyword(lowerModelID, fireredasr_ctc_keywords))
+                { return SpeechRecognitionModelType.Offline_FireRedAsrCtc; }
                 else if (ContainsAnyKeyword(lowerModelID, fireredasr_keywords))
                 { return SpeechRecognitionModelType.FireRedAsr; }
                 else if (ContainsAnyKeyword(lowerModelID, dolphin_keywords))
@@ -306,6 +341,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechSynthesisModelType.KittenTTS; }
                 else if (ContainsAnyKeyword(lowerModelID, zipvoice_keywords))
                 { return SpeechSynthesisModelType.ZipVoice; }
+                else if (ContainsAnyKeyword(lowerModelID, pocket_keywords))
+                { return SpeechSynthesisModelType.Pocket; }
+                else if (ContainsAnyKeyword(lowerModelID, supertonic_keywords))
+                { return SpeechSynthesisModelType.Supertonic; }
 
                 return SpeechSynthesisModelType.None;
 
@@ -340,6 +379,54 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 }
                 return AudioTaggingModelType.None;
 
+            }
+
+            internal static SpeakerDiarizationModelType ResolveSpeakerDiarizationModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return SpeakerDiarizationModelType.None;
+                }
+               string lowerModelID = modelID.ToLowerInvariant();
+                if (ContainsAnyKeyword(lowerModelID, speaker_diarization_keywords, true))
+                {
+
+                    // Currently, sherpa-onnx only supports the two models below:
+                    //sherpa-onnx-pyannote-segmentation-3-0
+                    //sherpa-onnx-reverb-diarization-v1
+                    return SpeakerDiarizationModelType.Pyannote;
+                }
+
+                return SpeakerDiarizationModelType.None;
+
+            }
+
+            internal static SpeakerDiarizationModelType ResolveSpeakerDiarizationModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SpeakerDiarizationModelType hinted) && hinted != SpeakerDiarizationModelType.None)
+                {
+                    return hinted;
+                }
+
+                if (metadata == null)
+                {
+                    return SpeakerDiarizationModelType.None;
+                }
+
+                var resolved = ResolveSpeakerDiarizationModelType(metadata.modelId);
+                if (resolved != SpeakerDiarizationModelType.None)
+                {
+                    return resolved;
+                }
+
+                // Current sherpa-onnx diarization support uses the pyannote-style
+                // segmentation config for built-in diarization models.
+                if (metadata.moduleType == SherpaONNXModuleType.SpeakerDiarization)
+                {
+                    return SpeakerDiarizationModelType.Pyannote;
+                }
+
+                return SpeakerDiarizationModelType.None;
             }
 
             public static bool IsOnlineModel(string modelID)
@@ -386,11 +473,38 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
             internal static bool IsSpeechEnhancementModel(string modelID)
             {
-                if (string.IsNullOrEmpty(modelID))
-                { return false; }
+                return GetSpeechEnhancementModelType(modelID) != SpeechEnhancementModelType.None;
+            }
 
-                string lowerModelID = modelID.ToLower();
-                return ContainsAnyKeyword(lowerModelID, speechEnhancement_keywords);
+            internal static SpeechEnhancementModelType GetSpeechEnhancementModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return SpeechEnhancementModelType.None;
+                }
+
+                string lowerModelID = modelID.ToLowerInvariant();
+                if (ContainsAnyKeyword(lowerModelID, speech_enhancement_dpdfnet_keywords))
+                {
+                    return SpeechEnhancementModelType.DpdfNet;
+                }
+
+                if (ContainsAnyKeyword(lowerModelID, speech_enhancement_gtcrn_keywords))
+                {
+                    return SpeechEnhancementModelType.Gtcrn;
+                }
+
+                return SpeechEnhancementModelType.None;
+            }
+
+            internal static bool IsEmbeddingModel(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return false;
+                }
+
+                return ContainsAnyKeyword(modelID.ToLowerInvariant(), embedding_keywords);
             }
 
             /// <summary>
@@ -474,6 +588,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         return sensevoice_keywords;
                     case SpeechRecognitionModelType.FireRedAsr:
                         return fireredasr_keywords;
+                    case SpeechRecognitionModelType.Offline_FireRedAsrCtc:
+                        return fireredasr_ctc_keywords;
                     case SpeechRecognitionModelType.Dolphin:
                         return dolphin_keywords;
                     case SpeechRecognitionModelType.TeleSpeech:
@@ -509,6 +625,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.SenseVoice: return "sensevoice";
                     case SpeechRecognitionModelType.Moonshine: return "moonshine";
                     case SpeechRecognitionModelType.FireRedAsr: return "fire_red_asr";
+                    case SpeechRecognitionModelType.Offline_FireRedAsrCtc: return "fire_red_asr_ctc";
                     case SpeechRecognitionModelType.Omnilingual: return "omnilingual";
                     case SpeechRecognitionModelType.Offline_Canary: return "canary";
                     case SpeechRecognitionModelType.Offline_WenetCtc: return "wenet_ctc";
@@ -527,6 +644,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                 return ContainsAnyKeyword(modelID.ToLowerInvariant(), nemo_parakeet_tdt_keywords);
             }
+
 
             #endregion
         }

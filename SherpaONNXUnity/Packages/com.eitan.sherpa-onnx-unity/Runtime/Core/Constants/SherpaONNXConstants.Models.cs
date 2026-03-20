@@ -2364,18 +2364,45 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     new SherpaONNXModelMetadata
                     {
                         modelId = "sherpa-onnx-reverb-diarization-v1",
+                        modelTypeHint = nameof(SpeakerDiarizationModelType.Pyannote),
+                        fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>
+                        {
+                            new SherpaONNXModelFileBinding
+                            {
+                                key = SherpaONNXModelFileKey.Model,
+                                path = "model.onnx",
+                            },
+                        },
                         downloadFileHash =
                             "615761e980be1688da0ef81618c056134d63aa55ea0a5f1494c47393b9398eab",
                     },
                     new SherpaONNXModelMetadata
                     {
                         modelId = "sherpa-onnx-reverb-diarization-v2",
+                        modelTypeHint = nameof(SpeakerDiarizationModelType.Pyannote),
+                        fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>
+                        {
+                            new SherpaONNXModelFileBinding
+                            {
+                                key = SherpaONNXModelFileKey.Model,
+                                path = "model.onnx",
+                            },
+                        },
                         downloadFileHash =
                             "2ca21f73eac8adb698fe538eaf4a25f69f614131c876772a8d26213cf648c851",
                     },
                     new SherpaONNXModelMetadata
                     {
                         modelId = "sherpa-onnx-pyannote-segmentation-3-0",
+                        modelTypeHint = nameof(SpeakerDiarizationModelType.Pyannote),
+                        fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>
+                        {
+                            new SherpaONNXModelFileBinding
+                            {
+                                key = SherpaONNXModelFileKey.Model,
+                                path = "model.onnx",
+                            },
+                        },
                         downloadFileHash =
                             "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
                     },

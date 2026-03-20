@@ -47,9 +47,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
         private static void CreateSpokenLanguage(MenuCommand command) =>
             CreateWithComponent<SpokenLanguageIdentificationComponent>("Spoken Language Identification", command);
 
+        [MenuItem(Root + "Speaker/Speaker Diarization", false, MenuPriority + 8)]
+        private static void CreateSpeakerDiarization(MenuCommand command) =>
+            CreateWithComponent<SpeakerDiarizationComponent>("Speaker Diarization", command);
+
         [MenuItem(Root + "Text/Punctuation", false, MenuPriority + 8)]
         private static void CreatePunctuation(MenuCommand command) =>
             CreateWithComponent<PunctuationComponent>("Punctuation", command);
+
         [MenuItem(Root + "Text/AudioTagging", false, MenuPriority + 8)]
         private static void CreateAudioTagging(MenuCommand command) =>
             CreateWithComponent<AudioTaggingComponent>("AudioTagging", command);

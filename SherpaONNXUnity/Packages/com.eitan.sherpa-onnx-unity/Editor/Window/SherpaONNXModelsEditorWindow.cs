@@ -2162,6 +2162,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 SherpaONNXModuleType.SpeechSynthesis => Tr(SherpaONNXL10n.Models.CategorySpeechSynthesis, "Text to Speech"),
                 SherpaONNXModuleType.SourceSeparation => Tr(SherpaONNXL10n.Models.CategorySourceSeparation, "Source Separation"),
                 SherpaONNXModuleType.SpeakerIdentification => Tr(SherpaONNXL10n.Models.CategorySpeakerIdentification, "Speaker ID"),
+                SherpaONNXModuleType.Embedding => Tr(SherpaONNXL10n.Models.CategoryEmbedding, "Embedding"),
                 SherpaONNXModuleType.SpeakerDiarization => Tr(SherpaONNXL10n.Models.CategorySpeakerDiarization, "Diarization"),
                 SherpaONNXModuleType.SpokenLanguageIdentification => Tr(SherpaONNXL10n.Models.CategorySpokenLanguageId, "Language ID"),
                 SherpaONNXModuleType.AudioTagging => Tr(SherpaONNXL10n.Models.CategoryAudioTagging, "Audio Tagging"),

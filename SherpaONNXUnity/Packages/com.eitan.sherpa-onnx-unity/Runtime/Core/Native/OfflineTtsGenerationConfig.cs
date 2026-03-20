@@ -150,4 +150,3 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         }
     }
 }
-
