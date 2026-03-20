@@ -2,6 +2,7 @@
 namespace Eitan.SherpaONNXUnity.Tests
 {
 
+    using System.IO;
     using System.Collections.Generic;
     using NUnit.Framework;
     using Eitan.SherpaONNXUnity.Runtime;
@@ -51,6 +52,19 @@ namespace Eitan.SherpaONNXUnity.Tests
 
 
                 yield return new TestCaseData(meta.modelId).SetName($"TTS::CONST::{meta.modelId}");
+            }
+        }
+
+        public static IEnumerable<TestCaseData> AllSpeakerDiarizationIds_FromConstants()
+        {
+            foreach (var meta in SherpaONNXConstants.Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES)
+            {
+                if (meta == null || string.IsNullOrEmpty(meta.modelId))
+                {
+                    continue;
+                }
+
+                yield return new TestCaseData(meta.modelId).SetName($"DIARIZATION::CONST::{meta.modelId}");
             }
         }
 
@@ -391,6 +405,16 @@ namespace Eitan.SherpaONNXUnity.Tests
             yield return ModCase("some-langid-model",
                 SherpaONNXModuleType.SpokenLanguageIdentification);
 
+            // Embedding
+            yield return ModCase("nemo_en_titanet_small.onnx",
+                SherpaONNXModuleType.Embedding);
+
+            // Speaker diarization
+            yield return ModCase("sherpa-onnx-pyannote-segmentation-3-0",
+                SherpaONNXModuleType.SpeakerDiarization);
+            yield return ModCase("sherpa-onnx-reverb-diarization-v1",
+                SherpaONNXModuleType.SpeakerDiarization);
+
             // 负例：无任何关键词
             yield return ModCase("pure-random-model-id",
                 SherpaONNXModuleType.Undefined);
@@ -571,6 +595,51 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
         }
 
+        [Test, TestCaseSource(nameof(AllSpeakerDiarizationIds_FromConstants))]
+        public void All_SpeakerDiarization_Models_Are_Mapped_Correctly(string modelId)
+        {
+            var module = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            Assert.AreEqual(SherpaONNXModuleType.SpeakerDiarization, module, $"[Diarization][ModuleType] 应为 SpeakerDiarization: {modelId}");
+
+            var diarization = SherpaUtils.Model.ResolveSpeakerDiarizationModelType(modelId);
+            Assert.AreNotEqual(SpeakerDiarizationModelType.None, diarization, $"[Diarization][Subtype] 不能为 None: {modelId}");
+        }
+
+        [Test]
+        public void SpeakerDiarization_Metadata_Fallback_Resolves_Pyannote()
+        {
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "custom-diarization-model",
+                moduleType = SherpaONNXModuleType.SpeakerDiarization
+            };
+
+            var diarization = SherpaUtils.Model.ResolveSpeakerDiarizationModelType(metadata);
+            Assert.AreEqual(SpeakerDiarizationModelType.Pyannote, diarization);
+        }
+
+        [Test]
+        public void SpeakerDiarization_ModelFileResolver_Finds_Local_Onnx_File()
+        {
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "sherpa-onnx-pyannote-segmentation-3-0",
+                moduleType = SherpaONNXModuleType.SpeakerDiarization,
+                modelTypeHint = nameof(SpeakerDiarizationModelType.Pyannote)
+            };
+
+            var resolved = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "Pyannote model",
+                null,
+                ModelFileCriteria.FromKeywords("model"),
+                ModelFileCriteria.FromKeywords("segmentation"),
+                ModelFileCriteria.FromExtensions(".onnx"));
+
+            Assert.IsTrue(File.Exists(resolved), $"Resolved diarization ONNX file not found: {resolved}");
+            Assert.IsTrue(resolved.EndsWith(".onnx"), $"Resolved diarization file is not an ONNX file: {resolved}");
+        }
+
         [Test]
         public void Nemo_Parakeet_And_Canary_Family_Are_Mapped_Strictly()
         {
@@ -746,6 +815,8 @@ namespace Eitan.SherpaONNXUnity.Tests
                 { "toy-kws-demo", SherpaONNXModuleType.KeywordSpotting },
                 { "gtcrn-speech-enhance", SherpaONNXModuleType.SpeechEnhancement },
                 { "some-langid-model", SherpaONNXModuleType.SpokenLanguageIdentification },
+                { "nemo_en_titanet_small.onnx", SherpaONNXModuleType.Embedding },
+                { "sherpa-onnx-pyannote-segmentation-3-0", SherpaONNXModuleType.SpeakerDiarization },
                 { "pure-random-model-id", SherpaONNXModuleType.Undefined },
             };
 

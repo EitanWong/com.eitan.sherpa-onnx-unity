@@ -14,4 +14,3 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflinePunctuationModelConfig Model;
     }
 }
-

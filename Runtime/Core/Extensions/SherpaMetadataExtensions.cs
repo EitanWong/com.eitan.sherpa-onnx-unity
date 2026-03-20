@@ -103,8 +103,51 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 return rawPath;
             }
 
-            var modelFolderPath = SherpaPathResolver.GetModelRootPath(metadata.modelId);
+            var modelFolderPath = GetModelFolderPath(metadata);
             return System.IO.Path.Combine(modelFolderPath, rawPath);
+        }
+
+        private static SherpaONNXModuleType GetEffectiveModuleType(SherpaONNXModelMetadata metadata)
+        {
+            if (metadata == null)
+            {
+                return SherpaONNXModuleType.Undefined;
+            }
+
+            if (metadata.moduleType != SherpaONNXModuleType.Undefined)
+            {
+                return metadata.moduleType;
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.moduleTypeHint) &&
+                System.Enum.TryParse(metadata.moduleTypeHint.Trim(), true, out SherpaONNXModuleType hinted) &&
+                hinted != SherpaONNXModuleType.Undefined)
+            {
+                return hinted;
+            }
+
+            if (SherpaUtils.Model.ResolveSpeakerDiarizationModelType(metadata) != SpeakerDiarizationModelType.None)
+            {
+                return SherpaONNXModuleType.SpeakerDiarization;
+            }
+
+            return SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId);
+        }
+
+        private static string GetModelFolderPath(SherpaONNXModelMetadata metadata)
+        {
+            if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
+            {
+                return string.Empty;
+            }
+
+            var moduleType = GetEffectiveModuleType(metadata);
+            if (moduleType == SherpaONNXModuleType.Undefined)
+            {
+                return SherpaPathResolver.GetModelRootPath(metadata.modelId);
+            }
+
+            return System.IO.Path.Combine(SherpaPathResolver.GetModuleRootPath(moduleType), metadata.modelId);
         }
 
         private static readonly System.Collections.Generic.Dictionary<SherpaONNXModelFileKey, string[]> s_BindingKeywords =
@@ -244,7 +287,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
                 throw new System.Exception("modelFile can't be Null or Empty");
             }
-            var modelFolderPath = SherpaPathResolver.GetModelRootPath(metadata.modelId);
+            var modelFolderPath = GetModelFolderPath(metadata);
             if (string.IsNullOrEmpty(modelFolderPath))
             {
                 throw new System.Exception("model Folder can't found");
@@ -269,7 +312,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 return System.Array.Empty<string>();
             }
 
-            var modelFolderPath = SherpaPathResolver.GetModelRootPath(metadata.modelId);
+            var modelFolderPath = GetModelFolderPath(metadata);
             if (string.IsNullOrWhiteSpace(modelFolderPath))
             {
                 SherpaLog.Error($"Model root path not found for modelId: {metadata.modelId}");

@@ -10,6 +10,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflineSpeechDenoiserModelConfig(bool initialize = true)
         {
             Gtcrn = new OfflineSpeechDenoiserGtcrnModelConfig();
+            Dpdfnet = new OfflineSpeechDenoiserDpdfNetModelConfig();
             NumThreads = 1;
             Debug = 0;
             Provider = "cpu";
@@ -23,5 +24,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 
         [MarshalAs(UnmanagedType.LPStr)]
         public string Provider;
+
+        public OfflineSpeechDenoiserDpdfNetModelConfig Dpdfnet;
     }
 }

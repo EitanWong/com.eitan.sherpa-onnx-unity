@@ -20,6 +20,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         Moonshine,
         SenseVoice,
         FireRedAsr,
+        Offline_FireRedAsrCtc,
         Dolphin,
         Omnilingual,
         Offline_Canary,

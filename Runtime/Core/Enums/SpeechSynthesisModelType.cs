@@ -8,7 +8,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         Matcha,
         Kokoro,
         KittenTTS,
-        ZipVoice
+        ZipVoice,
+        Pocket,
+        Supertonic
     }
 
 }

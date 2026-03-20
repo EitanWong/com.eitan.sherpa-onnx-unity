@@ -210,7 +210,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                     {
                         throw new OperationCanceledException("Model preparation canceled.", ct);
                     }
-                    var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed ({prepareResult.ErrorCode})\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {SherpaUtils.Model.GetModuleTypeByModelId(metadata.modelId)} manually.");
+                    var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed ({prepareResult.ErrorCode})\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {GetManualInstallTarget(metadata.modelId)} manually.");
                     _initializationException = prepareFailed;
                     TraceLifecycle($"Prepare phase failed: {prepareFailed.Message}");
                     throw prepareFailed;
@@ -247,6 +247,25 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 throw;
             }
         }
+
+        protected static string GetManualInstallTarget(string modelId)
+        {
+            var moduleType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            if (moduleType == SherpaONNXModuleType.Undefined)
+            {
+                return SherpaONNXModuleType.Undefined.ToString();
+            }
+
+            try
+            {
+                return SherpaPathResolver.GetModuleRootPath(moduleType);
+            }
+            catch
+            {
+                return moduleType.ToString();
+            }
+        }
+
         private static readonly string[] s_CorruptionMarkers = new[]
         {
             "protobuf",

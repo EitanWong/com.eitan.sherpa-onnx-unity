@@ -498,6 +498,18 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
+                case SpeechRecognitionModelType.Offline_FireRedAsrCtc:
+                    config.ModelConfig.FireRedAsrCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                        metadata,
+                        "FireRed ASR CTC model",
+                        context.FallbackReporter,
+                        ModelFileCriteria.FromKeywords("model", "ctc", "fire", "red", "asr", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "ctc", "fire", "red", "asr"),
+                        ModelFileCriteria.FromKeywords("model", "fire", "red", "asr", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model", "fire", "red", "asr"),
+                        ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("model"));
+                    break;
                 case SpeechRecognitionModelType.Offline_Canary:
                     config.ModelConfig.Canary.Encoder = ModelFileResolver.ResolveRequiredFile(
                         metadata,
@@ -638,6 +650,73 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
         }
 
+        public bool TrySetOnlineStreamOption(string key, string value)
+        {
+            if (!IsOnlineModel || string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineStream == null)
+                {
+                    return false;
+                }
+
+                SetOnlineStreamOptionCore(key, value);
+                return true;
+            }
+        }
+
+        public bool TryGetOnlineStreamOption(string key, out string value)
+        {
+            value = string.Empty;
+            if (!IsOnlineModel || string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineStream == null)
+                {
+                    return false;
+                }
+
+                value = _onlineStream.GetOption(key);
+                return true;
+            }
+        }
+
+        public bool HasOnlineStreamOption(string key)
+        {
+            if (!IsOnlineModel || string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineStream == null)
+                {
+                    return false;
+                }
+
+                return _onlineStream.HasOption(key);
+            }
+        }
+
+        public bool TrySetParaformerIsFinal(bool isFinal)
+        {
+            if (_modelType != SpeechRecognitionModelType.Online_Paraformer)
+            {
+                return false;
+            }
+
+            return TrySetOnlineStreamOption("is_final", isFinal ? "true" : "false");
+        }
+
         private Task<TranscriptionResult> ProcessOnlineTranscriptionAsync(float[] audioSamplesFrame, int sampleRate, CancellationToken cancellationToken)
         {
             if (_onlineRecognizer == null || _onlineStream == null)
@@ -649,6 +728,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             {
                 if (IsDisposed || _onlineStream == null) { return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Disposed)); }
 
+                ApplyParaformerFinalState(isFinal: false);
                 _onlineStream.AcceptWaveform(sampleRate, audioSamplesFrame);
             }
 
@@ -673,11 +753,13 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     if (_onlineRecognizer.IsEndpoint(_onlineStream))
                     {
                         isFinal = true;
+                        ApplyParaformerFinalState(isFinal: true);
                         HandleEndpointDetection(sampleRate, combinedCt);
                         _onlineStream.InputFinished();
                         DecodeOnlineStream(combinedCt);
                         result = _onlineRecognizer.GetResult(_onlineStream);
                         _onlineRecognizer.Reset(_onlineStream);
+                        ApplyParaformerFinalState(isFinal: false);
                     }
 
                     var text = result?.Text ?? string.Empty;
@@ -703,6 +785,21 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
 
             return new RecognizerConfigContext(threadCount, tokensPath, int8QuantKeyword, fallbackReporter);
+        }
+
+        private void ApplyParaformerFinalState(bool isFinal)
+        {
+            if (_modelType != SpeechRecognitionModelType.Online_Paraformer || _onlineStream == null)
+            {
+                return;
+            }
+
+            SetOnlineStreamOptionCore("is_final", isFinal ? "true" : "false");
+        }
+
+        private void SetOnlineStreamOptionCore(string key, string value)
+        {
+            _onlineStream?.SetOption(key, value ?? string.Empty);
         }
 
         private Task<TranscriptionResult> ProcessOfflineTranscriptionAsync(float[] audioSamplesFrame, int sampleRate, CancellationToken cancellationToken)
