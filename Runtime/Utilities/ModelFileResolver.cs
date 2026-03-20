@@ -84,6 +84,33 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 minSizeBytes,
                 minEntryCount: null);
         }
+
+        public static ModelFileCriteria FromBindingKeys(params SherpaONNXModelFileKey[] bindingKeys)
+        {
+            return FromBindingKeys(false, null, null, bindingKeys);
+        }
+
+        public static ModelFileCriteria FromBindingKeys(bool expectDirectory, long? minSizeBytes, int? minEntryCount, params SherpaONNXModelFileKey[] bindingKeys)
+        {
+            var sanitizedKeys = (bindingKeys ?? Array.Empty<SherpaONNXModelFileKey>())
+                .Where(key => key != SherpaONNXModelFileKey.None)
+                .Distinct()
+                .ToArray();
+
+            return new ModelFileCriteria(
+                metadata =>
+                {
+                    if (sanitizedKeys.Length == 0)
+                    {
+                        return Array.Empty<string>();
+                    }
+
+                    return metadata.GetModelFilePathsByBindingKeys(sanitizedKeys) ?? Array.Empty<string>();
+                },
+                expectDirectory,
+                minSizeBytes,
+                minEntryCount);
+        }
     }
 
     public static class ModelFileResolver
@@ -223,6 +250,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             return ResolveRequiredFile(metadata, description, onFallback, ModelFileCriteria.FromKeywords(keywords));
         }
 
+        public static string ResolveRequiredFileWithBindings(
+            SherpaONNXModelMetadata metadata,
+            string description,
+            Action<string> onFallback,
+            SherpaONNXModelFileKey[] bindingKeys,
+            params ModelFileCriteria[] criteria)
+        {
+            return ResolveRequiredFile(metadata, description, onFallback, BuildCriteriaWithBindings(bindingKeys, criteria));
+        }
+
         public static string ResolveOptionalFile(
             SherpaONNXModelMetadata metadata,
             Action<string> onFallback = null,
@@ -252,6 +289,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
             return TryResolveFirstValidPath(metadata, out var path, fallbackAction ?? onFallback, recordFailures: false, criteria) ? path : null;
+        }
+
+        public static string ResolveOptionalFileWithBindings(
+            SherpaONNXModelMetadata metadata,
+            Action<string> onFallback,
+            SherpaONNXModelFileKey[] bindingKeys,
+            params ModelFileCriteria[] criteria)
+        {
+            return ResolveOptionalFile(metadata, onFallback, BuildCriteriaWithBindings(bindingKeys, criteria));
         }
 
         public static string ResolveOptionalByKeywords(
@@ -292,6 +338,32 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             }
 
             return results.ToArray();
+        }
+
+        private static ModelFileCriteria[] BuildCriteriaWithBindings(
+            SherpaONNXModelFileKey[] bindingKeys,
+            params ModelFileCriteria[] criteria)
+        {
+            var sanitizedCriteria = (criteria ?? Array.Empty<ModelFileCriteria>())
+                .ToArray();
+            var sanitizedKeys = (bindingKeys ?? Array.Empty<SherpaONNXModelFileKey>())
+                .Where(key => key != SherpaONNXModelFileKey.None)
+                .Distinct()
+                .ToArray();
+
+            if (sanitizedKeys.Length == 0)
+            {
+                return sanitizedCriteria;
+            }
+
+            var combined = new ModelFileCriteria[sanitizedCriteria.Length + 1];
+            combined[0] = ModelFileCriteria.FromBindingKeys(sanitizedKeys);
+            if (sanitizedCriteria.Length > 0)
+            {
+                Array.Copy(sanitizedCriteria, 0, combined, 1, sanitizedCriteria.Length);
+            }
+
+            return combined;
         }
 
         private static bool ValidateCandidate(string path, bool expectDirectory, long? minSizeBytes, int? minEntryCount, out string failureReason)

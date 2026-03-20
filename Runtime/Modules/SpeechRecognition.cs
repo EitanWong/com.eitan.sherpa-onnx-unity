@@ -201,66 +201,74 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             switch (_modelType)
             {
                 case SpeechRecognitionModelType.Online_Paraformer:
-                    config.ModelConfig.Paraformer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Paraformer.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Paraformer encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.Paraformer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Paraformer.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Paraformer decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 case SpeechRecognitionModelType.Online_Transducer:
                     config.DecodingMethod = "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
-                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer joiner",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Joiner },
                         ModelFileCriteria.FromKeywords("joiner", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("joiner"));
                     break;
                 case SpeechRecognitionModelType.Online_Ctc:
                 case SpeechRecognitionModelType.Online_Zipformer2Ctc:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.Zipformer2Ctc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Zipformer2Ctc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "ctc", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "ctc"));
                     break;
                 case SpeechRecognitionModelType.Online_Nemo_Ctc:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.NemoCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.NemoCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "NeMo CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "ctc", "nemo", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "ctc", "nemo"),
                         ModelFileCriteria.FromKeywords("model", "ctc"));
                     break;
                 case SpeechRecognitionModelType.Online_Tone_Ctc:
                     config.DecodingMethod = "greedy_search";
-                    config.ModelConfig.ToneCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.ToneCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Tone CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "tone", "ctc", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "tone", "ctc"),
                         ModelFileCriteria.FromKeywords("model", "ctc"));
@@ -294,27 +302,34 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 case SpeechRecognitionModelType.Offline_Transducer:
 
                     config.DecodingMethod = "modified_beam_search";
-                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
-                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Transducer.Joiner = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Transducer joiner",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Joiner },
                         ModelFileCriteria.FromKeywords("joiner", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("joiner"));
                     if (config.DecodingMethod == "modified_beam_search")
                     {
-                        var hotwordsPath = ModelFileResolver.ResolveOptionalByKeywords(metadata, context.FallbackReporter, "hotwords");
+                        var hotwordsPath = ModelFileResolver.ResolveOptionalFileWithBindings(
+                            metadata,
+                            context.FallbackReporter,
+                            new[] { SherpaONNXModelFileKey.Hotwords },
+                            ModelFileCriteria.FromKeywords("hotwords"));
                         if (!string.IsNullOrEmpty(hotwordsPath))
                         {
                             config.HotwordsFile = hotwordsPath;
@@ -323,113 +338,126 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     break;
 
                 case SpeechRecognitionModelType.Offline_Paraformer:
-                    config.ModelConfig.Paraformer.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Paraformer.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Paraformer model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Offline_ZipformerCtc:
-                    config.ModelConfig.ZipformerCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.ZipformerCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Zipformer CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Offline_Nemo_Ctc:
-                    config.ModelConfig.NeMoCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.NeMoCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "NeMo CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
                 case SpeechRecognitionModelType.Offline_WenetCtc:
-                    config.ModelConfig.WenetCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.WenetCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Wenet CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "ctc", "wenet", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "ctc", "wenet"),
                         ModelFileCriteria.FromKeywords("model", "ctc"),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
                 case SpeechRecognitionModelType.Offline_MedAsrCtc:
-                    config.ModelConfig.MedAsr.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.MedAsr.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Med ASR CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "ctc", "medasr", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "ctc", "medasr"),
                         ModelFileCriteria.FromKeywords("model", "ctc"),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
                 case SpeechRecognitionModelType.Offline_FunAsrNano:
-                    config.ModelConfig.FunAsrNano.EncoderAdaptor = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FunAsrNano.EncoderAdaptor = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FunASR Nano encoder adaptor",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.EncoderAdaptor },
                         ModelFileCriteria.FromKeywords("encoder", "adaptor", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder", "adapter", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder_adaptor", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder", "adaptor"),
                         ModelFileCriteria.FromKeywords("encoder", "adapter"),
                         ModelFileCriteria.FromKeywords("encoder_adaptor"));
-                    config.ModelConfig.FunAsrNano.LLM = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FunAsrNano.LLM = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FunASR Nano LLM",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Llm },
                         ModelFileCriteria.FromKeywords("llm", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("llm"),
                         ModelFileCriteria.FromKeywords("model", "llm", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "llm"));
-                    config.ModelConfig.FunAsrNano.Embedding = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FunAsrNano.Embedding = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FunASR Nano embedding",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Embedding },
                         ModelFileCriteria.FromKeywords("embedding", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("embedding"));
-                    config.ModelConfig.FunAsrNano.Tokenizer = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FunAsrNano.Tokenizer = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FunASR Nano tokenizer folder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Tokenizer },
                         ModelFileCriteria.FromDirectoryKeywords("qwen3-0.6b"));
                     config.ModelConfig.Tokens = string.Empty;
                     break;
 
                 case SpeechRecognitionModelType.Dolphin:
-                    config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Dolphin model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.TeleSpeech:
-                    config.ModelConfig.TeleSpeechCtc = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.TeleSpeechCtc = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "TeleSpeech model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
 
                 case SpeechRecognitionModelType.Whisper:
-                    config.ModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Whisper encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Whisper decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     config.ModelConfig.Whisper.Language = string.Empty;
@@ -437,20 +465,22 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     break;
 
                 case SpeechRecognitionModelType.Tdnn:
-                    config.ModelConfig.Tdnn.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Tdnn.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "TDNN model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Tdnn, SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("tdnn", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("tdnn"));
                     break;
 
                 case SpeechRecognitionModelType.SenseVoice:
 
-                    config.ModelConfig.SenseVoice.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.SenseVoice.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "SenseVoice model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
@@ -458,51 +488,73 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     break;
 
                 case SpeechRecognitionModelType.Moonshine:
-                    config.ModelConfig.Moonshine.Preprocessor = ModelFileResolver.ResolveRequiredFile(
-                        metadata,
-                        "Moonshine preprocessor",
-                        context.FallbackReporter,
-                        ModelFileCriteria.FromKeywords("preprocess", context.Int8Keyword),
-                        ModelFileCriteria.FromKeywords("preprocess"));
-                    config.ModelConfig.Moonshine.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Moonshine.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Moonshine encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encode", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encode"));
-                    config.ModelConfig.Moonshine.UncachedDecoder = ModelFileResolver.ResolveRequiredFile(
+                    var mergedDecoder = ModelFileResolver.ResolveOptionalFileWithBindings(
+                        metadata,
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
+                        ModelFileCriteria.FromKeywords("decoder_model_merged", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("merged", "decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder_model_merged"),
+                        ModelFileCriteria.FromKeywords("merged", "decoder"));
+
+                    if (!string.IsNullOrEmpty(mergedDecoder))
+                    {
+                        config.ModelConfig.Moonshine.MergedDecoder = mergedDecoder;
+                        break;
+                    }
+
+                    config.ModelConfig.Moonshine.Preprocessor = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Moonshine preprocessor",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Preprocessor },
+                        ModelFileCriteria.FromKeywords("preprocess", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("preprocess"));
+                    config.ModelConfig.Moonshine.UncachedDecoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Moonshine uncached decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.UncachedDecoder },
                         ModelFileCriteria.FromKeywords("uncached_decode", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("uncached_decode"));
-                    config.ModelConfig.Moonshine.CachedDecoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Moonshine.CachedDecoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Moonshine cached decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.CachedDecoder },
                         ModelFileCriteria.FromKeywords("cached_decode", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("cached_decode"));
                     break;
 
                 case SpeechRecognitionModelType.FireRedAsr:
-                    config.ModelConfig.FireRedAsr.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FireRedAsr.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FireRed ASR encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.FireRedAsr.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FireRedAsr.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FireRed ASR decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 case SpeechRecognitionModelType.Offline_FireRedAsrCtc:
-                    config.ModelConfig.FireRedAsrCtc.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.FireRedAsrCtc.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "FireRed ASR CTC model",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", "ctc", "fire", "red", "asr", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model", "ctc", "fire", "red", "asr"),
                         ModelFileCriteria.FromKeywords("model", "fire", "red", "asr", context.Int8Keyword),
@@ -511,24 +563,27 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("model"));
                     break;
                 case SpeechRecognitionModelType.Offline_Canary:
-                    config.ModelConfig.Canary.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Canary.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Canary encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    config.ModelConfig.Canary.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Canary.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Canary decoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 case SpeechRecognitionModelType.Omnilingual:
-                    config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFile(
+                    config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Omnilingual ASR encoder",
                         context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     break;
@@ -781,7 +836,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
             else
             {
-                tokensPath = ModelFileResolver.ResolveRequiredByKeywords(metadata, "token file", fallbackReporter, "tokens", "tokens.txt");
+                tokensPath = ModelFileResolver.ResolveRequiredFileWithBindings(
+                    metadata,
+                    "token file",
+                    fallbackReporter,
+                    new[] { SherpaONNXModelFileKey.Tokens },
+                    ModelFileCriteria.FromKeywords("tokens", "tokens.txt"));
             }
 
             return new RecognizerConfigContext(threadCount, tokensPath, int8QuantKeyword, fallbackReporter);

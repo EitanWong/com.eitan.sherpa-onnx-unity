@@ -38,6 +38,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
             {
                 // Extensions first
                 [".onnx"] = 100,
+                [".ort"] = 100,
                 [".pt"] = 60,
                 [".bin"] = 60,
                 [".tflite"] = 60,
@@ -153,9 +154,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private static readonly System.Collections.Generic.Dictionary<SherpaONNXModelFileKey, string[]> s_BindingKeywords =
             new System.Collections.Generic.Dictionary<SherpaONNXModelFileKey, string[]>
             {
-                { SherpaONNXModelFileKey.Model, new [] { "model", ".onnx" } },
+                { SherpaONNXModelFileKey.Model, new [] { "model", ".onnx", ".ort", ".tflite", ".pt", ".bin", ".model" } },
                 { SherpaONNXModelFileKey.Encoder, new [] { "encoder", "encode" } },
-                { SherpaONNXModelFileKey.Decoder, new [] { "decoder" } },
+                { SherpaONNXModelFileKey.Decoder, new [] { "decoder", "merged_decoder", "decoder_model_merged", "merged-decoder" } },
                 { SherpaONNXModelFileKey.Joiner, new [] { "joiner" } },
                 { SherpaONNXModelFileKey.Tokens, new [] { "tokens", "tokens.txt" } },
                 { SherpaONNXModelFileKey.Lexicon, new [] { "lexicon" } },
@@ -250,11 +251,52 @@ namespace Eitan.SherpaONNXUnity.Runtime
                     if (KeywordsMatchBinding(keyword, binding.key))
                     {
                         var resolved = ResolveBindingPath(metadata, binding.path);
-                        if (!string.IsNullOrWhiteSpace(resolved))
+                        if (!string.IsNullOrWhiteSpace(resolved) && !ContainsPath(results, resolved))
                         {
                             results.Add(resolved);
                         }
                         break;
+                    }
+                }
+            }
+
+            return results.ToArray();
+        }
+
+        internal static string[] GetModelFilePathsByBindingKeys(this SherpaONNXModelMetadata metadata, params SherpaONNXModelFileKey[] keys)
+        {
+            if (metadata?.fileBindings == null || metadata.fileBindings.Count == 0 || keys == null || keys.Length == 0)
+            {
+                return System.Array.Empty<string>();
+            }
+
+            var sanitizedKeys = new System.Collections.Generic.HashSet<SherpaONNXModelFileKey>(keys.Where(key => key != SherpaONNXModelFileKey.None));
+            if (sanitizedKeys.Count == 0)
+            {
+                return System.Array.Empty<string>();
+            }
+
+            var results = new System.Collections.Generic.List<string>();
+            for (int k = 0; k < keys.Length; k++)
+            {
+                var requestedKey = keys[k];
+                if (requestedKey == SherpaONNXModelFileKey.None || !sanitizedKeys.Contains(requestedKey))
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < metadata.fileBindings.Count; i++)
+                {
+                    var binding = metadata.fileBindings[i];
+                    if (binding == null || binding.key != requestedKey || string.IsNullOrWhiteSpace(binding.path))
+                    {
+                        continue;
+                    }
+
+                    var resolved = ResolveBindingPath(metadata, binding.path);
+                    if (!string.IsNullOrWhiteSpace(resolved) && !ContainsPath(results, resolved))
+                    {
+                        results.Add(resolved);
                     }
                 }
             }
@@ -299,6 +341,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
         internal static string[] ListModelFiles(this SherpaONNXModelMetadata metadata, bool fileNameOnly = false)
         {
+            return ListModelFiles(metadata, fileNameOnly, recursive: false);
+        }
+
+        internal static string[] ListModelFiles(this SherpaONNXModelMetadata metadata, bool fileNameOnly, bool recursive)
+        {
             // Validate inputs
             if (metadata == null)
             {
@@ -327,7 +374,10 @@ namespace Eitan.SherpaONNXUnity.Runtime
                     return System.Array.Empty<string>();
                 }
 
-                var filePaths = System.IO.Directory.GetFileSystemEntries(modelFolderPath);
+                var filePaths = System.IO.Directory.GetFileSystemEntries(
+                    modelFolderPath,
+                    "*",
+                    recursive ? System.IO.SearchOption.AllDirectories : System.IO.SearchOption.TopDirectoryOnly);
                 if (filePaths == null || filePaths.Length == 0)
                 {
                     return System.Array.Empty<string>();
@@ -407,6 +457,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
         /// </returns>
         internal static string[] GetModelFilePathByKeywords(this SherpaONNXModelMetadata metadata, params string[] keywords)
         {
+            return GetModelFilePathByKeywords(metadata, true, keywords);
+        }
+
+        internal static string[] GetModelFilePathByKeywords(this SherpaONNXModelMetadata metadata, bool recursive, params string[] keywords)
+        {
             if (string.IsNullOrEmpty(metadata.modelId))
             {
                 SherpaLog.Error("Model ID is empty. Please check the manifest file.");
@@ -428,17 +483,23 @@ namespace Eitan.SherpaONNXUnity.Runtime
             var boundCandidates = GetBoundPathsByKeywords(metadata, validKeywords);
 
             // Enumerate actual file names on disk (filename only for matching)
-            var fileNames = metadata.ListModelFiles(fileNameOnly: true);
-            if (fileNames == null || fileNames.Length == 0)
+            var entries = metadata.ListModelFiles(fileNameOnly: false, recursive: recursive);
+            if (entries == null || entries.Length == 0)
             {
                 return boundCandidates.Length > 0 ? boundCandidates : null;
             }
 
             // Collect candidates with scores
-            var candidates = new System.Collections.Generic.List<(string Name, int Score, int ExactWordMatches, int Priority, int NameLength)>(fileNames.Length);
+            var candidates = new System.Collections.Generic.List<(string Path, string Name, int Score, int ExactWordMatches, int Priority, int NameLength)>(entries.Length);
 
-            foreach (var name in fileNames)
+            foreach (var entryPath in entries)
             {
+                var name = System.IO.Path.GetFileName(entryPath);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
                 var lowerName = name.ToLowerInvariant();
                 var words = SplitIntoWordsForMatch(name);
                 var wordSet = new System.Collections.Generic.HashSet<string>(words.Select(w => w.ToLowerInvariant()));
@@ -475,7 +536,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 if (matchedKeywords.Count > 0)
                 {
                     var prio = GetPriorityForEntry(name);
-                    candidates.Add((name, matchedKeywords.Count, exactWordMatches, prio, name.Length));
+                    candidates.Add((entryPath, name, matchedKeywords.Count, exactWordMatches, prio, name.Length));
                 }
             }
 
@@ -492,13 +553,18 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 .ThenByDescending(c => c.ExactWordMatches)
                 .ThenBy(c => c.NameLength)
                 .ThenBy(c => c.Name, System.StringComparer.OrdinalIgnoreCase)
-                .Select(c => metadata.GetModelFilePath(c.Name))
+                .Select(c => c.Path)
                 .ToArray();
 
             return boundCandidates.Length > 0 ? boundCandidates : ordered;
         }
 
         internal static string[] GetModelFilesByExtensionName(this SherpaONNXModelMetadata metadata, params string[] extensions)
+        {
+            return GetModelFilesByExtensionName(metadata, true, extensions);
+        }
+
+        internal static string[] GetModelFilesByExtensionName(this SherpaONNXModelMetadata metadata, bool recursive, params string[] extensions)
         {
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
             {
@@ -520,15 +586,14 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
 
             // List actual files on disk and filter by extension
-            var fileNamesOnDisk = metadata.ListModelFiles(fileNameOnly: true);
-            if (fileNamesOnDisk == null || fileNamesOnDisk.Length == 0)
+            var filePathsOnDisk = metadata.ListModelFiles(fileNameOnly: false, recursive: recursive);
+            if (filePathsOnDisk == null || filePathsOnDisk.Length == 0)
             {
                 return System.Array.Empty<string>();
             }
 
-            var results = fileNamesOnDisk
-                .Where(name => validExtensions.Contains(System.IO.Path.GetExtension(name)))
-                .Select(name => metadata.GetModelFilePath(name))
+            var results = filePathsOnDisk
+                .Where(path => validExtensions.Contains(System.IO.Path.GetExtension(path)))
                 .ToArray();
 
             if (metadata.fileBindings != null && metadata.fileBindings.Count > 0)

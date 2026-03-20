@@ -70,10 +70,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core
             config.Model.NumThreads = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
-            config.Model.CtTransformer = ModelFileResolver.ResolveRequiredFile(
+            config.Model.CtTransformer = ModelFileResolver.ResolveRequiredFileWithBindings(
                 metadata,
                 "CT-Transformer model",
                 fallbackReporter,
+                new[] { SherpaONNXModelFileKey.Model },
                 ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
                 ModelFileCriteria.FromKeywords("model"),
                 ModelFileCriteria.FromExtensions(".onnx"));

@@ -15,6 +15,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             #region SpeechRecognitionModelKeywords
             // Online model keywords
             private static readonly string[] online_streaming_keywords = { "streaming" };
+            private static readonly string[] online_lstm_keywords = { "lstm" };
 
             // Model architecture keywords
             private static readonly string[] transducer_keywords = { "zipformer", "conformer", "transducer" };
@@ -262,6 +263,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Dolphin; }
                 else if (ContainsAnyKeyword(lowerModelID, telespeech_keywords))
                 { return SpeechRecognitionModelType.TeleSpeech; }
+                else if (ContainsAnyKeyword(lowerModelID, online_lstm_keywords))
+                { return SpeechRecognitionModelType.Online_Transducer; }
                 else if (ContainsAnyKeyword(lowerModelID, tone_ctc_keywords))
                 { return SpeechRecognitionModelType.Online_Tone_Ctc; }
 
@@ -561,6 +564,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Online_Transducer:
                     case SpeechRecognitionModelType.Offline_Transducer:
                         return transducer_keywords
+                            .Concat(online_lstm_keywords)
                             .Concat(nemo_parakeet_tdt_keywords)
                             .ToArray();
                     case SpeechRecognitionModelType.Online_Ctc:

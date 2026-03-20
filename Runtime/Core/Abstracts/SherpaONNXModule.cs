@@ -21,6 +21,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private static readonly ConcurrentDictionary<Type, FieldInfo> s_HandleFieldCache = new ConcurrentDictionary<Type, FieldInfo>();
         private static readonly ConcurrentDictionary<Type, byte> s_HandleResolutionWarnings = new ConcurrentDictionary<Type, byte>();
         private static readonly string[] s_HandleFieldCandidates = new[] { "_handle", "handle", "Handle", "_Handle" };
+        private const int MaxCorruptionRecoveryRetries = 1;
 
         private readonly SynchronizationContext _rootThreadContext;
         private readonly object _lockObject = new object();
@@ -166,85 +167,112 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             var metadata = await SherpaONNXModelRegistry.Instance.GetMetadataAsync(_modelId, ct).ConfigureAwait(false);
 
-            try
+            var corruptionRecoveryRetryCount = 0;
+
+            while (true)
             {
-                TraceLifecycle($"Preparing model '{_modelId}'");
-                var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(metadata, reporterAdapter, ct).ConfigureAwait(false);
-
-                if (prepareResult.Success)
+                try
                 {
+                    TraceLifecycle($"Preparing model '{_modelId}'");
+                    var prepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(metadata, reporterAdapter, ct).ConfigureAwait(false);
 
-                    reporterAdapter?.Report(new PrepareFeedback(metadata, message: $"{ModuleType} model:{_modelId} ready to init"));
+                    if (prepareResult.Success)
+                    {
 
-                    TraceLifecycle("Running module-specific initialization");
-                    Initialized = await Initialization(metadata, _sampleRate, _isMobilePlatform, reporterAdapter, ct).ConfigureAwait(false);
-                    _lastStatusUtc = DateTime.UtcNow;
+                        reporterAdapter?.Report(new PrepareFeedback(metadata, message: $"{ModuleType} model:{_modelId} ready to init"));
 
-                    // 初始化成功后再次检查，防止在初始化过程中被销毁
-                    if (ct.IsCancellationRequested || IsDisposed)
-                    {
-                        var cancelled = new OperationCanceledException("Initialization was cancelled or disposed.", ct);
-                        reporterAdapter?.Report(new CancelFeedback(metadata, message: cancelled.Message));
-                        _initializationException = cancelled;
-                        throw cancelled;
-                    }
-                    if (Initialized)
-                    {
-                        TraceLifecycle("Initialization succeeded");
-                        reporterAdapter?.Report(new SuccessFeedback(metadata, message: $"{ModuleType} model:{_modelId} init success"));
-                        _initializationException = null;
-                    }
-                    else
-                    {
+                        TraceLifecycle("Running module-specific initialization");
+                        Initialized = await Initialization(metadata, _sampleRate, _isMobilePlatform, reporterAdapter, ct).ConfigureAwait(false);
+                        _lastStatusUtc = DateTime.UtcNow;
+
+                        // 初始化成功后再次检查，防止在初始化过程中被销毁
+                        if (ct.IsCancellationRequested || IsDisposed)
+                        {
+                            var cancelled = new OperationCanceledException("Initialization was cancelled or disposed.", ct);
+                            reporterAdapter?.Report(new CancelFeedback(metadata, message: cancelled.Message));
+                            _initializationException = cancelled;
+                            throw cancelled;
+                        }
+                        if (Initialized)
+                        {
+                            TraceLifecycle("Initialization succeeded");
+                            reporterAdapter?.Report(new SuccessFeedback(metadata, message: $"{ModuleType} model:{_modelId} init success"));
+                            _initializationException = null;
+                            return;
+                        }
+
                         var initFailed = new InvalidOperationException($"{ModuleType} model:{_modelId} init failed");
                         _initializationException = initFailed;
                         TraceLifecycle($"Initialization failed: {initFailed.Message}");
                         reporterAdapter?.Report(new FailedFeedback(metadata, message: initFailed.Message));
                         throw initFailed;
                     }
-
-                }
-                else
-                {
-                    if (prepareResult.ErrorCode == PrepareErrorCode.Cancelled)
+                    else
                     {
-                        throw new OperationCanceledException("Model preparation canceled.", ct);
+                        if (prepareResult.ErrorCode == PrepareErrorCode.Cancelled)
+                        {
+                            throw new OperationCanceledException("Model preparation canceled.", ct);
+                        }
+                        var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed ({prepareResult.ErrorCode})\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {GetManualInstallTarget(metadata.modelId)} manually.");
+                        prepareFailed.Data["PrepareErrorCode"] = prepareResult.ErrorCode;
+                        prepareFailed.Data["PrepareCleanupAttempted"] = prepareResult.CleanupAttempted;
+                        prepareFailed.Data["PrepareMessage"] = prepareResult.Message;
+                        _initializationException = prepareFailed;
+                        TraceLifecycle($"Prepare phase failed: {prepareFailed.Message}");
+                        throw prepareFailed;
                     }
-                    var prepareFailed = new InvalidOperationException($"Model {metadata.modelId} initialization failed ({prepareResult.ErrorCode})\nplease download from url:{metadata.downloadUrl}\nthen uncompress it to {GetManualInstallTarget(metadata.modelId)} manually.");
-                    _initializationException = prepareFailed;
-                    TraceLifecycle($"Prepare phase failed: {prepareFailed.Message}");
-                    throw prepareFailed;
-                }
 
-            }
-            catch (OperationCanceledException oce)
-            {
-                _initializationException = oce;
-                _lastStatusUtc = DateTime.UtcNow;
-                TraceLifecycle($"Initialization cancelled: {oce.Message}");
-                reporterAdapter?.Report(new CancelFeedback(metadata, message: oce.Message));
-                throw;
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    SherpaLog.Error(
-                        $"[{GetType().Name}] Initialization failed for model '{_modelId}'. Thread={Thread.CurrentThread.ManagedThreadId} IsMainThread={(SynchronizationContext.Current?.GetType().Name ?? "<null>")}",
-                        ex,
-                        category: "Lifecycle",
-                        includeStackTrace: true);
                 }
-                catch
+                catch (OperationCanceledException oce)
                 {
-                    // ignore logging failures
+                    _initializationException = oce;
+                    _lastStatusUtc = DateTime.UtcNow;
+                    TraceLifecycle($"Initialization cancelled: {oce.Message}");
+                    reporterAdapter?.Report(new CancelFeedback(metadata, message: oce.Message));
+                    throw;
                 }
-                _initializationException = ex;
-                _lastStatusUtc = DateTime.UtcNow;
-                TraceLifecycle($"Initialization exception: {ex.GetType().Name}: {ex.Message}");
-                reporterAdapter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
-                TryCleanupCorruptedModel(metadata, ex);
-                throw;
+                catch (Exception ex)
+                {
+                    var cleanedCorruptedArtifacts = TryCleanupCorruptedModel(metadata, ex);
+                    var shouldRetryAfterCleanup =
+                        cleanedCorruptedArtifacts &&
+                        corruptionRecoveryRetryCount < MaxCorruptionRecoveryRetries &&
+                        SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, @default: true) &&
+                        !ct.IsCancellationRequested &&
+                        !IsDisposed;
+
+                    if (shouldRetryAfterCleanup)
+                    {
+                        corruptionRecoveryRetryCount++;
+                        TryResetStateAfterFailedInitialization();
+                        Initialized = false;
+                        _initializationException = null;
+                        _lastStatusUtc = DateTime.UtcNow;
+
+                        var retryMessage = $"Detected corrupted local model for {metadata.modelId}; cleaned artifacts and retrying download ({corruptionRecoveryRetryCount}/{MaxCorruptionRecoveryRetries}).";
+                        TraceLifecycle(retryMessage);
+                        reporterAdapter?.Report(new CleanFeedback(metadata, SherpaPathResolver.GetModelRootPath(metadata.modelId), retryMessage));
+                        continue;
+                    }
+
+                    try
+                    {
+                        SherpaLog.Error(
+                            $"[{GetType().Name}] Initialization failed for model '{_modelId}'. Thread={Thread.CurrentThread.ManagedThreadId} IsMainThread={(SynchronizationContext.Current?.GetType().Name ?? "<null>")}",
+                            ex,
+                            category: "Lifecycle",
+                            includeStackTrace: true);
+                    }
+                    catch
+                    {
+                        // ignore logging failures
+                    }
+                    _initializationException = ex;
+                    _lastStatusUtc = DateTime.UtcNow;
+                    TraceLifecycle($"Initialization exception: {ex.GetType().Name}: {ex.Message}");
+                    reporterAdapter?.Report(new FailedFeedback(metadata, message: ex.Message, exception: ex));
+                    throw;
+                }
             }
         }
 
@@ -269,53 +297,103 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private static readonly string[] s_CorruptionMarkers = new[]
         {
             "protobuf",
-            "onnx",
-            "invalid argument",
-            "invalidargument",
             "corrupt",
             "corrupted",
             "checksum",
             "hash mismatch",
-            "parse",
-            "parsing",
+            "sha256",
+            "invalid protobuf",
+            "failed to parse",
+            "parsing failed",
+            "validation failed",
+            "incomplete",
         };
 
-        /// <summary>
-        /// Attempts to delete model artifacts when initialization fails due to likely corruption,
-        /// so the next prepare can re-download clean data. Avoids running on unrelated errors.
-        /// </summary>
-        private void TryCleanupCorruptedModel(SherpaONNXModelMetadata metadata, Exception ex)
+        internal static bool IsLikelyCorruptedModelFailure(Exception ex)
         {
-            if (metadata == null || ex == null)
+            if (ex == null)
             {
-                return;
+                return false;
             }
 
-            if (!SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, @default: true))
+            if (TryGetPrepareErrorCode(ex, out _))
             {
-                return;
+                return false;
             }
 
             var message = ex.ToString();
             if (string.IsNullOrWhiteSpace(message))
             {
-                return;
+                return false;
             }
 
             var lower = message.ToLowerInvariant();
-            var isCorruption = false;
             foreach (var marker in s_CorruptionMarkers)
             {
                 if (lower.Contains(marker))
                 {
-                    isCorruption = true;
-                    break;
+                    return true;
                 }
             }
 
-            if (!isCorruption)
+            return false;
+        }
+
+        private static bool TryGetPrepareErrorCode(Exception ex, out PrepareErrorCode errorCode)
+        {
+            errorCode = PrepareErrorCode.None;
+            if (ex?.Data == null || !ex.Data.Contains("PrepareErrorCode"))
             {
-                return;
+                return false;
+            }
+
+            var raw = ex.Data["PrepareErrorCode"];
+            if (raw is PrepareErrorCode typedCode)
+            {
+                errorCode = typedCode;
+                return true;
+            }
+
+            if (raw is int rawInt && Enum.IsDefined(typeof(PrepareErrorCode), rawInt))
+            {
+                errorCode = (PrepareErrorCode)rawInt;
+                return true;
+            }
+
+            if (raw is string rawString && Enum.TryParse(rawString, out PrepareErrorCode parsedCode))
+            {
+                errorCode = parsedCode;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to delete model artifacts when initialization fails due to likely corruption,
+        /// so the next prepare can re-download clean data. Avoids running on unrelated errors.
+        /// </summary>
+        private bool TryCleanupCorruptedModel(SherpaONNXModelMetadata metadata, Exception ex)
+        {
+            if (metadata == null || ex == null)
+            {
+                return false;
+            }
+
+            if (!SherpaONNXEnvironment.GetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, @default: true))
+            {
+                return false;
+            }
+
+            var message = ex.ToString();
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return false;
+            }
+
+            if (!IsLikelyCorruptedModelFailure(ex))
+            {
+                return false;
             }
 
             try
@@ -324,10 +402,40 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 var modelRoot = Utilities.SherpaPathResolver.GetModelRootPath(metadata.modelId);
                 SherpaFileUtils.DeleteModelArtifacts(modelRoot, downloadPath);
                 SherpaLog.Warning($"[{ModuleType}] Detected likely corrupted model for {metadata.modelId}; cleaned local artifacts to force re-download.");
+                return true;
             }
             catch (Exception cleanupEx)
             {
                 SherpaLog.Warning($"[{ModuleType}] Failed to clean corrupted model artifacts: {cleanupEx.Message}");
+                return false;
+            }
+        }
+
+        private void TryResetStateAfterFailedInitialization()
+        {
+            try
+            {
+                TraceLifecycle("Resetting partially initialized module state before retry");
+            }
+            catch
+            {
+                // ignore logging failures
+            }
+
+            try
+            {
+                OnDestroy();
+            }
+            catch (Exception resetEx)
+            {
+                try
+                {
+                    SherpaLog.Warning($"[{ModuleType}] Failed to reset partially initialized state before retry: {resetEx.Message}");
+                }
+                catch
+                {
+                    // ignore logging failures
+                }
             }
         }
 

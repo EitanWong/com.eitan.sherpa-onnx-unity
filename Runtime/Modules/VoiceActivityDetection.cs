@@ -326,10 +326,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             switch (modelType)
             {
                 case VoiceActivityDetectionModelType.SileroVad:
-                    vadModelConfig.SileroVad.Model = ModelFileResolver.ResolveRequiredFile(
+                    vadModelConfig.SileroVad.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Silero VAD model",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.SileroVad, SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("silero", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("silero"));
                     vadModelConfig.SileroVad.Threshold = Threshold;
@@ -339,10 +340,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     vadModelConfig.SileroVad.WindowSize = 512;
                     break;
                 case VoiceActivityDetectionModelType.TenVad:
-                    vadModelConfig.TenVad.Model = ModelFileResolver.ResolveRequiredFile(
+                    vadModelConfig.TenVad.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Ten VAD model",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.TenVad, SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("ten", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("ten"));
                     vadModelConfig.TenVad.Threshold = Threshold;
