@@ -2113,6 +2113,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             //https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models
             public static readonly SherpaONNXModelMetadata[] KWS_MODELS_METADATA_TABLES = new[]
             {
+                new SherpaONNXModelMetadata
+                {
+                    modelId = "sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20",
+                    downloadFileHash =
+                        "68447f4fbc67e70eee3a93961f36e81e98f47aef73ce7e7ca00885c6cd3616a6",
+                    fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>
+                    {
+                        new SherpaONNXModelFileBinding
+                        {
+                            key = SherpaONNXModelFileKey.Keywords,
+                            path = "test_wavs/keywords.txt",
+                        },
+                    },
+                },
                 //for chinese
                 new SherpaONNXModelMetadata
                 {
@@ -2184,6 +2198,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     {
                         modelId =
                             "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
+                        downloadFileHash =
+                            "c0d5aa5f8eeb686032345e180bedf39319dc2e0556781c6264bcadba8328a6e1",
                     },
                 };
 

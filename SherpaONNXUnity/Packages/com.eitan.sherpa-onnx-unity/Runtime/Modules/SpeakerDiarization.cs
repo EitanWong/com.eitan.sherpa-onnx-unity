@@ -279,10 +279,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
 
             config.Segmentation.NumThreads = threadCount;
-            config.Embedding.Model = ModelFileResolver.ResolveRequiredFile(
+            config.Embedding.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                 embeddingModelMetadata,
                 "Embedding model",
                 embeddingFallbackReporter,
+                new[] { SherpaONNXModelFileKey.Embedding, SherpaONNXModelFileKey.Model },
                 ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
                 ModelFileCriteria.FromKeywords("embedding", int8QuantKeyword),
                 ModelFileCriteria.FromKeywords("model"),
@@ -301,10 +302,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         {
             try
             {
-                return ModelFileResolver.ResolveRequiredFile(
+                return ModelFileResolver.ResolveRequiredFileWithBindings(
                     metadata,
                     "Pyannote model",
                     fallbackReporter,
+                    new[] { SherpaONNXModelFileKey.Model },
                     ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
                     ModelFileCriteria.FromKeywords("segmentation", int8QuantKeyword),
                     ModelFileCriteria.FromKeywords("model"),

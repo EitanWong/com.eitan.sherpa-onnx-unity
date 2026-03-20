@@ -79,6 +79,11 @@ namespace Eitan.SherpaONNXUnity.Tests
                 return SpeechRecognitionModelType.Whisper;
             }
 
+            if (ContainsSeg(s, "lstm"))
+            {
+                return SpeechRecognitionModelType.Online_Transducer;
+            }
+
 
             if (ContainsSeg(s, "moonshine"))
             {
@@ -192,7 +197,7 @@ namespace Eitan.SherpaONNXUnity.Tests
         private static bool ExpectOnline(string modelId)
         {
             var s = modelId.ToLowerInvariant();
-            return s.Contains("streaming") || s.Contains("online");
+            return s.Contains("streaming") || s.Contains("online") || ContainsSeg(s, "lstm");
         }
 
         // --- Test-side keyword segment matching (mirrors production ContainsSegment semantics) ---
@@ -299,6 +304,12 @@ namespace Eitan.SherpaONNXUnity.Tests
 
             // streaming + zipformer -> Online_Transducer（未出现 ctc/paraformer）
             yield return Case("sherpa-onnx-streaming-zipformer-en-2023-06-26",
+                SpeechRecognitionModelType.Online_Transducer);
+
+            yield return Case("sherpa-onnx-lstm-zh-2023-02-20",
+                SpeechRecognitionModelType.Online_Transducer);
+
+            yield return Case("sherpa-onnx-lstm-en-2023-02-17",
                 SpeechRecognitionModelType.Online_Transducer);
 
             // offline ctc
@@ -426,6 +437,7 @@ namespace Eitan.SherpaONNXUnity.Tests
         {
             yield return BoolCase("sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01", true);
             yield return BoolCase("sherpa-onnx-streaming-paraformer-bilingual-zh-en", true);
+            yield return BoolCase("sherpa-onnx-lstm-zh-2023-02-20", true);
             yield return BoolCase("sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03", false);
             yield return BoolCase("sherpa-onnx-zipformer-ru-2024-09-18", false);
         }

@@ -39,6 +39,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private bool modelRequested;
         private bool modelReady;
         private bool recording;
+        private bool loadFailed;
 
         private void Awake()
         {
@@ -63,7 +64,10 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 identifier.LanguageIdentifiedEvent.AddListener(text => resultText.text = text);
                 identifier.IdentificationFailedEvent.AddListener(message => statusText.text = message);
+                identifier.ErrorEvent.AddListener(HandleError);
                 identifier.InitializationStateChangedEvent.AddListener(HandleIdentifierReadyState);
+                identifier.FeedbackMessages.AddListener(HandleFeedbackMessage);
+                identifier.FeedbackReceived += HandleFeedback;
             }
         }
 
@@ -73,6 +77,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             statusText.text = "Load a language id model.";
             resultText.text = "Tap Load Model to start spoken language identification.";
             SetRecordingUiVisible(false);
+            loadFailed = false;
             UpdateButtons();
         }
 
@@ -92,7 +97,10 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 identifier.LanguageIdentifiedEvent.RemoveAllListeners();
                 identifier.IdentificationFailedEvent.RemoveAllListeners();
+                identifier.ErrorEvent.RemoveListener(HandleError);
                 identifier.InitializationStateChangedEvent.RemoveListener(HandleIdentifierReadyState);
+                identifier.FeedbackMessages.RemoveListener(HandleFeedbackMessage);
+                identifier.FeedbackReceived -= HandleFeedback;
             }
 
             if (microphone != null)
@@ -161,6 +169,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 {
                     modelRequested = true;
                     modelReady = false;
+                    loadFailed = false;
                     BeginLoading($"Loading {identifier.ModelId}…");
                 }
             }
@@ -169,6 +178,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 identifier.DisposeModule();
                 modelRequested = false;
                 modelReady = false;
+                loadFailed = false;
                 progressTracker?.Reset();
                 progressTracker?.SetVisible(false);
                 statusText.text = "Model disposed.";
@@ -308,16 +318,48 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 if (ready)
                 {
+                    loadFailed = false;
                     DemoUIShared.ShowLoadingComplete(progressTracker, statusText, $"Loaded {identifier.ModelId}. Tap record and speak.");
                     SetRecordingUiVisible(true);
                 }
-                else
+                else if (!loadFailed)
                 {
                     DemoUIShared.ShowLoading(progressTracker, statusText, "Loading model…");
                 }
             }
 
             UpdateButtons();
+        }
+
+        private void HandleFeedbackMessage(string message)
+        {
+            if (progressMessageText != null)
+            {
+                progressMessageText.text = message;
+            }
+        }
+
+        private void HandleFeedback(SherpaFeedback feedback)
+        {
+            if (feedback is FailedFeedback || feedback is CancelFeedback)
+            {
+                loadFailed = true;
+            }
+            else if (feedback is SuccessFeedback || feedback is LoadFeedback || feedback is PrepareFeedback)
+            {
+                loadFailed = false;
+            }
+
+            DemoUIShared.UpdateProgressFromFeedback(progressTracker, progressMessageText, feedback);
+        }
+
+        private void HandleError(string message)
+        {
+            loadFailed = true;
+            if (statusText != null)
+            {
+                statusText.text = message;
+            }
         }
 
         private void BeginLoading(string message)

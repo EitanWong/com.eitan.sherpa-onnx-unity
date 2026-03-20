@@ -76,23 +76,42 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             switch (modelType)
             {
                 case SpokenLanguageIdentificationModelType.Whisper:
-                    sliModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFile(
+                    sliModelConfig.Whisper.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Whisper encoder",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
                         ModelFileCriteria.FromKeywords("encoder", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("encoder"));
-                    sliModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFile(
+                    sliModelConfig.Whisper.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Whisper decoder",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("decoder"));
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported SpokenLanguageIdentification model type: {modelType}");
             }
+
+            ValidateResolvedWhisperModel(sliModelConfig, metadata, reporter, ct);
             return sliModelConfig;
+        }
+
+        private static void ValidateResolvedWhisperModel(SpokenLanguageIdentificationConfig config, SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            ValidateOnnxFile(config.Whisper.Encoder, "Whisper encoder", metadata, reporter);
+
+            ct.ThrowIfCancellationRequested();
+            ValidateOnnxFile(config.Whisper.Decoder, "Whisper decoder", metadata, reporter);
+        }
+
+        private static void ValidateOnnxFile(string path, string description, SherpaONNXModelMetadata metadata, SherpaONNXFeedbackReporter reporter)
+        {
+            reporter?.Report(new VerifyFeedback(metadata, message: $"Validating {description}: {path}", filePath: path));
+            OnnxModelValidator.ValidateFileOrThrow(path, description);
         }
 
 
