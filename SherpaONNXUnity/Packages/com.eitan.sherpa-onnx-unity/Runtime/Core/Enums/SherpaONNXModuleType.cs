@@ -48,5 +48,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         // 效果：提升语音质量（降噪/去混响/清晰化处理）
         SpeechEnhancement,
 
+        // 说话人嵌入 | Speaker Embedding
+        // 效果：提取说话人 embedding，可被 diarization / identification 等任务复用
+        Embedding,
+
     }
 }

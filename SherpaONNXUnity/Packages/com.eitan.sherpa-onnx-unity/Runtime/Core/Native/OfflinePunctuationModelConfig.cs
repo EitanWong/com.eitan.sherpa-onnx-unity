@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflinePunctuationModelConfig
     {
-        public OfflinePunctuationModelConfig(bool initializeDefaults = true)
+        public OfflinePunctuationModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             CtTransformer = "";
             NumThreads = 1;
             Debug = 0;

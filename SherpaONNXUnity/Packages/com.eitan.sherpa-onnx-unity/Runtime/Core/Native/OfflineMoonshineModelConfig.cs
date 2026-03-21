@@ -1,25 +1,24 @@
-/// Copyright (c)  2024  Xiaomi Corporation (authors: Fangjun Kuang)
+/// Copyright (c)  2024-2026  Xiaomi Corporation (authors: Fangjun Kuang)
 
 using System.Runtime.InteropServices;
 
+// For Moonshine v1, you need four models:
+//  - preprocessor, encoder, cached_decoder, uncached_decoder
+//
+// For Moonshine v2, you need 2 models:
+//  - encoder, merged_decoder
 namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineMoonshineModelConfig
     {
-        public OfflineMoonshineModelConfig(bool initializeDefaults = true)
+        public OfflineMoonshineModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Preprocessor = "";
             Encoder = "";
             UncachedDecoder = "";
             CachedDecoder = "";
+            MergedDecoder = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]
         public string Preprocessor;
@@ -32,5 +31,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 
         [MarshalAs(UnmanagedType.LPStr)]
         public string CachedDecoder;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string MergedDecoder;
     }
 }

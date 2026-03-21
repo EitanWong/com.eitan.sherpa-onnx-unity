@@ -35,4 +35,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Demo/Collection/AudioTagging/AudioTagging.unity
     guid: 52c8512a883674eadb9d8db7a511ea2e
+  - enabled: 1
+    path: Assets/Demo/Collection/SpeakerDiarization/SpeakerDiarization.unity
+    guid: 877309c01e0754849890aef9fa202172
   m_configObjects: {}

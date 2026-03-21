@@ -26,6 +26,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "Punctuation");
 
                 _sampleRate = sampleRate;
                 var config = CreatePunctuationConfig(metadata, isMobilePlatform, reporter);
@@ -70,10 +71,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Core
             config.Model.NumThreads = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
-            config.Model.CtTransformer = ModelFileResolver.ResolveRequiredFile(
+            config.Model.CtTransformer = ModelFileResolver.ResolveRequiredFileWithBindings(
                 metadata,
                 "CT-Transformer model",
                 fallbackReporter,
+                new[] { SherpaONNXModelFileKey.Model },
                 ModelFileCriteria.FromKeywords("model", int8QuantKeyword),
                 ModelFileCriteria.FromKeywords("model"),
                 ModelFileCriteria.FromExtensions(".onnx"));

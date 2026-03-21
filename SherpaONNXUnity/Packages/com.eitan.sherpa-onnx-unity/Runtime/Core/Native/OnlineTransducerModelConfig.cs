@@ -10,15 +10,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineTransducerModelConfig
     {
-        public OnlineTransducerModelConfig(bool initializeDefaults = true)
+        public OnlineTransducerModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Encoder = "";
             Decoder = "";
             Joiner = "";

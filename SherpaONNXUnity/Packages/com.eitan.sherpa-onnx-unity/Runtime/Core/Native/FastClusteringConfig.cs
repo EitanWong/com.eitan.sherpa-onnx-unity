@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct FastClusteringConfig
     {
-        public FastClusteringConfig(bool initializeDefaults = true)
+        public FastClusteringConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             NumClusters = -1;
             Threshold = 0.5F;
         }

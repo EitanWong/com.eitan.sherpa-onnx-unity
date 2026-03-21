@@ -10,11 +10,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     {
         public OfflineSpeakerDiarizationSegment(IntPtr handle)
         {
-            Impl impl = (Impl)Marshal.PtrToStructure(handle, typeof(Impl));
+          Impl impl = (Impl)Marshal.PtrToStructure(handle, typeof(Impl));
 
-            Start = impl.Start;
-            End = impl.End;
-            Speaker = impl.Speaker;
+          Start = impl.Start;
+          End = impl.End;
+          Speaker = impl.Speaker;
         }
 
         [StructLayout(LayoutKind.Sequential)]

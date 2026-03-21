@@ -32,7 +32,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct Impl
+        struct Impl
         {
             public IntPtr Lang;
         }

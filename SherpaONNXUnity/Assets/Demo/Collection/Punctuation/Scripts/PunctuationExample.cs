@@ -68,7 +68,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             _ = PopulateDropdownAsync();
             UpdateButtonLabel();
             resultText.text = "Select the model and click the Load button to use punctuation.";
-            statusText.text = "Load a punctuation model to enable the button.";
+            SetStatus("Load a punctuation model to enable the button.");
             modelReady = false;
             punctuateButton.interactable = false;
         }
@@ -134,7 +134,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         {
             if (punctuation == null)
             {
-                statusText.text = "Assign the PunctuationComponent.";
+                SetStatus("Assign the PunctuationComponent.");
                 return;
             }
 
@@ -143,7 +143,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 var modelId = SelectedModelId;
                 if (string.IsNullOrWhiteSpace(modelId))
                 {
-                    statusText.text = "Select a model first.";
+                    SetStatus("Select a model first.");
                     return;
                 }
 
@@ -160,7 +160,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 punctuation.DisposeModule();
                 modelRequested = false;
                 modelReady = false;
-                statusText.text = "Model disposed.";
+                SetStatus("Model disposed.");
                 resultText.text = string.Empty;
                 progressTracker?.Reset();
                 progressTracker?.SetVisible(false);
@@ -184,7 +184,6 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
 
             DemoUIShared.SetButtonColor(loadOrUnloadButton, modelRequested ? DemoUIShared.UnloadColor : DemoUIShared.LoadColor);
-            resultText.text = "The model has been unloaded.";
 
             if (modelDropdown != null)
             {
@@ -196,26 +195,26 @@ namespace Eitan.SherpaONNXUnity.Samples
         {
             if (!modelRequested || punctuation == null || !modelReady)
             {
-                statusText.text = "Load a model first.";
+                SetStatus("Load a model first.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(inputField?.text))
             {
-                statusText.text = "Enter some text to punctuate.";
+                SetStatus("Enter some text to punctuate.");
                 return;
             }
 
-            statusText.text = "Processing…";
+            SetStatus("Processing…");
             resultText.text = string.Empty;
             var output = await punctuation.AddPunctuationAsync(inputField.text).ConfigureAwait(true);
             if (string.IsNullOrWhiteSpace(output))
             {
-                statusText.text = "No text returned.";
+                SetStatus("No text returned.");
             }
             else
             {
-                statusText.text = "Done.";
+                SetStatus("Done.");
                 resultText.text = output;
             }
         }
@@ -230,7 +229,7 @@ namespace Eitan.SherpaONNXUnity.Samples
 
         private void HandlePunctuationFailed(string message)
         {
-            statusText.text = message;
+            SetStatus(message);
         }
 
         private void HandleReadyState(bool ready)
@@ -240,7 +239,9 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 if (ready)
                 {
-                    CompleteLoading($"Loaded {punctuation.ModelId}. Enter text to punctuate.");
+                    var loadedMessage = $"Model loaded: {punctuation.ModelId}. Enter text to punctuate.";
+                    CompleteLoading(loadedMessage);
+                    SetStatus(loadedMessage);
                 }
                 else
                 {
@@ -260,6 +261,17 @@ namespace Eitan.SherpaONNXUnity.Samples
         private void CompleteLoading(string message)
         {
             DemoUIShared.ShowLoadingComplete(progressTracker, statusText, message);
+        }
+
+        private void SetStatus(string message)
+        {
+            if (statusText == null)
+            {
+                return;
+            }
+
+            statusText.gameObject.SetActive(true);
+            statusText.text = message;
         }
 
         public void OpenGithubRepo()

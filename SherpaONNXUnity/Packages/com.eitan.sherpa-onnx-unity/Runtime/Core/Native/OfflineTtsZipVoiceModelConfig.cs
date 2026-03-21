@@ -7,21 +7,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsZipVoiceModelConfig
     {
-        public OfflineTtsZipVoiceModelConfig(bool initializeDefaults = true)
+        public OfflineTtsZipVoiceModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Tokens = "";
-            TextModel = "";
-            FlowMatchingModel = "";
+            Encoder = "";
+            Decoder = "";
             Vocoder = "";
             DataDir = "";
-            PinyinDict = "";
+            Lexicon = "";
 
             FeatScale = 0.1F;
             Tshift = 0.5F;
@@ -32,10 +25,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public string Tokens;
 
         [MarshalAs(UnmanagedType.LPStr)]
-        public string TextModel;
+        public string Encoder;
 
         [MarshalAs(UnmanagedType.LPStr)]
-        public string FlowMatchingModel;
+        public string Decoder;
 
         [MarshalAs(UnmanagedType.LPStr)]
         public string Vocoder;
@@ -44,7 +37,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public string DataDir;
 
         [MarshalAs(UnmanagedType.LPStr)]
-        public string PinyinDict;
+        public string Lexicon;
 
         public float FeatScale;
         public float Tshift;

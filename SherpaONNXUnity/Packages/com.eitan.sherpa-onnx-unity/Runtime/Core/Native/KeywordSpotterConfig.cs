@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct KeywordSpotterConfig
     {
-        public KeywordSpotterConfig(bool initializeDefaults = true)
+        public KeywordSpotterConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             FeatConfig = new FeatureConfig();
             ModelConfig = new OnlineModelConfig();
 
@@ -24,8 +17,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             KeywordsScore = 1.0F;
             KeywordsThreshold = 0.25F;
             KeywordsFile = "";
-            KeywordsBuf = "";
-            KeywordsBufSize = 0;
+            KeywordsBuf= "";
+            KeywordsBufSize= 0;
         }
         public FeatureConfig FeatConfig;
         public OnlineModelConfig ModelConfig;

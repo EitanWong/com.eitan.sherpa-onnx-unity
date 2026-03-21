@@ -2,6 +2,7 @@
 namespace Eitan.SherpaONNXUnity.Tests
 {
 
+    using System.IO;
     using System.Collections.Generic;
     using NUnit.Framework;
     using Eitan.SherpaONNXUnity.Runtime;
@@ -54,72 +55,119 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
         }
 
+        public static IEnumerable<TestCaseData> AllSpeakerDiarizationIds_FromConstants()
+        {
+            foreach (var meta in SherpaONNXConstants.Models.SPEAKER_DIARIZATION_MODELS_METADATA_TABLES)
+            {
+                if (meta == null || string.IsNullOrEmpty(meta.modelId))
+                {
+                    continue;
+                }
+
+                yield return new TestCaseData(meta.modelId).SetName($"DIARIZATION::CONST::{meta.modelId}");
+            }
+        }
+
         private static SpeechRecognitionModelType ExpectAsrTypeFromId(string modelId)
         {
             var s = modelId.ToLowerInvariant();
             bool isStreaming = s.Contains("streaming") || s.Contains("online");
 
             // Family-first expectations (keep order specific -> generic)
-            if (s.Contains("whisper"))
+            if (ContainsSeg(s, "whisper"))
             {
                 return SpeechRecognitionModelType.Whisper;
             }
 
+            if (ContainsSeg(s, "lstm"))
+            {
+                return SpeechRecognitionModelType.Online_Transducer;
+            }
 
-            if (s.Contains("moonshine"))
+
+            if (ContainsSeg(s, "moonshine"))
             {
                 return SpeechRecognitionModelType.Moonshine;
             }
 
 
-            if (s.Contains("sense-voice") || s.Contains("sense_voice") || s.Contains("sensevoice"))
+            if (ContainsSeg(s, "sense-voice") || ContainsSeg(s, "sense_voice") || ContainsSeg(s, "sensevoice"))
             {
                 return SpeechRecognitionModelType.SenseVoice;
             }
 
 
-            if (s.Contains("fire-red-asr"))
+            if (ContainsSeg(s, "fire-red-asr"))
             {
                 return SpeechRecognitionModelType.FireRedAsr;
             }
 
 
-            if (s.Contains("dolphin"))
+            if (ContainsSeg(s, "dolphin"))
             {
                 return SpeechRecognitionModelType.Dolphin;
             }
 
 
-            if (s.Contains("telespeech"))
+            if (ContainsSeg(s, "telespeech"))
             {
                 return SpeechRecognitionModelType.TeleSpeech;
             }
 
 
-            if (s.Contains("tdnn"))
+            if (ContainsSeg(s, "tdnn"))
             {
                 return SpeechRecognitionModelType.Tdnn;
             }
 
-            // Nemo CTC
-
-            if (s.Contains("nemo-ctc") || s.Contains("parakeet_tdt_ctc") || s.Contains("_ctc-"))
+            if (ContainsSeg(s, "omnilingual"))
             {
+                return SpeechRecognitionModelType.Omnilingual;
+            }
 
+            if (ContainsSeg(s, "nemo-canary") || ContainsSeg(s, "canary"))
+            {
+                return SpeechRecognitionModelType.Offline_Canary;
+            }
+
+            if (ContainsSeg(s, "funasr-nano") || ContainsSeg(s, "funasr_nano") || ContainsSeg(s, "funasr"))
+            {
+                return SpeechRecognitionModelType.Offline_FunAsrNano;
+            }
+
+            // Nemo family special cases
+            if (ContainsSeg(s, "parakeet_tdt_ctc") || ContainsSeg(s, "parakeet-tdt-ctc") || ContainsSeg(s, "tdt_ctc"))
+            {
                 return SpeechRecognitionModelType.Offline_Nemo_Ctc;
             }
 
-            // Paraformer
+            if (ContainsSeg(s, "nemo-parakeet-tdt") || ContainsSeg(s, "parakeet-tdt") || ContainsSeg(s, "parakeet_tdt"))
+            {
+                return isStreaming ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer;
+            }
 
-            if (s.Contains("paraformer"))
+            // Nemo CTC
+            if (ContainsSeg(s, "nemo-ctc"))
+            {
+                return isStreaming ? SpeechRecognitionModelType.Online_Nemo_Ctc : SpeechRecognitionModelType.Offline_Nemo_Ctc;
+            }
+
+            // Paraformer
+            if (ContainsSeg(s, "paraformer"))
             {
 
                 return isStreaming ? SpeechRecognitionModelType.Online_Paraformer : SpeechRecognitionModelType.Offline_Paraformer;
             }
 
+            // MedASR CTC must be matched before generic CTC.
+            if (ContainsSeg(s, "medasr") || ContainsSeg(s, "med-asr"))
+            {
+                return SpeechRecognitionModelType.Offline_MedAsrCtc;
+            }
+
             // Generic CTC (non-Nemo)
 
-            if (s.Contains("-ctc-"))
+            if (ContainsSeg(s, "ctc"))
             {
 
                 return isStreaming ? SpeechRecognitionModelType.Online_Ctc : SpeechRecognitionModelType.Offline_ZipformerCtc;
@@ -127,7 +175,7 @@ namespace Eitan.SherpaONNXUnity.Tests
 
             // Nemo Transducer
 
-            if (s.Contains("nemo-transducer"))
+            if (ContainsSeg(s, "nemo-transducer"))
             {
 
                 return isStreaming ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer;
@@ -135,7 +183,7 @@ namespace Eitan.SherpaONNXUnity.Tests
 
             // Zipformer default -> Transducer (when not CTC)
 
-            if (s.Contains("zipformer"))
+            if (ContainsSeg(s, "zipformer") || ContainsSeg(s, "conformer") || ContainsSeg(s, "transducer"))
             {
 
                 return isStreaming ? SpeechRecognitionModelType.Online_Transducer : SpeechRecognitionModelType.Offline_Transducer;
@@ -149,7 +197,7 @@ namespace Eitan.SherpaONNXUnity.Tests
         private static bool ExpectOnline(string modelId)
         {
             var s = modelId.ToLowerInvariant();
-            return s.Contains("streaming") || s.Contains("online");
+            return s.Contains("streaming") || s.Contains("online") || ContainsSeg(s, "lstm");
         }
 
         // --- Test-side keyword segment matching (mirrors production ContainsSegment semantics) ---
@@ -258,6 +306,12 @@ namespace Eitan.SherpaONNXUnity.Tests
             yield return Case("sherpa-onnx-streaming-zipformer-en-2023-06-26",
                 SpeechRecognitionModelType.Online_Transducer);
 
+            yield return Case("sherpa-onnx-lstm-zh-2023-02-20",
+                SpeechRecognitionModelType.Online_Transducer);
+
+            yield return Case("sherpa-onnx-lstm-en-2023-02-17",
+                SpeechRecognitionModelType.Online_Transducer);
+
             // offline ctc
             yield return Case("sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03",
                 SpeechRecognitionModelType.Offline_ZipformerCtc);
@@ -275,6 +329,13 @@ namespace Eitan.SherpaONNXUnity.Tests
 
             // nemo-transducer -> 按 transducer 归类（Offline_Transducer）
             yield return Case("sherpa-onnx-nemo-transducer-giga-am-russian-2024-10-24",
+                SpeechRecognitionModelType.Offline_Transducer);
+
+            yield return Case("sherpa-onnx-medasr-ctc-en-2025-12-25",
+                SpeechRecognitionModelType.Offline_MedAsrCtc);
+
+            // nemo parakeet tdt -> Offline_Transducer
+            yield return Case("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
                 SpeechRecognitionModelType.Offline_Transducer);
 
             // paraformer
@@ -355,6 +416,16 @@ namespace Eitan.SherpaONNXUnity.Tests
             yield return ModCase("some-langid-model",
                 SherpaONNXModuleType.SpokenLanguageIdentification);
 
+            // Embedding
+            yield return ModCase("nemo_en_titanet_small.onnx",
+                SherpaONNXModuleType.Embedding);
+
+            // Speaker diarization
+            yield return ModCase("sherpa-onnx-pyannote-segmentation-3-0",
+                SherpaONNXModuleType.SpeakerDiarization);
+            yield return ModCase("sherpa-onnx-reverb-diarization-v1",
+                SherpaONNXModuleType.SpeakerDiarization);
+
             // 负例：无任何关键词
             yield return ModCase("pure-random-model-id",
                 SherpaONNXModuleType.Undefined);
@@ -366,6 +437,7 @@ namespace Eitan.SherpaONNXUnity.Tests
         {
             yield return BoolCase("sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01", true);
             yield return BoolCase("sherpa-onnx-streaming-paraformer-bilingual-zh-en", true);
+            yield return BoolCase("sherpa-onnx-lstm-zh-2023-02-20", true);
             yield return BoolCase("sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03", false);
             yield return BoolCase("sherpa-onnx-zipformer-ru-2024-09-18", false);
         }
@@ -535,6 +607,51 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
         }
 
+        [Test, TestCaseSource(nameof(AllSpeakerDiarizationIds_FromConstants))]
+        public void All_SpeakerDiarization_Models_Are_Mapped_Correctly(string modelId)
+        {
+            var module = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            Assert.AreEqual(SherpaONNXModuleType.SpeakerDiarization, module, $"[Diarization][ModuleType] 应为 SpeakerDiarization: {modelId}");
+
+            var diarization = SherpaUtils.Model.ResolveSpeakerDiarizationModelType(modelId);
+            Assert.AreNotEqual(SpeakerDiarizationModelType.None, diarization, $"[Diarization][Subtype] 不能为 None: {modelId}");
+        }
+
+        [Test]
+        public void SpeakerDiarization_Metadata_Fallback_Resolves_Pyannote()
+        {
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "custom-diarization-model",
+                moduleType = SherpaONNXModuleType.SpeakerDiarization
+            };
+
+            var diarization = SherpaUtils.Model.ResolveSpeakerDiarizationModelType(metadata);
+            Assert.AreEqual(SpeakerDiarizationModelType.Pyannote, diarization);
+        }
+
+        [Test]
+        public void SpeakerDiarization_ModelFileResolver_Finds_Local_Onnx_File()
+        {
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "sherpa-onnx-pyannote-segmentation-3-0",
+                moduleType = SherpaONNXModuleType.SpeakerDiarization,
+                modelTypeHint = nameof(SpeakerDiarizationModelType.Pyannote)
+            };
+
+            var resolved = ModelFileResolver.ResolveRequiredFile(
+                metadata,
+                "Pyannote model",
+                null,
+                ModelFileCriteria.FromKeywords("model"),
+                ModelFileCriteria.FromKeywords("segmentation"),
+                ModelFileCriteria.FromExtensions(".onnx"));
+
+            Assert.IsTrue(File.Exists(resolved), $"Resolved diarization ONNX file not found: {resolved}");
+            Assert.IsTrue(resolved.EndsWith(".onnx"), $"Resolved diarization file is not an ONNX file: {resolved}");
+        }
+
         [Test]
         public void Nemo_Parakeet_And_Canary_Family_Are_Mapped_Strictly()
         {
@@ -554,6 +671,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             // Non-CTC Parakeet TDT → Transducer
             var tdtTransducer = new[] {
                 "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
+                "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
                 "sherpa-onnx-parakeet-tdt-1.1b-en"
             };
             foreach (var id in tdtTransducer)
@@ -563,7 +681,7 @@ namespace Eitan.SherpaONNXUnity.Tests
                     $"[NEMO][TDT] 应映射为 Transducer: {id} -> {asr}");
             }
 
-            // Canary → Transducer
+            // Canary keeps its dedicated family type
             var canary = new[] {
                 "sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8",
                 "sherpa-onnx-canary-240m-multi"
@@ -571,8 +689,40 @@ namespace Eitan.SherpaONNXUnity.Tests
             foreach (var id in canary)
             {
                 var asr = SherpaUtils.Model.GetSpeechRecognitionModelType(id);
-                Assert.IsTrue(asr == SpeechRecognitionModelType.Online_Transducer || asr == SpeechRecognitionModelType.Offline_Transducer,
-                    $"[NEMO][CANARY] 应映射为 Transducer: {id} -> {asr}");
+                Assert.AreEqual(SpeechRecognitionModelType.Offline_Canary, asr,
+                    $"[NEMO][CANARY] 应映射为 Offline_Canary: {id} -> {asr}");
+            }
+        }
+
+        [Test]
+        public void Omnilingual_Family_Is_Mapped_Strictly()
+        {
+            var omnilingual = new[] {
+                "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12",
+                "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-2025-11-12"
+            };
+
+            foreach (var id in omnilingual)
+            {
+                var asr = SherpaUtils.Model.GetSpeechRecognitionModelType(id);
+                Assert.AreEqual(SpeechRecognitionModelType.Omnilingual, asr,
+                    $"[OMNILINGUAL] 应映射为 Omnilingual: {id} -> {asr}");
+            }
+        }
+
+        [Test]
+        public void FunAsr_Nano_Family_Is_Mapped_Strictly()
+        {
+            var funAsrNano = new[] {
+                "sherpa-onnx-funasr-nano-int8-2025-12-30",
+                "sherpa-onnx-funasr-nano-2025-12-30"
+            };
+
+            foreach (var id in funAsrNano)
+            {
+                var asr = SherpaUtils.Model.GetSpeechRecognitionModelType(id);
+                Assert.AreEqual(SpeechRecognitionModelType.Offline_FunAsrNano, asr,
+                    $"[FUNASR][NANO] 应映射为 Offline_FunAsrNano: {id} -> {asr}");
             }
         }
 
@@ -641,6 +791,10 @@ namespace Eitan.SherpaONNXUnity.Tests
                 { "sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03", SpeechRecognitionModelType.Offline_ZipformerCtc },
                 { "sherpa-onnx-zipformer-ru-2024-09-18", SpeechRecognitionModelType.Offline_Transducer },
                 { "sherpa-onnx-nemo-ctc-en-conformer-small", SpeechRecognitionModelType.Offline_Nemo_Ctc },
+                { "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", SpeechRecognitionModelType.Offline_Transducer },
+                { "sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8", SpeechRecognitionModelType.Offline_Canary },
+                { "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12", SpeechRecognitionModelType.Omnilingual },
+                { "sherpa-onnx-funasr-nano-int8-2025-12-30", SpeechRecognitionModelType.Offline_FunAsrNano },
                 { "sherpa-onnx-paraformer-trilingual-zh-cantonese-en", SpeechRecognitionModelType.Offline_Paraformer },
                 { "sherpa-onnx-streaming-paraformer-bilingual-zh-en", SpeechRecognitionModelType.Online_Paraformer },
                 { "sherpa-onnx-whisper-tiny.en", SpeechRecognitionModelType.Whisper },
@@ -673,6 +827,8 @@ namespace Eitan.SherpaONNXUnity.Tests
                 { "toy-kws-demo", SherpaONNXModuleType.KeywordSpotting },
                 { "gtcrn-speech-enhance", SherpaONNXModuleType.SpeechEnhancement },
                 { "some-langid-model", SherpaONNXModuleType.SpokenLanguageIdentification },
+                { "nemo_en_titanet_small.onnx", SherpaONNXModuleType.Embedding },
+                { "sherpa-onnx-pyannote-segmentation-3-0", SherpaONNXModuleType.SpeakerDiarization },
                 { "pure-random-model-id", SherpaONNXModuleType.Undefined },
             };
 

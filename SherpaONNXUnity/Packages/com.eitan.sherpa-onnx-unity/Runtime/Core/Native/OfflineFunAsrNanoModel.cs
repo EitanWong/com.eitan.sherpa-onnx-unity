@@ -5,19 +5,11 @@ using System.Runtime.InteropServices;
 namespace Eitan.SherpaONNXUnity.Runtime.Native
 {
 
-
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineFunAsrNanoModelConfig
     {
-        public OfflineFunAsrNanoModelConfig(bool initializeDefaults = true)
+        public OfflineFunAsrNanoModelConfig(bool initialize = true)
         {
-
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
             EncoderAdaptor = "";
             LLM = "";
             Embedding = "";
@@ -28,6 +20,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             Temperature = 1e-6F;
             TopP = 0.8F;
             Seed = 42;
+            Language = "";
+            Itn = 0;
+            Hotwords = "";
         }
 
         [MarshalAs(UnmanagedType.LPStr)]
@@ -52,5 +47,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public float Temperature;
         public float TopP;
         public int Seed;
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Language;
+
+        public int Itn;
+
+        [MarshalAs(UnmanagedType.LPStr)]
+        public string Hotwords;
     }
 }

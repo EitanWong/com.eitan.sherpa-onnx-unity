@@ -274,6 +274,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading (AudioTagging): {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "AudioTagging");
                 _streamSampleRate = sampleRate;
                 var config = CreateAudioTaggingConfig(metadata, isMobilePlatform, reporter);
                 return await runner.RunAsync<bool>(cancellationToken =>
@@ -312,12 +313,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var preferInt8 = isMobilePlatform ? "int8" : null;
 
-            var labelsPath = ModelFileResolver.ResolveRequiredByKeywords(
+            var labelsPath = ModelFileResolver.ResolveRequiredFileWithBindings(
                 metadata,
-                description: "labels file",
+                "labels file",
                 fallbackReporter,
-                new[] { "class_labels_indices.csv", "labels" }
-            );
+                new[] { SherpaONNXModelFileKey.Labels },
+                ModelFileCriteria.FromKeywords("class_labels_indices.csv", "labels"));
 
             var cfg = new AudioTaggingConfig
             {
@@ -334,17 +335,18 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             switch (_modelType)
             {
                 case AudioTaggingModelType.Ced:
-                    cfg.Model.CED = ModelFileResolver.ResolveOptionalByKeywords(
+                    cfg.Model.CED = ModelFileResolver.ResolveOptionalFileWithBindings(
                         metadata,
                         fallbackReporter,
-                        new[] { "ced", "model", preferInt8, ".onnx" }
-                    );
+                        new[] { SherpaONNXModelFileKey.Ced, SherpaONNXModelFileKey.Model },
+                        ModelFileCriteria.FromKeywords("ced", "model", preferInt8, ".onnx"));
                     break;
                 case AudioTaggingModelType.Zipformer:
-                    cfg.Model.Zipformer.Model = ModelFileResolver.ResolveOptionalByKeywords(
-                            metadata,
-                            fallbackReporter,
-                            new[] { "zipformer", "model", preferInt8, ".onnx" });
+                    cfg.Model.Zipformer.Model = ModelFileResolver.ResolveOptionalFileWithBindings(
+                        metadata,
+                        fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Zipformer, SherpaONNXModelFileKey.Model },
+                        ModelFileCriteria.FromKeywords("zipformer", "model", preferInt8, ".onnx"));
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported audio-tagging model type: {_modelType}");

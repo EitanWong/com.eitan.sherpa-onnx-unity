@@ -10,15 +10,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineRecognizerConfig
     {
-        public OnlineRecognizerConfig(bool initializeDefaults = true)
+        public OnlineRecognizerConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             FeatConfig = new FeatureConfig();
             ModelConfig = new OnlineModelConfig();
             DecodingMethod = "greedy_search";

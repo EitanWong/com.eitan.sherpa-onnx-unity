@@ -37,7 +37,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         {
             if (result == IntPtr.Zero)
             {
-                return new OfflineSpeakerDiarizationSegment[] { };
+              return new OfflineSpeakerDiarizationSegment[] {};
             }
 
             int numSegments = SherpaOnnxOfflineSpeakerDiarizationResultGetNumSegments(result);
@@ -46,15 +46,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             OfflineSpeakerDiarizationSegment[] ans = new OfflineSpeakerDiarizationSegment[numSegments];
             unsafe
             {
-                int size = sizeof(float) * 2 + sizeof(int);
-                for (int i = 0; i != numSegments; ++i)
-                {
-                    IntPtr t = new IntPtr((byte*)p + i * size);
-                    ans[i] = new OfflineSpeakerDiarizationSegment(t);
+              int size = sizeof(float) * 2 + sizeof(int);
+              for (int i = 0; i != numSegments; ++i)
+              {
+                IntPtr t = new IntPtr((byte*)p + i * size);
+                ans[i] = new OfflineSpeakerDiarizationSegment(t);
 
-                    // The following IntPtr.Add() does not support net20
-                    // ans[i] = new OfflineSpeakerDiarizationSegment(IntPtr.Add(p, i));
-                }
+                // The following IntPtr.Add() does not support net20
+                // ans[i] = new OfflineSpeakerDiarizationSegment(IntPtr.Add(p, i));
+              }
             }
 
 

@@ -239,6 +239,7 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
             internal const string CategorySpeechSynthesis = "models.category.speechSynthesis";
             internal const string CategorySourceSeparation = "models.category.sourceSeparation";
             internal const string CategorySpeakerIdentification = "models.category.speakerIdentification";
+            internal const string CategoryEmbedding = "models.category.embedding";
             internal const string CategorySpeakerDiarization = "models.category.speakerDiarization";
             internal const string CategorySpokenLanguageId = "models.category.spokenLanguageIdentification";
             internal const string CategoryAudioTagging = "models.category.audioTagging";

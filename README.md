@@ -2,7 +2,7 @@
 
 # 🎙️ SherpaONNXUnity
 
-### Unity Package for Offline Speech Recognition & Voice Activity Detection
+### Unity Package for Offline Speech AI: ASR, TTS, VAD, Diarization & More
 
 > **中文用户请注意**: 本项目提供中文文档，请查看 [README_zh.md](./README_zh.md) 获取详细的中文说明。
 
@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.3-exp.2** (2026-02-12)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest package: v0.1.3-exp.2**
 
 </div>
 
@@ -35,20 +35,29 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.3-exp.2 (2026-02-12)
+## 🆕 Main Branch Update (2026-03-21)
 
 ### 🚀 Highlights
-- **New Runtime Download & Security Controls**
-  Added timeout, insecure-download, and strict hash-validation controls via runtime settings, environment variables, and `SherpaONNXUnityAPI`.
+- **Upstream Native Runtime Updated to sherpa-onnx v1.12.31**
+  Refreshed the bundled native libraries and synchronized the C# native interop layer with the latest upstream APIs used by this package.
 
-- **Expanded Built-in ASR Model Catalog**
-  Added a large batch of additional sherpa-onnx ASR model IDs for broader out-of-box model coverage.
+- **Android Runtime Validation Completed**
+  Re-tested Android integration against the refreshed native binaries and verified the current package behavior across 64-bit and 32-bit device paths.
 
-- **Preparation Validation Behavior Refinement**
-  Model preparation now supports async hash population with cancellation-aware networking and clearer strict/non-strict hash validation behavior.
+- **Non-Blocking 32-bit Android Advisories**
+  Added shared runtime warnings for `armeabi-v7a` devices so modules can report elevated native-risk conditions without forcibly blocking initialization.
 
-- **Editor Settings UX & Localization Improvements**
-  Runtime settings fields were improved for localized rendering and better handling of the new preparation/download options.
+- **Native Config Initialization Hardened**
+  Fixed several module config construction paths so marshaled native structs keep their intended default values during sherpa-onnx/ONNX Runtime initialization.
+
+### 📱 Android Notes
+- `arm64-v8a` remains the recommended deployment target for production Android builds.
+- `armeabi-v7a` is still allowed, but some upstream native create/init paths may remain unstable for certain models or modules.
+
+### Known Issues
+- On Android `armeabi-v7a` (32-bit), some sherpa-onnx / ONNX Runtime create or initialization paths may still crash for specific models or modules.
+- Shared runtime advisories are reported for these 32-bit paths, but initialization is not forcibly blocked by the Unity wrapper.
+- `arm64-v8a` is the recommended target for production Android builds.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -56,7 +65,7 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ## 🚀 Overview
 
-A Unity package that brings **offline automatic speech recognition (ASR)**, **text-to-speech (TTS)**, and **voice activity detection (VAD)** capabilities to the Unity game engine, powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx).
+A Unity package that brings **offline automatic speech recognition (ASR)**, **text-to-speech (TTS)**, **voice activity detection (VAD)**, **speaker diarization**, and other speech/audio AI capabilities to the Unity game engine, powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx).
 
 ✨ **Features intelligent automatic model downloading with breakpoint resume support** for seamless setup and 📱 **optimized mobile platform integration** for production-ready deployment.
 
@@ -66,6 +75,7 @@ A Unity package that brings **offline automatic speech recognition (ASR)**, **te
 - **🔌 Offline Operation** - No internet required after setup
 - **⚡ Real-time Processing** - Low-latency speech recognition
 - **🗣️ Voice Activity Detection** - Smart speech boundary detection
+- **👥 Speaker Diarization** - Separate who spoke when in multi-speaker audio
 - **🔊 Speech Enhancement** - GTCRN noise reduction and audio quality improvement
 - **👂 Keyword Spotting** - Voice-activated keyword detection, now with custom keyword support.
 - **🎤 Text-to-Speech** - High-quality voice synthesis
@@ -154,6 +164,7 @@ openupm add com.eitan.sherpa-onnx-unity
 The samples include:
 - **Real-time Speech Recognition** - Live microphone input with real-time transcription
 - **Voice Activity Detection** - Detect when users start and stop speaking
+- **Speaker Diarization** - Analyze multi-speaker recordings and cluster speaker turns
 - **Offline Speech Recognition** - Process pre-recorded audio files
 - **Speech Enhancement** - Real-time noise reduction with GTCRN models
 - **Keyword Spotting** - Voice-activated keyword detection and wake words
@@ -166,7 +177,7 @@ Each example includes complete sample code that you can use as a starting point 
 
 **New drop-in component flow (no boilerplate scripting):**
 - Add `SherpaMicrophoneInput` to your scene to emit PCM chunks.
-- Add a module component (e.g., `SpeechRecognizerComponent`, `AudioTaggingComponent`, `VoiceActivityDetectionComponent`, `ZeroShotSpeechSynthesisComponent`) and set the `Model Id`.
+- Add a module component (e.g., `SpeechRecognizerComponent`, `AudioTaggingComponent`, `VoiceActivityDetectionComponent`, `SpeakerDiarizationComponent`, `ZeroShotSpeechSynthesisComponent`) and set the `Model Id`.
 - Hook UnityEvents (e.g., `TranscriptionReadyEvent`, `ClipReadyEvent`) for results; the component will start capture when the model finishes loading.
 - See the bilingual guide at `SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/Documentation~/README.md` for full API/component usage.
 

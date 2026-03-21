@@ -2,7 +2,7 @@
 
 # 🎙️ SherpaONNXUnity
 
-### Unity离线语音识别与语音活动检测包
+### Unity 离线语音 AI 能力包：ASR、TTS、VAD、说话人分离等
 
 > **For English users**: This project provides English documentation. Please see [README.md](./README.md) for detailed English instructions.
 
@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.3-exp.2** (2026-02-12)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **当前最新包版本: v0.1.3-exp.2**
 
 </div>
 
@@ -35,20 +35,29 @@
 
 ---
 
-## 🆕 v0.1.3-exp.2 更新内容 (2026-02-12)
+## 🆕 主分支更新 (2026-03-21)
 
 ### 🚀 本次更新亮点
-- **新增下载与安全运行时控制项**
-  新增下载超时、不安全下载开关、强制哈希校验开关，支持通过运行时设置、环境变量和 `SherpaONNXUnityAPI` 统一控制。
+- **官方 sherpa-onnx Native 运行时升级到 v1.12.31**
+  同步刷新内置原生库，并对齐本包使用到的 C# Native 互操作层 API。
 
-- **内置 ASR 模型目录大幅扩展**
-  补充大量 sherpa-onnx ASR 模型 ID，提升开箱可选模型覆盖范围。
+- **Android 平台测试完成**
+  已基于新版原生库重新验证 Android 集成行为，并复查 64 位与 32 位设备路径下的当前运行情况。
 
-- **模型准备校验流程优化**
-  支持可取消的异步哈希填充，并改进严格/非严格哈希校验行为与反馈信息。
+- **新增非阻断式 32 位 Android 风险提示**
+  为各 runtime 模块统一加入 `armeabi-v7a` 风险提示，只做告警，不阻止初始化。
 
-- **编辑器设置体验与本地化改进**
-  运行时设置项的本地化渲染与布局表现优化，对新增下载/校验相关选项支持更完善。
+- **Native 配置初始化增强**
+  修复多个模块的 config 构造路径，确保 C# 结构体在传入 sherpa-onnx / ONNX Runtime 时保留正确的默认值。
+
+### 📱 Android 说明
+- 生产环境仍建议优先使用 `arm64-v8a`。
+- `armeabi-v7a` 仍然允许使用，但某些上游 native create/init 路径在部分模型或模块上可能依旧不稳定。
+
+### 已知问题
+- 在 Android `armeabi-v7a`（32 位）上，某些 sherpa-onnx / ONNX Runtime 的 create 或初始化路径，针对特定模型或模块仍可能发生崩溃。
+- 当前 Unity 封装会为这些 32 位路径输出统一的运行时风险提示，但不会强制阻止初始化。
+- 生产环境建议优先选择 `arm64-v8a`。
 
 [📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
@@ -56,7 +65,7 @@
 
 ## 🚀 项目概述
 
-一个为Unity游戏引擎带来**离线自动语音识别（ASR）**、**文本转语音（TTS）**和**语音活动检测（VAD）**功能的Unity包，基于强大的[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)开发。
+一个为 Unity 游戏引擎带来**离线自动语音识别（ASR）**、**文本转语音（TTS）**、**语音活动检测（VAD）**、**说话人分离（Speaker Diarization）**等能力的 Unity 包，基于强大的 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 开发。
 
 ✨ **具备智能自动模型下载和断点续传功能**，确保无缝设置，同时 📱 **针对移动平台优化集成**，可用于生产环境部署。
 
@@ -66,6 +75,7 @@
 - **🔌 离线运行** - 设置后无需网络连接
 - **⚡ 实时处理** - 低延迟语音识别
 - **🗣️ 语音活动检测** - 智能语音边界检测
+- **👥 说话人分离** - 对多人音频进行说话人聚类，分析“谁在什么时候说话”
 - **🔊 语音增强** - GTCRN噪声消除与音质改善
 - **👂 关键词检测** - 语音激活的关键词识别，现已支持自定义关键词。
 - **🎤 文本转语音** - 高质量语音合成
@@ -154,6 +164,7 @@ openupm add com.eitan.sherpa-onnx-unity
 示例包含：
 - **实时语音识别** - 麦克风实时输入和转录
 - **语音活动检测** - 检测用户开始和停止说话
+- **说话人分离** - 分析多人录音并聚类说话人片段
 - **离线语音识别** - 处理预录制音频文件
 - **语音增强** - 使用GTCRN模型进行实时降噪
 - **关键词检测** - 语音激活的关键词检测和唤醒词
@@ -166,7 +177,7 @@ openupm add com.eitan.sherpa-onnx-unity
 
 **新的拖拽式组件流程（无需样板代码）：**
 - 在场景中添加 `SherpaMicrophoneInput`，用于产生 PCM 数据。
-- 添加对应模块组件（如 `SpeechRecognizerComponent`、`AudioTaggingComponent`、`VoiceActivityDetectionComponent`、`ZeroShotSpeechSynthesisComponent`），并设置 `Model Id`。
+- 添加对应模块组件（如 `SpeechRecognizerComponent`、`AudioTaggingComponent`、`VoiceActivityDetectionComponent`、`SpeakerDiarizationComponent`、`ZeroShotSpeechSynthesisComponent`），并设置 `Model Id`。
 - 订阅 UnityEvents（如 `TranscriptionReadyEvent`、`ClipReadyEvent`）获取结果；组件会在模型加载完成后自动启动采集。
 - 更完整的 API/组件用法见 `SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/Documentation~/README.md` 双语指南。
 

@@ -9,15 +9,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OnlineCtcFstDecoderConfig
     {
-        public OnlineCtcFstDecoderConfig(bool initializeDefaults = true)
+        public OnlineCtcFstDecoderConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Graph = "";
             MaxActive = 3000;
         }

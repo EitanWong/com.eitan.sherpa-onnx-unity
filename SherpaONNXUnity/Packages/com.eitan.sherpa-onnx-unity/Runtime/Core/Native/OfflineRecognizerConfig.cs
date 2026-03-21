@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineRecognizerConfig
     {
-        public OfflineRecognizerConfig(bool initializeDefaults = true)
+        public OfflineRecognizerConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             FeatConfig = new FeatureConfig();
             ModelConfig = new OfflineModelConfig();
             LmConfig = new OfflineLMConfig();

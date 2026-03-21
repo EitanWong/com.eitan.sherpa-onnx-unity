@@ -73,6 +73,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         {
             try
             {
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "VoiceActivityDetection");
                 var modelType = SherpaUtils.Model.ResolveVoiceActivityDetectionModelType(metadata);
                 var vadConfig = CreateVadConfig(modelType, metadata, sampleRate, isMobilePlatform, reporter);
 
@@ -320,16 +321,21 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
-            var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
+            var vadModelConfig = new VadModelConfig(true)
+            {
+                SampleRate = sampleRate,
+                NumThreads = ThreadingUtils.GetAdaptiveThreadCount()
+            };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)
             {
                 case VoiceActivityDetectionModelType.SileroVad:
-                    vadModelConfig.SileroVad.Model = ModelFileResolver.ResolveRequiredFile(
+                    vadModelConfig.SileroVad.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Silero VAD model",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.SileroVad, SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("silero", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("silero"));
                     vadModelConfig.SileroVad.Threshold = Threshold;
@@ -339,10 +345,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     vadModelConfig.SileroVad.WindowSize = 512;
                     break;
                 case VoiceActivityDetectionModelType.TenVad:
-                    vadModelConfig.TenVad.Model = ModelFileResolver.ResolveRequiredFile(
+                    vadModelConfig.TenVad.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
                         "Ten VAD model",
                         fallbackReporter,
+                        new[] { SherpaONNXModelFileKey.TenVad, SherpaONNXModelFileKey.Model },
                         ModelFileCriteria.FromKeywords("ten", int8QuantKeyword),
                         ModelFileCriteria.FromKeywords("ten"));
                     vadModelConfig.TenVad.Threshold = Threshold;
