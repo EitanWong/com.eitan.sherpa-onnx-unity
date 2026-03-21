@@ -81,6 +81,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "KeywordSpotting");
 
                 var config = await CreateKeywordSpotterConfig(metadata, sampleRate, isMobilePlatform, reporter, ct);
 

@@ -73,6 +73,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         {
             try
             {
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "VoiceActivityDetection");
                 var modelType = SherpaUtils.Model.ResolveVoiceActivityDetectionModelType(metadata);
                 var vadConfig = CreateVadConfig(modelType, metadata, sampleRate, isMobilePlatform, reporter);
 
@@ -320,7 +321,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private VadModelConfig CreateVadConfig(VoiceActivityDetectionModelType modelType, SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
-            var vadModelConfig = new VadModelConfig { SampleRate = sampleRate, NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
+            var vadModelConfig = new VadModelConfig(true)
+            {
+                SampleRate = sampleRate,
+                NumThreads = ThreadingUtils.GetAdaptiveThreadCount()
+            };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)

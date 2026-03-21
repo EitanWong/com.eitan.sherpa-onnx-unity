@@ -5,21 +5,27 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http.keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-## [0.1.3-exp.2] - 2026-02-12
+## [0.1.3-exp.2] - 2026-03-21
 
 ### Added
 - Added runtime controls for model preparation and download security: download-attempt timeout, insecure-download toggle, and strict hash-validation toggle (ScriptableObject settings, environment overrides, and `SherpaONNXUnityAPI` accessors).
 - Expanded built-in ASR model metadata catalog with additional sherpa-onnx model IDs to improve out-of-box coverage.
 - Added tests for new environment overrides and strict/non-strict hash-validation behavior in model preparation.
+- Added shared Android 32-bit runtime advisory reporting across runtime modules so packages can surface `armeabi-v7a` risk information without blocking initialization.
 
 ### Changed
+- Updated bundled sherpa-onnx native libraries to v1.12.31 across supported platforms.
+- Validated Android runtime behavior against the refreshed native binaries, including follow-up checks on 32-bit (`armeabi-v7a`) and 64-bit (`arm64-v8a`) device paths.
 - Improved model preparation metadata validation flow to support async hash population with cancellation-aware networking.
 - Updated editor settings UX and localization wiring for runtime properties, including the new download/hash security options and more robust localized property rendering.
 
 ### Fixed
+- Fixed native config initialization for multiple modules so default string fields are preserved when marshaling C# structs into sherpa-onnx/ONNX Runtime create calls.
 - Fixed strict-hash validation messaging and non-strict fallback behavior so missing hashes can proceed with explicit warnings instead of hard failure when strict mode is disabled.
+
+### Known Issues
+- On Android `armeabi-v7a` (32-bit), some upstream native create/init paths may still be unstable for specific models or modules even though initialization is allowed and advisory warnings are reported.
+- `arm64-v8a` remains the recommended Android target for production deployments.
 
 ## [0.1.3-exp.1] - 2026-02-05
 

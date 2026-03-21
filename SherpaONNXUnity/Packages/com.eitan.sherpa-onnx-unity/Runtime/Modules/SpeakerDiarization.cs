@@ -97,6 +97,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
                 reporter?.Report(new LoadFeedback(segmentationModelMetadata, message: $"Start Loading: {segmentationModelMetadata.modelId}"));
                 reporter?.Report(new LoadFeedback(embeddingModelMetadata, message: $"Start Loading: {embeddingModelMetadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(segmentationModelMetadata, reporter, "SpeakerDiarization");
+                TryReportAndroid32BitRuntimeRisk(embeddingModelMetadata, reporter, "SpeakerEmbedding");
 
                 var embeddingPrepareResult = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(embeddingModelMetadata, reporter, ct).ConfigureAwait(false);
                 if (!embeddingPrepareResult.Success)

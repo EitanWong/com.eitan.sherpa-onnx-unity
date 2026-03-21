@@ -274,6 +274,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading (AudioTagging): {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "AudioTagging");
                 _streamSampleRate = sampleRate;
                 var config = CreateAudioTaggingConfig(metadata, isMobilePlatform, reporter);
                 return await runner.RunAsync<bool>(cancellationToken =>

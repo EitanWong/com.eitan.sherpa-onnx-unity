@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **最新版本: v0.1.3-exp.2** (2026-03-20)
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **当前最新包版本: v0.1.3-exp.2**
 
 </div>
 
@@ -35,17 +35,29 @@
 
 ---
 
-## 🆕 v0.1.3-exp.2 更新内容 (2026-03-20)
+## 🆕 主分支更新 (2026-03-21)
 
 ### 🚀 本次更新亮点
-- **官方 sherpa-onnx Native 运行时升级到 v1.12.30**
+- **官方 sherpa-onnx Native 运行时升级到 v1.12.31**
   同步刷新内置原生库，并对齐本包使用到的 C# Native 互操作层 API。
 
-- **新增 Speaker Diarization 能力**
-  接入离线说话人分离，提供独立的 runtime 模块、Unity 组件封装，以及完整的示例 Demo 工作流。
+- **Android 平台测试完成**
+  已基于新版原生库重新验证 Android 集成行为，并复查 64 位与 32 位设备路径下的当前运行情况。
 
-- **Native / API 对齐改进**
-  更新 Unity 侧 Native API 绑定，使其与当前 sherpa-onnx 运行时结构保持一致。
+- **新增非阻断式 32 位 Android 风险提示**
+  为各 runtime 模块统一加入 `armeabi-v7a` 风险提示，只做告警，不阻止初始化。
+
+- **Native 配置初始化增强**
+  修复多个模块的 config 构造路径，确保 C# 结构体在传入 sherpa-onnx / ONNX Runtime 时保留正确的默认值。
+
+### 📱 Android 说明
+- 生产环境仍建议优先使用 `arm64-v8a`。
+- `armeabi-v7a` 仍然允许使用，但某些上游 native create/init 路径在部分模型或模块上可能依旧不稳定。
+
+### 已知问题
+- 在 Android `armeabi-v7a`（32 位）上，某些 sherpa-onnx / ONNX Runtime 的 create 或初始化路径，针对特定模型或模块仍可能发生崩溃。
+- 当前 Unity 封装会为这些 32 位路径输出统一的运行时风险提示，但不会强制阻止初始化。
+- 生产环境建议优先选择 `arm64-v8a`。
 
 [📋 **查看完整更新日志**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 

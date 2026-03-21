@@ -30,6 +30,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpeechEnhancement");
 
                 _sampleRate = sampleRate;
                 _modelType = ResolveSpeechEnhancementModelType(metadata, isMobilePlatform, reporter);

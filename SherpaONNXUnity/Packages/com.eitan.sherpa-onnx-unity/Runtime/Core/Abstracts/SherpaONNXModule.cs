@@ -20,6 +20,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private static bool s_AppQuitHooked;
         private static readonly ConcurrentDictionary<Type, FieldInfo> s_HandleFieldCache = new ConcurrentDictionary<Type, FieldInfo>();
         private static readonly ConcurrentDictionary<Type, byte> s_HandleResolutionWarnings = new ConcurrentDictionary<Type, byte>();
+        private static readonly ConcurrentDictionary<string, byte> s_Android32BitWarnings = new ConcurrentDictionary<string, byte>();
         private static readonly string[] s_HandleFieldCandidates = new[] { "_handle", "handle", "Handle", "_Handle" };
         private const int MaxCorruptionRecoveryRetries = 1;
 
@@ -564,6 +565,35 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 SherpaLog.Warning(formattedMessage, category: "Feedback");
                 reporter?.Report(new LoadFeedback(metadata, message: formattedMessage));
             };
+        }
+
+        protected bool TryReportAndroid32BitRuntimeRisk(
+            SherpaONNXModelMetadata metadata,
+            SherpaONNXFeedbackReporter reporter,
+            string featureName = null)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (IntPtr.Size >= 8)
+            {
+                return false;
+            }
+
+            var scope = string.IsNullOrWhiteSpace(featureName) ? ModuleType.ToString() : featureName.Trim();
+            var warningKey = $"{ModuleType}|{metadata?.modelId}|{scope}";
+            if (!s_Android32BitWarnings.TryAdd(warningKey, 0))
+            {
+                return false;
+            }
+
+            var message =
+                $"[{scope}] Android 32-bit runtime detected for '{metadata?.modelId ?? "<unknown>"}'. " +
+                "This is advisory only: initialization is still allowed, but armeabi-v7a is more likely to hit model-specific native crashes or memory pressure than ARM64.";
+            SherpaLog.Warning(message, category: "Runtime");
+            reporter?.Report(new LoadFeedback(metadata, message: message));
+            return true;
+#else
+            return false;
+#endif
         }
 
         private void Dispose(bool disposing)

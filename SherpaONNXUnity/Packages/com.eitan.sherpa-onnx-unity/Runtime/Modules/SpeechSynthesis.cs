@@ -30,6 +30,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpeechSynthesis");
                 var modelType = Utilities.SherpaUtils.Model.ResolveSpeechSynthesisModelType(metadata);
                 var ttsConfig = await CreateTtsConfig(modelType, metadata, isMobilePlatform, reporter, ct);
 

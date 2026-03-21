@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest: v0.1.3-exp.2** (2026-03-20)
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest package: v0.1.3-exp.2**
 
 </div>
 
@@ -35,17 +35,29 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.3-exp.2 (2026-03-20)
+## 🆕 Main Branch Update (2026-03-21)
 
 ### 🚀 Highlights
-- **Upstream Native Runtime Updated to sherpa-onnx v1.12.30**
+- **Upstream Native Runtime Updated to sherpa-onnx v1.12.31**
   Refreshed the bundled native libraries and synchronized the C# native interop layer with the latest upstream APIs used by this package.
 
-- **Speaker Diarization Support Added**
-  Added offline speaker diarization support, including a dedicated runtime module, Unity component integration, and a sample demo workflow.
+- **Android Runtime Validation Completed**
+  Re-tested Android integration against the refreshed native binaries and verified the current package behavior across 64-bit and 32-bit device paths.
 
-- **Native/API Alignment Improvements**
-  Updated the Unity-side native bindings to match the current sherpa-onnx runtime layout and keep feature coverage aligned with upstream.
+- **Non-Blocking 32-bit Android Advisories**
+  Added shared runtime warnings for `armeabi-v7a` devices so modules can report elevated native-risk conditions without forcibly blocking initialization.
+
+- **Native Config Initialization Hardened**
+  Fixed several module config construction paths so marshaled native structs keep their intended default values during sherpa-onnx/ONNX Runtime initialization.
+
+### 📱 Android Notes
+- `arm64-v8a` remains the recommended deployment target for production Android builds.
+- `armeabi-v7a` is still allowed, but some upstream native create/init paths may remain unstable for certain models or modules.
+
+### Known Issues
+- On Android `armeabi-v7a` (32-bit), some sherpa-onnx / ONNX Runtime create or initialization paths may still crash for specific models or modules.
+- Shared runtime advisories are reported for these 32-bit paths, but initialization is not forcibly blocked by the Unity wrapper.
+- `arm64-v8a` is the recommended target for production Android builds.
 
 [📋 **View Full Changelog**](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)
 
