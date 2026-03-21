@@ -3,6 +3,9 @@
 namespace Eitan.SherpaONNXUnity.Runtime.Modules
 {
     using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Runtime.CompilerServices;
@@ -119,8 +122,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         private async Task<bool> LoadOnlineModelAsync(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
+            TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpeechRecognition");
             var context = BuildConfigContext(metadata, sampleRate, isMobilePlatform, reporter);
             var config = CreateOnlineRecognizerConfig(metadata, sampleRate, context);
+            ReportRecognizerConfigDiagnostics(metadata, reporter, sampleRate, context, config);
 
             return await runner.RunAsync<bool>(cancellationToken =>
             {
@@ -142,8 +147,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         private async Task<bool> LoadOfflineModelAsync(SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
+            TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpeechRecognition");
             var context = BuildConfigContext(metadata, sampleRate, isMobilePlatform, reporter);
             var config = CreateOfflineRecognizerConfig(metadata, sampleRate, context);
+            ReportRecognizerConfigDiagnostics(metadata, reporter, sampleRate, context, config);
 
             return await runner.RunAsync<bool>(cancellationToken =>
              {
@@ -182,21 +189,18 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         private OnlineRecognizerConfig CreateOnlineRecognizerConfig(SherpaONNXModelMetadata metadata, int sampleRate, RecognizerConfigContext context)
         {
-            var config = new OnlineRecognizerConfig
-            {
-                FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
-                ModelConfig = {
-                    Tokens = context.TokensPath,
-                    NumThreads = context.ThreadCount,
-                    Debug = 0
-                },
-                DecodingMethod = "greedy_search",
-                MaxActivePaths = 4,
-                EnableEndpoint = 1,
-                Rule1MinTrailingSilence = _options.Rule1MinTrailingSilence,
-                Rule2MinTrailingSilence = _options.Rule2MinTrailingSilence,
-                Rule3MinUtteranceLength = _options.Rule3MinUtteranceLength
-            };
+            var config = new OnlineRecognizerConfig(true);
+            config.FeatConfig.SampleRate = sampleRate;
+            config.FeatConfig.FeatureDim = 80;
+            config.ModelConfig.Tokens = context.TokensPath;
+            config.ModelConfig.NumThreads = context.ThreadCount;
+            config.ModelConfig.Debug = 0;
+            config.DecodingMethod = "greedy_search";
+            config.MaxActivePaths = 4;
+            config.EnableEndpoint = 1;
+            config.Rule1MinTrailingSilence = _options.Rule1MinTrailingSilence;
+            config.Rule2MinTrailingSilence = _options.Rule2MinTrailingSilence;
+            config.Rule3MinUtteranceLength = _options.Rule3MinUtteranceLength;
 
             switch (_modelType)
             {
@@ -282,19 +286,15 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         private OfflineRecognizerConfig CreateOfflineRecognizerConfig(SherpaONNXModelMetadata metadata, int sampleRate, RecognizerConfigContext context)
         {
-            var config = new OfflineRecognizerConfig
-            {
-                FeatConfig = { SampleRate = sampleRate, FeatureDim = 80 },
-                ModelConfig = {
-                    Tokens = context.TokensPath,
-                    NumThreads = context.ThreadCount,
-                    ModelType = SherpaUtils.Model.GetOfflineModelTypeString(_modelType, metadata)
-
-                },
-                DecodingMethod = "greedy_search",
-                MaxActivePaths = 4,
-                RuleFsts = string.Empty
-            };
+            var config = new OfflineRecognizerConfig(true);
+            config.FeatConfig.SampleRate = sampleRate;
+            config.FeatConfig.FeatureDim = 80;
+            config.ModelConfig.Tokens = context.TokensPath;
+            config.ModelConfig.NumThreads = context.ThreadCount;
+            config.ModelConfig.ModelType = SherpaUtils.Model.GetOfflineModelTypeString(_modelType, metadata);
+            config.DecodingMethod = "greedy_search";
+            config.MaxActivePaths = 4;
+            config.RuleFsts = string.Empty;
 
 
             switch (_modelType)
@@ -594,6 +594,195 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
 
             return config;
+        }
+
+        private void ReportRecognizerConfigDiagnostics(
+            SherpaONNXModelMetadata metadata,
+            SherpaONNXFeedbackReporter reporter,
+            int sampleRate,
+            RecognizerConfigContext context,
+            OnlineRecognizerConfig config)
+        {
+            var parts = new List<string>(12)
+            {
+                $"mode=online",
+                $"modelType={_modelType}",
+                $"sampleRate={sampleRate}",
+                $"threads={context.ThreadCount}",
+                $"processBits={IntPtr.Size * 8}"
+            };
+
+            AppendPathDiagnostic(parts, "tokens", context.TokensPath);
+
+            switch (_modelType)
+            {
+                case SpeechRecognitionModelType.Online_Paraformer:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Paraformer.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Paraformer.Decoder);
+                    break;
+                case SpeechRecognitionModelType.Online_Transducer:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Transducer.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Transducer.Decoder);
+                    AppendPathDiagnostic(parts, "joiner", config.ModelConfig.Transducer.Joiner);
+                    break;
+                case SpeechRecognitionModelType.Online_Ctc:
+                case SpeechRecognitionModelType.Online_Zipformer2Ctc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.Zipformer2Ctc.Model);
+                    break;
+                case SpeechRecognitionModelType.Online_Nemo_Ctc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.NemoCtc.Model);
+                    break;
+                case SpeechRecognitionModelType.Online_Tone_Ctc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.ToneCtc.Model);
+                    break;
+            }
+
+            ReportDiagnosticMessage(metadata, reporter, parts);
+        }
+
+        private void ReportRecognizerConfigDiagnostics(
+            SherpaONNXModelMetadata metadata,
+            SherpaONNXFeedbackReporter reporter,
+            int sampleRate,
+            RecognizerConfigContext context,
+            OfflineRecognizerConfig config)
+        {
+            var parts = new List<string>(16)
+            {
+                $"mode=offline",
+                $"modelType={_modelType}",
+                $"nativeModelType={config.ModelConfig.ModelType}",
+                $"sampleRate={sampleRate}",
+                $"threads={context.ThreadCount}",
+                $"processBits={IntPtr.Size * 8}"
+            };
+
+            AppendPathDiagnostic(parts, "tokens", context.TokensPath);
+
+            switch (_modelType)
+            {
+                case SpeechRecognitionModelType.Offline_Transducer:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Transducer.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Transducer.Decoder);
+                    AppendPathDiagnostic(parts, "joiner", config.ModelConfig.Transducer.Joiner);
+                    AppendPathDiagnostic(parts, "hotwords", config.HotwordsFile);
+                    break;
+                case SpeechRecognitionModelType.Offline_Paraformer:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.Paraformer.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_ZipformerCtc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.ZipformerCtc.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_Nemo_Ctc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.NeMoCtc.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_WenetCtc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.WenetCtc.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_MedAsrCtc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.MedAsr.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_FunAsrNano:
+                    AppendPathDiagnostic(parts, "encoderAdaptor", config.ModelConfig.FunAsrNano.EncoderAdaptor);
+                    AppendPathDiagnostic(parts, "llm", config.ModelConfig.FunAsrNano.LLM);
+                    AppendPathDiagnostic(parts, "embedding", config.ModelConfig.FunAsrNano.Embedding);
+                    AppendPathDiagnostic(parts, "tokenizer", config.ModelConfig.FunAsrNano.Tokenizer);
+                    break;
+                case SpeechRecognitionModelType.Dolphin:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.Dolphin.Model);
+                    break;
+                case SpeechRecognitionModelType.TeleSpeech:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.TeleSpeechCtc);
+                    break;
+                case SpeechRecognitionModelType.Whisper:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Whisper.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Whisper.Decoder);
+                    break;
+                case SpeechRecognitionModelType.Tdnn:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.Tdnn.Model);
+                    break;
+                case SpeechRecognitionModelType.SenseVoice:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.SenseVoice.Model);
+                    break;
+                case SpeechRecognitionModelType.Moonshine:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Moonshine.Encoder);
+                    AppendPathDiagnostic(parts, "mergedDecoder", config.ModelConfig.Moonshine.MergedDecoder);
+                    AppendPathDiagnostic(parts, "preprocessor", config.ModelConfig.Moonshine.Preprocessor);
+                    AppendPathDiagnostic(parts, "cachedDecoder", config.ModelConfig.Moonshine.CachedDecoder);
+                    AppendPathDiagnostic(parts, "uncachedDecoder", config.ModelConfig.Moonshine.UncachedDecoder);
+                    break;
+                case SpeechRecognitionModelType.FireRedAsr:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.FireRedAsr.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.FireRedAsr.Decoder);
+                    break;
+                case SpeechRecognitionModelType.Offline_FireRedAsrCtc:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.FireRedAsrCtc.Model);
+                    break;
+                case SpeechRecognitionModelType.Offline_Canary:
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Canary.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Canary.Decoder);
+                    break;
+                case SpeechRecognitionModelType.Omnilingual:
+                    AppendPathDiagnostic(parts, "model", config.ModelConfig.Omnilingual.Model);
+                    break;
+            }
+
+            ReportDiagnosticMessage(metadata, reporter, parts);
+        }
+
+        private static void ReportDiagnosticMessage(
+            SherpaONNXModelMetadata metadata,
+            SherpaONNXFeedbackReporter reporter,
+            List<string> parts)
+        {
+            if (parts == null || parts.Count == 0)
+            {
+                return;
+            }
+
+            var message = "[SpeechRecognition] Recognizer config: " + string.Join(" | ", parts);
+            SherpaLog.Info(message, category: "SpeechRecognition");
+            reporter?.Report(new LoadFeedback(metadata, message: message));
+        }
+
+        private static void AppendPathDiagnostic(List<string> parts, string label, string path)
+        {
+            if (parts == null || string.IsNullOrWhiteSpace(label) || string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            if (Directory.Exists(path))
+            {
+                int entryCount = 0;
+                try
+                {
+                    entryCount = Directory.EnumerateFileSystemEntries(path).Take(4).Count();
+                }
+                catch
+                {
+                    entryCount = -1;
+                }
+
+                parts.Add($"{label}={path} (dir exists=true entries{(entryCount >= 0 ? ">=" + entryCount : "=unknown")})");
+                return;
+            }
+
+            bool exists = File.Exists(path);
+            long size = -1;
+            if (exists)
+            {
+                try
+                {
+                    size = new FileInfo(path).Length;
+                }
+                catch
+                {
+                    size = -1;
+                }
+            }
+
+            parts.Add($"{label}={path} (exists={exists}{(size >= 0 ? $", size={size}" : string.Empty)})");
         }
 
         public async Task<TranscriptionResult> TranscribeAsync(float[] audioSamplesFrame, int sampleRate, CancellationToken cancellationToken = default)

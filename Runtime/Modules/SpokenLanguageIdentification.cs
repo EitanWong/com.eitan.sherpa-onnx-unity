@@ -27,6 +27,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 // ignore the prarmeter sampleRate it's not correct.
 
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpokenLanguageIdentification");
                 var modelType = SherpaUtils.Model.ResolveSpokenLanguageIdentificationModelType(metadata);
                 this.SampleRate = metadata.sampleRate;
 
@@ -70,7 +71,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
         private SpokenLanguageIdentificationConfig CreateSliConfig(SpokenLanguageIdentificationModelType modelType, SherpaONNXModelMetadata metadata, int sampleRate, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter, CancellationToken ct)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
-            var sliModelConfig = new SpokenLanguageIdentificationConfig { NumThreads = ThreadingUtils.GetAdaptiveThreadCount() };
+            var sliModelConfig = new SpokenLanguageIdentificationConfig(true)
+            {
+                NumThreads = ThreadingUtils.GetAdaptiveThreadCount()
+            };
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
 
             switch (modelType)
