@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsVitsModelConfig
     {
-        public OfflineTtsVitsModelConfig(bool initializeDefaults = true)
+        public OfflineTtsVitsModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             Lexicon = "";
             Tokens = "";

@@ -48,7 +48,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         [SerializeField] private AudioClip keywordTriggerSound;
 
         [Header("Defaults")]
-        [SerializeField] private string defaultModelID = "sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01";
+        [SerializeField] private string defaultModelID = "sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20";
 
         private const float DefaultCustomKeywordScore = 2f;
         private const float DefaultCustomKeywordThreshold = 0.25f;

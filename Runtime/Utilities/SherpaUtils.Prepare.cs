@@ -30,7 +30,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             ".gz", ".bz2", ".xz", ".lz4", ".tgz", ".tbz2", ".zst"
         };
             private static readonly string[] MODEL_SIGNATURE_EXTENSIONS = {
-                ".onnx"
+                ".onnx",
+                ".ort",
+                ".tflite",
+                ".pt",
+                ".bin",
+                ".model"
             };
             #endregion
 

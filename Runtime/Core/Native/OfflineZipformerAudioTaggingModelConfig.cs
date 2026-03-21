@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineZipformerAudioTaggingModelConfig
     {
-        public OfflineZipformerAudioTaggingModelConfig(bool initializeDefaults = true)
+        public OfflineZipformerAudioTaggingModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

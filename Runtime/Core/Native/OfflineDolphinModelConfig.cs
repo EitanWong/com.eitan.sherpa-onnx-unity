@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineDolphinModelConfig
     {
-        public OfflineDolphinModelConfig(bool initializeDefaults = true)
+        public OfflineDolphinModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

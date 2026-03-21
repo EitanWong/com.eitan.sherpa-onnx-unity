@@ -13,8 +13,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
     public sealed class SpeechEnhancement : SherpaONNXModule
     {
         private OfflineSpeechDenoiser _denoiser;
+        private OnlineSpeechDenoiser _onlineDenoiser;
         private readonly object _lockObject = new();
         private int _sampleRate;
+        private SpeechEnhancementModelType _modelType;
 
         protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechEnhancement;
 
@@ -28,9 +30,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             try
             {
                 reporter?.Report(new LoadFeedback(metadata, message: $"Start Loading: {metadata.modelId}"));
+                TryReportAndroid32BitRuntimeRisk(metadata, reporter, "SpeechEnhancement");
 
                 _sampleRate = sampleRate;
-                var config = CreateSpeechDenoiserConfig(metadata, isMobilePlatform, reporter);
+                _modelType = ResolveSpeechEnhancementModelType(metadata, isMobilePlatform, reporter);
+                var offlineConfig = CreateOfflineSpeechDenoiserConfig(metadata, isMobilePlatform, reporter);
+                var onlineConfig = CreateOnlineSpeechDenoiserConfig(metadata, isMobilePlatform, reporter);
 
                 return await runner.RunAsync<bool>(cancellationToken =>
                 {
@@ -43,8 +48,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         if (IsDisposed) { return Task.FromResult(false); }
 
                         reporter?.Report(new LoadFeedback(metadata, message: $"Loading Speech Enhancement model: {metadata.modelId}"));
-                        _denoiser = new OfflineSpeechDenoiser(config);
-                        var initialized = IsSuccessInitializad(_denoiser);
+                        _denoiser = new OfflineSpeechDenoiser(offlineConfig);
+                        _onlineDenoiser = new OnlineSpeechDenoiser(onlineConfig);
+                        var initialized = IsSuccessInitializad(_denoiser) && IsSuccessInitializad(_onlineDenoiser);
                         if (initialized)
                         {
                             reporter?.Report(new LoadFeedback(metadata, message: $"Speech Enhancement model loaded successfully: {metadata.modelId}"));
@@ -66,7 +72,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             }
         }
 
-        private OfflineSpeechDenoiserConfig CreateSpeechDenoiserConfig(SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
+        public int StreamingSampleRate => _onlineDenoiser?.SampleRate ?? 0;
+
+        public int StreamingFrameShiftInSamples => _onlineDenoiser?.FrameShiftInSamples ?? 0;
+
+        private OfflineSpeechDenoiserConfig CreateOfflineSpeechDenoiserConfig(SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
         {
             var fallbackReporter = CreateFallbackReporter(metadata, reporter);
             var config = new OfflineSpeechDenoiserConfig
@@ -77,17 +87,125 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 }
             };
 
-            var int8QuantKeyword = isMobilePlatform ? "int8" : null;
-
-            config.Model.Gtcrn.Model = ModelFileResolver.ResolveRequiredFile(
-                metadata,
-                "GTCRN model",
-                fallbackReporter,
-                ModelFileCriteria.FromKeywords("gtcrn", "model", int8QuantKeyword),
-                ModelFileCriteria.FromKeywords("gtcrn", "model"),
-                ModelFileCriteria.FromExtensions(".onnx"));
+            switch (_modelType)
+            {
+                case SpeechEnhancementModelType.DpdfNet:
+                    config.Model.Dpdfnet.Model = ResolveRequiredEnhancementModelFile(
+                        metadata,
+                        isMobilePlatform,
+                        fallbackReporter,
+                        "DPDFNet model",
+                        ModelFileCriteria.FromKeywords("dpdfnet", "model"),
+                        ModelFileCriteria.FromKeywords("dpdf", "model"),
+                        ModelFileCriteria.FromKeywords("dpdfnet"),
+                        ModelFileCriteria.FromKeywords("dpdf"));
+                    config.Model.Gtcrn.Model = string.Empty;
+                    break;
+                case SpeechEnhancementModelType.Gtcrn:
+                    config.Model.Gtcrn.Model = ResolveRequiredEnhancementModelFile(
+                        metadata,
+                        isMobilePlatform,
+                        fallbackReporter,
+                        "GTCRN model",
+                        ModelFileCriteria.FromKeywords("gtcrn", "model"),
+                        ModelFileCriteria.FromKeywords("gtcrn"));
+                    config.Model.Dpdfnet.Model = string.Empty;
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported speech enhancement model type: {_modelType}");
+            }
 
             return config;
+        }
+
+        private OnlineSpeechDenoiserConfig CreateOnlineSpeechDenoiserConfig(SherpaONNXModelMetadata metadata, bool isMobilePlatform, SherpaONNXFeedbackReporter reporter)
+        {
+            var offlineConfig = CreateOfflineSpeechDenoiserConfig(metadata, isMobilePlatform, reporter);
+            return new OnlineSpeechDenoiserConfig
+            {
+                Model = offlineConfig.Model
+            };
+        }
+
+        private SpeechEnhancementModelType ResolveSpeechEnhancementModelType(
+            SherpaONNXModelMetadata metadata,
+            bool isMobilePlatform,
+            SherpaONNXFeedbackReporter reporter)
+        {
+            var resolvedType = SherpaUtils.Model.ResolveSpeechEnhancementModelType(metadata);
+            if (resolvedType != SpeechEnhancementModelType.None)
+            {
+                return resolvedType;
+            }
+
+            var fallbackReporter = CreateFallbackReporter(metadata, reporter);
+            if (TryResolveEnhancementModelFile(metadata, isMobilePlatform, fallbackReporter, out _, ModelFileCriteria.FromKeywords("dpdfnet", "model"), ModelFileCriteria.FromKeywords("dpdf", "model"), ModelFileCriteria.FromKeywords("dpdfnet"), ModelFileCriteria.FromKeywords("dpdf")))
+            {
+                return SpeechEnhancementModelType.DpdfNet;
+            }
+
+            if (TryResolveEnhancementModelFile(metadata, isMobilePlatform, fallbackReporter, out _, ModelFileCriteria.FromKeywords("gtcrn", "model"), ModelFileCriteria.FromKeywords("gtcrn")))
+            {
+                return SpeechEnhancementModelType.Gtcrn;
+            }
+
+            return SpeechEnhancementModelType.None;
+        }
+
+        private static string ResolveRequiredEnhancementModelFile(
+            SherpaONNXModelMetadata metadata,
+            bool isMobilePlatform,
+            Action<string> fallbackReporter,
+            string description,
+            params ModelFileCriteria[] criteria)
+        {
+            if (TryResolveEnhancementModelFile(metadata, isMobilePlatform, fallbackReporter, out var resolvedPath, criteria))
+            {
+                return resolvedPath;
+            }
+
+            throw new InvalidOperationException($"Unable to locate {description} for model '{metadata?.modelId}'.");
+        }
+
+        private static bool TryResolveEnhancementModelFile(
+            SherpaONNXModelMetadata metadata,
+            bool isMobilePlatform,
+            Action<string> fallbackReporter,
+            out string resolvedPath,
+            params ModelFileCriteria[] criteria)
+        {
+            var allCriteria = BuildEnhancementCriteria(isMobilePlatform, criteria);
+            return ModelFileResolver.TryResolveFirstValidPath(
+                metadata,
+                out resolvedPath,
+                fallbackReporter,
+                recordFailures: true,
+                allCriteria);
+        }
+
+        private static ModelFileCriteria[] BuildEnhancementCriteria(bool isMobilePlatform, params ModelFileCriteria[] criteria)
+        {
+            if (!isMobilePlatform)
+            {
+                var fallbackCriteria = new ModelFileCriteria[(criteria?.Length ?? 0) + 1];
+                if (criteria != null && criteria.Length > 0)
+                {
+                    Array.Copy(criteria, fallbackCriteria, criteria.Length);
+                }
+
+                fallbackCriteria[fallbackCriteria.Length - 1] = ModelFileCriteria.FromExtensions(".onnx");
+                return fallbackCriteria;
+            }
+
+            var mobileCriteria = new ModelFileCriteria[(criteria?.Length ?? 0) + 2];
+            mobileCriteria[0] = ModelFileCriteria.FromKeywords("model", "int8");
+            if (criteria != null && criteria.Length > 0)
+            {
+                Array.Copy(criteria, 0, mobileCriteria, 1, criteria.Length);
+            }
+
+            mobileCriteria[mobileCriteria.Length - 1] = ModelFileCriteria.FromExtensions(".onnx");
+            return mobileCriteria;
         }
 
         /// <summary>
@@ -132,13 +250,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     combinedCt.ThrowIfCancellationRequested();
 
                     var enhancedAudio = _denoiser.Run(samples, effectiveSampleRate);
-                    var enhancedSamples = enhancedAudio?.Samples;
-
-                    if (enhancedSamples != null && enhancedSamples.Length > 0)
+                    try
                     {
-                        // Copy enhanced data back to input array in-place
-                        var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
-                        Array.Copy(enhancedSamples, 0, samples, 0, copyLength);
+                        var enhancedSamples = enhancedAudio?.Samples;
+
+                        if (enhancedSamples != null && enhancedSamples.Length > 0)
+                        {
+                            // Copy enhanced data back to input array in-place
+                            var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
+                            Array.Copy(enhancedSamples, 0, samples, 0, copyLength);
+                        }
+                    }
+                    finally
+                    {
+                        enhancedAudio?.Dispose();
                     }
                 }
             });
@@ -169,14 +294,164 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 }
 
                 var enhancedAudio = _denoiser.Run(samples, effectiveSampleRate);
-                var enhancedSamples = enhancedAudio?.Samples;
-
-                if (enhancedSamples != null && enhancedSamples.Length > 0)
+                try
                 {
-                    // Copy enhanced data back to input array in-place
-                    var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
-                    Array.Copy(enhancedSamples, 0, samples, 0, copyLength);
+                    var enhancedSamples = enhancedAudio?.Samples;
+
+                    if (enhancedSamples != null && enhancedSamples.Length > 0)
+                    {
+                        // Copy enhanced data back to input array in-place
+                        var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
+                        Array.Copy(enhancedSamples, 0, samples, 0, copyLength);
+                    }
                 }
+                finally
+                {
+                    enhancedAudio?.Dispose();
+                }
+            }
+        }
+
+        public async Task<float[]> ProcessStreamingAsync(float[] samples, int? sampleRate = null, CancellationToken? ct = null)
+        {
+            if (_onlineDenoiser == null || IsDisposed)
+            {
+                throw new InvalidOperationException("SpeechEnhancement streaming denoiser is not initialized or has been disposed.");
+            }
+
+            if (samples == null || samples.Length == 0)
+            {
+                return Array.Empty<float>();
+            }
+
+            var effectiveSampleRate = sampleRate ?? _sampleRate;
+
+            return await runner.RunAsync<float[]>(cancellationToken =>
+            {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                var combinedCt = linkedCts.Token;
+                combinedCt.ThrowIfCancellationRequested();
+
+                lock (_lockObject)
+                {
+                    if (IsDisposed || _onlineDenoiser == null)
+                    {
+                        return Task.FromResult(Array.Empty<float>());
+                    }
+
+                    var enhancedAudio = _onlineDenoiser.Run(samples, effectiveSampleRate);
+                    try
+                    {
+                        return Task.FromResult(enhancedAudio?.Samples ?? Array.Empty<float>());
+                    }
+                    finally
+                    {
+                        enhancedAudio?.Dispose();
+                    }
+                }
+            });
+        }
+
+        public float[] ProcessStreamingSync(float[] samples, int? sampleRate = null)
+        {
+            if (_onlineDenoiser == null || IsDisposed || samples == null || samples.Length == 0)
+            {
+                return Array.Empty<float>();
+            }
+
+            var effectiveSampleRate = sampleRate ?? _sampleRate;
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineDenoiser == null)
+                {
+                    return Array.Empty<float>();
+                }
+
+                var enhancedAudio = _onlineDenoiser.Run(samples, effectiveSampleRate);
+                try
+                {
+                    return enhancedAudio?.Samples ?? Array.Empty<float>();
+                }
+                finally
+                {
+                    enhancedAudio?.Dispose();
+                }
+            }
+        }
+
+        public async Task<float[]> FlushStreamingAsync(CancellationToken? ct = null)
+        {
+            if (_onlineDenoiser == null || IsDisposed)
+            {
+                throw new InvalidOperationException("SpeechEnhancement streaming denoiser is not initialized or has been disposed.");
+            }
+
+            return await runner.RunAsync<float[]>(cancellationToken =>
+            {
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct ?? CancellationToken.None);
+                linkedCts.Token.ThrowIfCancellationRequested();
+
+                lock (_lockObject)
+                {
+                    if (IsDisposed || _onlineDenoiser == null)
+                    {
+                        return Task.FromResult(Array.Empty<float>());
+                    }
+
+                    var enhancedAudio = _onlineDenoiser.Flush();
+                    try
+                    {
+                        return Task.FromResult(enhancedAudio?.Samples ?? Array.Empty<float>());
+                    }
+                    finally
+                    {
+                        enhancedAudio?.Dispose();
+                    }
+                }
+            });
+        }
+
+        public float[] FlushStreamingSync()
+        {
+            if (_onlineDenoiser == null || IsDisposed)
+            {
+                return Array.Empty<float>();
+            }
+
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineDenoiser == null)
+                {
+                    return Array.Empty<float>();
+                }
+
+                var enhancedAudio = _onlineDenoiser.Flush();
+                try
+                {
+                    return enhancedAudio?.Samples ?? Array.Empty<float>();
+                }
+                finally
+                {
+                    enhancedAudio?.Dispose();
+                }
+            }
+        }
+
+        public void ResetStreaming()
+        {
+            if (_onlineDenoiser == null || IsDisposed)
+            {
+                return;
+            }
+
+            lock (_lockObject)
+            {
+                if (IsDisposed || _onlineDenoiser == null)
+                {
+                    return;
+                }
+
+                _onlineDenoiser.Reset();
             }
         }
 
@@ -206,12 +481,19 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 try
                 {
                     var enhancedAudio = _denoiser.Run(inputArray, effectiveSampleRate);
-                    var enhancedSamples = enhancedAudio?.Samples;
-
-                    if (enhancedSamples != null && enhancedSamples.Length > 0)
+                    try
                     {
-                        var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
-                        enhancedSamples.AsSpan(0, copyLength).CopyTo(samples);
+                        var enhancedSamples = enhancedAudio?.Samples;
+
+                        if (enhancedSamples != null && enhancedSamples.Length > 0)
+                        {
+                            var copyLength = Math.Min(samples.Length, enhancedSamples.Length);
+                            enhancedSamples.AsSpan(0, copyLength).CopyTo(samples);
+                        }
+                    }
+                    finally
+                    {
+                        enhancedAudio?.Dispose();
                     }
                 }
                 finally
@@ -251,12 +533,19 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 try
                 {
                     var enhancedAudio = _denoiser.Run(inputArray, effectiveSampleRate);
-                    var enhancedSamples = enhancedAudio?.Samples;
-
-                    if (enhancedSamples != null && enhancedSamples.Length > 0)
+                    try
                     {
-                        var copyLength = Math.Min(length, enhancedSamples.Length);
-                        Array.Copy(enhancedSamples, 0, buffer, offset, copyLength);
+                        var enhancedSamples = enhancedAudio?.Samples;
+
+                        if (enhancedSamples != null && enhancedSamples.Length > 0)
+                        {
+                            var copyLength = Math.Min(length, enhancedSamples.Length);
+                            Array.Copy(enhancedSamples, 0, buffer, offset, copyLength);
+                        }
+                    }
+                    finally
+                    {
+                        enhancedAudio?.Dispose();
                     }
                 }
                 finally
@@ -306,7 +595,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             lock (_lockObject)
             {
                 _denoiser?.Dispose();
+                _onlineDenoiser?.Dispose();
                 _denoiser = null;
+                _onlineDenoiser = null;
             }
         }
     }

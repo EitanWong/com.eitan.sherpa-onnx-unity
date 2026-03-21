@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             SherpaONNXModuleType.SpokenLanguageIdentification,
             SherpaONNXModuleType.AddPunctuation,
             SherpaONNXModuleType.AudioTagging,
-            SherpaONNXModuleType.SpeakerIdentification,
+            SherpaONNXModuleType.Embedding,
             SherpaONNXModuleType.SourceSeparation,
             SherpaONNXModuleType.SpeakerDiarization, // There is no checksum.txt file, so the model cannot be obtained
         };
@@ -441,6 +442,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 case SherpaONNXModuleType.SpeakerDiarization:
                     tagName = "speaker-segmentation-models";
                     break;
+                case SherpaONNXModuleType.Embedding:
                 case SherpaONNXModuleType.SpeakerIdentification:
                     tagName = "speaker-recongition-models";
                     break;
@@ -686,50 +688,33 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
         {
             try
             {
-                using (var uwr = UnityWebRequest.Get(url))
+                using var timeoutCts = new CancellationTokenSource(timeoutMs);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+                using var httpClient = new HttpClient();
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                using var response = await httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseContentRead,
+                    linkedCts.Token).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
                 {
-                    uwr.downloadHandler = new DownloadHandlerBuffer();
-                    var op = uwr.SendWebRequest();
-
-                    var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    using (var timeoutCts = new CancellationTokenSource(timeoutMs))
-                    using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken))
-                    {
-                        op.completed += _ => tcs.TrySetResult(true);
-                        using (linkedCts.Token.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false))
-                        {
-                            try
-                            {
-                                await tcs.Task.ConfigureAwait(false);
-                            }
-                            catch (TaskCanceledException)
-                            {
-                                if (cancellationToken.IsCancellationRequested)
-                                {
-                                    throw new OperationCanceledException(cancellationToken);
-                                }
-
-                                uwr.Abort();
-                                SherpaLog.Warning($"TryHttpGetTextAsync timeout: {url}");
-                                return (false, string.Empty);
-                            }
-                        }
-                    }
-#if UNITY_2020_1_OR_NEWER
-                    if (uwr.result != UnityWebRequest.Result.Success)
-#else
-                    if (uwr.isNetworkError || uwr.isHttpError)
-#endif
-                    {
-                        SherpaLog.Warning($"TryHttpGetTextAsync HTTP error: {uwr.error} ({url})");
-                        return (false, string.Empty);
-                    }
-                    return (true, uwr.downloadHandler.text ?? string.Empty);
+                    SherpaLog.Warning($"TryHttpGetTextAsync HTTP error: {(int)response.StatusCode} {response.ReasonPhrase} ({url})");
+                    return (false, string.Empty);
                 }
+
+                var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                return (true, text ?? string.Empty);
             }
             catch (OperationCanceledException)
             {
-                throw;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                SherpaLog.Warning($"TryHttpGetTextAsync timeout: {url}");
+                return (false, string.Empty);
             }
             catch (Exception ex)
             {
@@ -754,12 +739,20 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
 
         // public const string githubProxyUrl = "https://gh-proxy.com/";
 
-        private static string GetModelDownloadUrl(string modelId)
+        private static string GetModelDownloadUrl(string modelId, SherpaONNXModuleType moduleType = SherpaONNXModuleType.Undefined)
         {
-            var sherpaModelType = SherpaUtils.Model.GetModuleTypeByModelId(modelId);
+            var sherpaModelType = moduleType != SherpaONNXModuleType.Undefined
+                ? moduleType
+                : SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             var tag = GetReleaseTagByModuleType(sherpaModelType);
-            var ext = sherpaModelType == SherpaONNXModuleType.VoiceActivityDetection ? ".onnx" : ".tar.bz2";
-            var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{modelId}{ext}";
+            var ext = sherpaModelType == SherpaONNXModuleType.VoiceActivityDetection
+                   || sherpaModelType == SherpaONNXModuleType.Embedding
+                ? ".onnx"
+                : ".tar.bz2";
+            var fileName = modelId.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                ? modelId
+                : modelId + ext;
+            var rawUrl = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{fileName}";
             // Store canonical (raw) GitHub URL in metadata; proxy is applied at request time.
             return rawUrl;
         }
@@ -773,13 +766,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     continue;
                 }
 
+                // Assign the target module type before generating URLs so built-in
+                // manifest entries never depend on keyword inference.
+                modelConfig.moduleType = moduleType;
+
                 if (string.IsNullOrEmpty(modelConfig.downloadUrl))
                 {
-                    modelConfig.downloadUrl = GetModelDownloadUrl(modelConfig.modelId);
+                    modelConfig.downloadUrl = GetModelDownloadUrl(modelConfig.modelId, moduleType);
                 }
-
-                // Assign the target module type for this insertion
-                modelConfig.moduleType = moduleType;
 
                 // Prevent duplicates only within the same module type.
                 // This allows the same modelId (e.g., Whisper) to exist under
@@ -952,6 +946,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     return CloneMetadataArray(Models.PUNCTUATION_MODELS_METADATA_TABLES);
                 case SherpaONNXModuleType.AudioTagging:
                     return CloneMetadataArray(Models.AUDIO_TAGGING_MODELS_METADATA_TABLES);
+                case SherpaONNXModuleType.Embedding:
+                    return CloneMetadataArray(Models.SPEAKER_IDENTIFICATION_MODELS_METADATA_TABLES);
                 case SherpaONNXModuleType.SpeakerIdentification:
                     return CloneMetadataArray(Models.SPEAKER_IDENTIFICATION_MODELS_METADATA_TABLES);
                 case SherpaONNXModuleType.SpeakerDiarization:
@@ -1030,7 +1026,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             var rkRegex = new Regex(@"rk\d{4}", RegexOptions.IgnoreCase);
 
             bool isOnnxOnly = moduleType == SherpaONNXModuleType.VoiceActivityDetection
-                           || moduleType == SherpaONNXModuleType.SpeechEnhancement;
+                           || moduleType == SherpaONNXModuleType.SpeechEnhancement
+                           || moduleType == SherpaONNXModuleType.Embedding;
             string wantedExt = isOnnxOnly ? ".onnx" : ".tar.bz2";
             bool isSlidModel = moduleType == SherpaONNXModuleType.SpokenLanguageIdentification;
 

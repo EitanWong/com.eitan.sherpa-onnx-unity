@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsKokoroModelConfig
     {
-        public OfflineTtsKokoroModelConfig(bool initializeDefaults = true)
+        public OfflineTtsKokoroModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             Voices = "";
             Tokens = "";

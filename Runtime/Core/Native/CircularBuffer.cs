@@ -37,18 +37,18 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
 
         public int Size
         {
-            get
-            {
-                return SherpaOnnxCircularBufferSize(_handle.Handle);
-            }
+          get
+          {
+              return SherpaOnnxCircularBufferSize(_handle.Handle);
+          }
         }
 
         public int Head
         {
-            get
-            {
-                return SherpaOnnxCircularBufferHead(_handle.Handle);
-            }
+          get
+          {
+              return SherpaOnnxCircularBufferHead(_handle.Handle);
+          }
         }
 
         public void Reset()

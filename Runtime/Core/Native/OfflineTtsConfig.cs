@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsConfig
     {
-        public OfflineTtsConfig(bool initializeDefaults = true)
+        public OfflineTtsConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = new OfflineTtsModelConfig();
             RuleFsts = "";
             MaxNumSentences = 1;

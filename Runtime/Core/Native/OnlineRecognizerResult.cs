@@ -77,7 +77,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
                 }
                 else
                 {
-                    _timestamps = new float[] { };
+                    _timestamps = new float[] {};
                 }
             }
         }

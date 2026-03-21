@@ -10,15 +10,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineNemoEncDecCtcModelConfig
     {
-        public OfflineNemoEncDecCtcModelConfig(bool initializeDefaults = true)
+        public OfflineNemoEncDecCtcModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

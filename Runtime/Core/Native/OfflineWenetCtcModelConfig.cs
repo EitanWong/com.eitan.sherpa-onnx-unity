@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineWenetCtcModelConfig
     {
-        public OfflineWenetCtcModelConfig(bool initializeDefaults = true)
+        public OfflineWenetCtcModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

@@ -174,6 +174,47 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
         }
 
+        [Test]
+        public async Task Prepare_VerifiesOrtModelDirectory_AsDownloaded()
+        {
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "sherpa-onnx-moonshine-ort-prepare-test",
+                moduleType = SherpaONNXModuleType.SpeechRecognition,
+                downloadUrl = string.Empty
+            };
+
+            SherpaUtils.Prepare.ResolveDownloadFilePath(
+                metadata,
+                out _,
+                out var modelDirectory,
+                out _,
+                out _);
+
+            try
+            {
+                if (Directory.Exists(modelDirectory))
+                {
+                    Directory.Delete(modelDirectory, true);
+                }
+
+                Directory.CreateDirectory(modelDirectory);
+                File.WriteAllBytes(Path.Combine(modelDirectory, "encoder_model.ort"), new byte[] { 0x01, 0x02, 0x03, 0x04 });
+                File.WriteAllText(Path.Combine(modelDirectory, "tokens.txt"), "a 1");
+
+                var downloaded = await SherpaUtils.Prepare.CheckIsModelDownloadedAsync(metadata, CancellationToken.None);
+
+                Assert.IsTrue(downloaded);
+            }
+            finally
+            {
+                if (Directory.Exists(modelDirectory))
+                {
+                    Directory.Delete(modelDirectory, true);
+                }
+            }
+        }
+
         private static void RestoreEnvironmentValue(string key, string value)
         {
             if (value == null)

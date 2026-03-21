@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineCanaryModelConfig
     {
-        public OfflineCanaryModelConfig(bool initializeDefaults = true)
+        public OfflineCanaryModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Encoder = "";
             Decoder = "";
             SrcLang = "en";

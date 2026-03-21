@@ -30,6 +30,7 @@ namespace Eitan.SherpaONNXUnity.Tests
             // Common assets
             Touch("tokens.txt");
             Touch("en-us.lexicon");
+            Touch("en.phone");
             Touch("hotwords.txt");
             Touch("keywords.txt");
             Touch("readme.MD");
@@ -98,6 +99,20 @@ namespace Eitan.SherpaONNXUnity.Tests
         }
 
         [Test]
+        public void ListModelFiles_RecursiveMode_FindsNestedEntries()
+        {
+            var nestedRelativePath = Path.Combine("nested", "level", "deep-model.ort");
+            Touch(nestedRelativePath);
+
+            var nonRecursive = _metadata.ListModelFiles(fileNameOnly: false, recursive: false);
+            var recursive = _metadata.ListModelFiles(fileNameOnly: false, recursive: true);
+            var nestedFullPath = Full(nestedRelativePath);
+
+            CollectionAssert.DoesNotContain(nonRecursive, nestedFullPath);
+            CollectionAssert.Contains(recursive, nestedFullPath);
+        }
+
+        [Test]
         public void GetModelFilesByExtensionName_FiltersAndReturnsFullPaths()
         {
             // Query by extension: .onnx and txt (allow both ".ext" and "ext" forms)
@@ -129,6 +144,48 @@ namespace Eitan.SherpaONNXUnity.Tests
             Assert.IsNotNull(matches);
             CollectionAssert.IsSubsetOf(new[] { Full("tokens.txt"), Full("en-us.lexicon") }, matches);
             SherpaLog.Info("[Keywords_Tokens_And_Lexicon] →\n" + string.Join("\n", matches), category: "Tests");
+        }
+
+        [Test]
+        public void Keywords_Phone_Lexicon_Is_Discoverable()
+        {
+            var matches = _metadata.GetModelFilePathByKeywords("en.phone", "phone");
+            Assert.IsNotNull(matches);
+            CollectionAssert.Contains(matches, Full("en.phone"));
+        }
+
+        [Test]
+        public void Bound_KeywordsFile_In_Subdirectory_Is_Discoverable()
+        {
+            Directory.CreateDirectory(Path.Combine(_modelRoot, "test_wavs"));
+            File.WriteAllText(Path.Combine(_modelRoot, "test_wavs", "keywords.txt"), "hello\n");
+
+            _metadata.fileBindings.Add(new SherpaONNXModelFileBinding
+            {
+                key = SherpaONNXModelFileKey.Keywords,
+                path = "test_wavs/keywords.txt",
+            });
+
+            var matches = _metadata.GetModelFilePathByKeywords("keywords.txt");
+            Assert.IsNotNull(matches);
+            CollectionAssert.Contains(matches, Full(Path.Combine("test_wavs", "keywords.txt")));
+        }
+
+        [Test]
+        public void Bound_FileKey_In_Subdirectory_Is_Discoverable()
+        {
+            var nestedRelativePath = Path.Combine("nested", "level", "custom-encoder.ort");
+            Touch(nestedRelativePath);
+
+            _metadata.fileBindings.Add(new SherpaONNXModelFileBinding
+            {
+                key = SherpaONNXModelFileKey.Encoder,
+                path = nestedRelativePath,
+            });
+
+            var matches = _metadata.GetModelFilePathsByBindingKeys(SherpaONNXModelFileKey.Encoder);
+            Assert.IsNotNull(matches);
+            CollectionAssert.Contains(matches, Full(nestedRelativePath));
         }
 
         [Test]
@@ -202,6 +259,11 @@ namespace Eitan.SherpaONNXUnity.Tests
         private void Touch(string name)
         {
             var full = Path.Combine(_modelRoot, name);
+            var directory = Path.GetDirectoryName(full);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
             File.WriteAllBytes(full, Array.Empty<byte>());
         }
 

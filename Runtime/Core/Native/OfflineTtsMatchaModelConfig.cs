@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsMatchaModelConfig
     {
-        public OfflineTtsMatchaModelConfig(bool initializeDefaults = true)
+        public OfflineTtsMatchaModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             AcousticModel = "";
             Vocoder = "";
             Lexicon = "";

@@ -8,15 +8,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineMedAsrCtcModelConfig
     {
-        public OfflineMedAsrCtcModelConfig(bool initializeDefaults = true)
+        public OfflineMedAsrCtcModelConfig(bool initialize = true)
         {
-
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
             Model = "";
         }
         [MarshalAs(UnmanagedType.LPStr)]

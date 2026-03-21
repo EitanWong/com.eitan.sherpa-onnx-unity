@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct SpeakerEmbeddingExtractorConfig
     {
-        public SpeakerEmbeddingExtractorConfig(bool initializeDefaults = true)
+        public SpeakerEmbeddingExtractorConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             NumThreads = 1;
             Debug = 0;

@@ -7,15 +7,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct OfflineTtsKittenModelConfig
     {
-        public OfflineTtsKittenModelConfig(bool initializeDefaults = true)
+        public OfflineTtsKittenModelConfig(bool initialize = true)
         {
-            this = default;
-
-            if (!initializeDefaults)
-            {
-                return;
-            }
-
             Model = "";
             Voices = "";
             Tokens = "";
