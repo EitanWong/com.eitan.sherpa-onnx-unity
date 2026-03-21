@@ -135,12 +135,12 @@ namespace Eitan.SherpaONNXUnity.Samples
         {
             if (diarizationComponent == null)
             {
-                diarizationComponent = FindObjectOfType<SpeakerDiarizationComponent>();
+                diarizationComponent = FindSceneObject<SpeakerDiarizationComponent>();
             }
 
             if (microphoneInput == null)
             {
-                microphoneInput = FindObjectOfType<SherpaMicrophoneInput>();
+                microphoneInput = FindSceneObject<SherpaMicrophoneInput>();
             }
 
             if (playbackAudioSource == null)
@@ -163,6 +163,15 @@ namespace Eitan.SherpaONNXUnity.Samples
                 playbackAudioSource.playOnAwake = false;
                 playbackAudioSource.loop = false;
             }
+        }
+
+        private static T FindSceneObject<T>() where T : UnityEngine.Object
+        {
+#if UNITY_2023_1_OR_NEWER
+            return FindFirstObjectByType<T>();
+#else
+            return FindObjectOfType<T>();
+#endif
         }
 
         private void EnsureSupplementalUi()
