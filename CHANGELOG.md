@@ -5,7 +5,7 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http.keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.1.3-exp.3] - 2026-03-25
+## [0.1.3-exp.3] - 2026-03-22
 
 ### Changed
 - Updated bundled sherpa-onnx native libraries to v1.12.32 across all supported platforms (Android arm64-v8a/armeabi-v7a/x86/x86_64, Windows x64, Linux x64, macOS, iOS).
