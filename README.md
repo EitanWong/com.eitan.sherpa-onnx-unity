@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest package: v0.1.3-exp.2**
+📋 **[View Changelog](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **Latest package: v0.1.3-exp.3**
 
 </div>
 
@@ -35,20 +35,11 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 Main Branch Update (2026-03-21)
+## 🆕 What's New in v0.1.3-exp.3 (2026-03-22)
 
 ### 🚀 Highlights
-- **Upstream Native Runtime Updated to sherpa-onnx v1.12.31**
-  Refreshed the bundled native libraries and synchronized the C# native interop layer with the latest upstream APIs used by this package.
-
-- **Android Runtime Validation Completed**
-  Re-tested Android integration against the refreshed native binaries and verified the current package behavior across 64-bit and 32-bit device paths.
-
-- **Non-Blocking 32-bit Android Advisories**
-  Added shared runtime warnings for `armeabi-v7a` devices so modules can report elevated native-risk conditions without forcibly blocking initialization.
-
-- **Native Config Initialization Hardened**
-  Fixed several module config construction paths so marshaled native structs keep their intended default values during sherpa-onnx/ONNX Runtime initialization.
+- **Upstream Native Runtime Updated to sherpa-onnx v1.12.32**
+  Refreshed all bundled native libraries (Android, Windows, Linux, macOS, iOS) to the latest upstream release.
 
 ### 📱 Android Notes
 - `arm64-v8a` remains the recommended deployment target for production Android builds.

@@ -5,6 +5,18 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http.keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.1.3-exp.3] - 2026-03-22
+
+### Changed
+- Updated bundled sherpa-onnx native libraries to v1.12.32 across all supported platforms (Android arm64-v8a/armeabi-v7a/x86/x86_64, Windows x64, Linux x64, macOS, iOS).
+
+### Fixed
+- Recompiled Windows x64 native plugin (`sherpa-onnx-c-api.dll`) for the correct x64 architecture; previously it was incorrectly built as ARM64, causing a load failure in Unity on Windows x64. ([#12](https://github.com/EitanWong/com.eitan.sherpa-onnx-unity/issues/12))
+
+### Known Issues
+- On Android `armeabi-v7a` (32-bit), some upstream native create/init paths may still be unstable for specific models or modules even though initialization is allowed and advisory warnings are reported.
+- `arm64-v8a` remains the recommended Android target for production deployments.
+
 ## [0.1.3-exp.2] - 2026-03-21
 
 ### Added
