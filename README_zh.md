@@ -13,7 +13,7 @@
 [![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?style=flat-square&logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE.md)
 
-📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **当前最新包版本: v0.1.3-exp.2**
+📋 **[查看更新日志](./SherpaONNXUnity/Packages/com.eitan.sherpa-onnx-unity/CHANGELOG.md)** | 📊 **当前最新包版本: v0.1.3-exp.3**
 
 </div>
 
@@ -35,20 +35,11 @@
 
 ---
 
-## 🆕 主分支更新 (2026-03-21)
+## 🆕 v0.1.3-exp.3 更新内容 (2026-03-25)
 
 ### 🚀 本次更新亮点
-- **官方 sherpa-onnx Native 运行时升级到 v1.12.31**
-  同步刷新内置原生库，并对齐本包使用到的 C# Native 互操作层 API。
-
-- **Android 平台测试完成**
-  已基于新版原生库重新验证 Android 集成行为，并复查 64 位与 32 位设备路径下的当前运行情况。
-
-- **新增非阻断式 32 位 Android 风险提示**
-  为各 runtime 模块统一加入 `armeabi-v7a` 风险提示，只做告警，不阻止初始化。
-
-- **Native 配置初始化增强**
-  修复多个模块的 config 构造路径，确保 C# 结构体在传入 sherpa-onnx / ONNX Runtime 时保留正确的默认值。
+- **官方 sherpa-onnx Native 运行时升级到 v1.12.32**
+  全平台（Android、Windows、Linux、macOS、iOS）原生库已同步刷新至最新版本。
 
 ### 📱 Android 说明
 - 生产环境仍建议优先使用 `arm64-v8a`。
