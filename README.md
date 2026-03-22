@@ -35,7 +35,7 @@ For a more detailed introduction, you can also watch the video on [Bilibili](htt
 
 ---
 
-## 🆕 What's New in v0.1.3-exp.3 (2026-03-25)
+## 🆕 What's New in v0.1.3-exp.3 (2026-03-22)
 
 ### 🚀 Highlights
 - **Upstream Native Runtime Updated to sherpa-onnx v1.12.32**
