@@ -10,6 +10,7 @@ namespace Eitan.SherpaONNXUnity.Samples
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Modules;
     using UnityEngine;
     using UnityEngine.UI;
     using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
@@ -276,8 +277,9 @@ namespace Eitan.SherpaONNXUnity.Samples
             UpdateButtonVisuals();
         }
 
-        private void HandleTranscriptReady(string transcript)
+        private void HandleTranscriptReady(SpeechRecognition.TranscriptionResult result)
         {
+            var transcript = result.Text;
             if (string.IsNullOrWhiteSpace(transcript))
             {
                 return;
