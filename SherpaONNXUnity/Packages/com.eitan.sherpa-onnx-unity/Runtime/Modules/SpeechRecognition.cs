@@ -63,18 +63,31 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         public readonly struct TranscriptionResult
         {
-            public TranscriptionResult(TranscriptionStatus status, string text = "", bool isFinal = false, Exception error = null)
+            public TranscriptionResult(
+                TranscriptionStatus status,
+                string text = "",
+                bool isFinal = false,
+                Exception error = null,
+                string[] tokens = null,
+                float[] timestamps = null,
+                float[] durations = null)
             {
                 Status = status;
                 Text = text ?? string.Empty;
                 IsFinal = isFinal;
                 Error = error;
+                Tokens = tokens ?? Array.Empty<string>();
+                Timestamps = timestamps ?? Array.Empty<float>();
+                Durations = durations ?? Array.Empty<float>();
             }
 
             public TranscriptionStatus Status { get; }
             public string Text { get; }
             public bool IsFinal { get; }
             public Exception Error { get; }
+            public string[] Tokens { get; }
+            public float[] Timestamps { get; }
+            public float[] Durations { get; }
         }
 
         protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechRecognition;
@@ -681,8 +694,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     }
 
                     var text = result?.Text ?? string.Empty;
+                    var tokens = result?.Tokens ?? Array.Empty<string>();
+                    var timestamps = result?.Timestamps ?? Array.Empty<float>();
                     var cased = PostProcessCasing(text);
-                    return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, cased, isFinal));
+                    return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, cased, isFinal, tokens: tokens, timestamps: timestamps));
                 }
             });
         }
@@ -723,16 +738,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 }
 
                 // Create new offline stream for each transcription
-                string result = string.Empty;
+                string text;
+                string[] tokens;
+                float[] timestamps;
+                float[] durations;
                 using (var offlineStream = _offlineRecognizer.CreateStream())
                 {
                     offlineStream.AcceptWaveform(sampleRate, audioSamplesFrame);
                     combinedCt.ThrowIfCancellationRequested();
                     _offlineRecognizer.Decode(offlineStream);
-                    result = offlineStream.Result.Text;
-                    result = PostProcessCasing(result);
+                    var nativeResult = offlineStream.Result;
+                    text = nativeResult.Text;
+                    tokens = nativeResult.Tokens;
+                    timestamps = nativeResult.Timestamps;
+                    durations = nativeResult.Durations;
+
+                    text = PostProcessCasing(text);
                 }
-                return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, result, isFinal: true));
+                return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, text, isFinal: true, tokens: tokens, timestamps: timestamps, durations: durations));
             });
         }
 
