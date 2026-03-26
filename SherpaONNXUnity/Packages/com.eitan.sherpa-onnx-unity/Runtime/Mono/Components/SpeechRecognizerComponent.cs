@@ -261,7 +261,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
                     if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                     {
-                        var text = result.Text.Trim();
                         DispatchToUnity(() => PublishTranscript(result));
                     }
                     else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
