@@ -319,26 +319,11 @@ namespace Eitan.SherpaONNXUnity.Runtime
     internal static class SherpaONNXRuntimeSettingsBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        private static void ApplyRuntimeDefaults() => Apply();
+        private static void ApplyRuntimeDefaults() => SherpaONNXRuntimeSettingsApplier.ApplyFromResources();
 
 #if UNITY_EDITOR
         [UnityEditor.InitializeOnLoadMethod]
-        private static void ApplyEditorDefaults() => Apply();
+        private static void ApplyEditorDefaults() => SherpaONNXRuntimeSettingsApplier.ApplyFromResources();
 #endif
-
-        private static void Apply()
-        {
-            // Capture Unity SystemInfo on the main thread to avoid background-thread access errors.
-            ThreadingUtils.PrimeUnityInfo();
-            SherpaPathResolver.PrimeUnityPaths();
-            SherpaONNXRuntimeResourceProvider.PreloadFromResources();
-
-            var snapshot = SherpaONNXRuntimeResourceProvider.GetRuntimeSettingsSnapshot();
-            snapshot.ApplyEnvironmentDefaults();
-
-            SherpaONNXRuntimeSettings.ApplyEnvironmentOverridesFromProcess();
-            // Always honor environment overrides for logging even when no asset exists.
-            SherpaLog.ConfigureFromEnvironment();
-        }
     }
 }

@@ -413,7 +413,10 @@ namespace Eitan.SherpaONNXUnity.Editor
                 _runtimeSettingsObject.Update();
                 DrawRuntimeDefaultsIMGUI();
                 DrawLoggingSettingsIMGUI();
-                _runtimeSettingsObject.ApplyModifiedProperties();
+                if (_runtimeSettingsObject.ApplyModifiedProperties())
+                {
+                    ApplyRuntimeSettingsImmediately();
+                }
                 EditorGUILayout.Space(4);
             }
         }
@@ -1139,13 +1142,25 @@ namespace Eitan.SherpaONNXUnity.Editor
                     SherpaONNXLocalization.Tr(labelKey, labelFallback),
                     SherpaONNXLocalization.Tr(tooltipKey, tooltipFallback));
                 DrawSerializedPropertyWithLocalizedTooltip(prop, content, GetUnifiedSettingsPropertyLabelWidth());
-                serializedObject.ApplyModifiedProperties();
+                if (serializedObject.ApplyModifiedProperties())
+                {
+                    if (serializedObject.targetObject is SherpaONNXRuntimeSettings)
+                    {
+                        ApplyRuntimeSettingsImmediately();
+                    }
+                }
             });
 
             container.style.marginBottom = 4;
             container.style.flexGrow = 1;
             container.style.flexShrink = 0;
             return container;
+        }
+
+        private static void ApplyRuntimeSettingsImmediately()
+        {
+            AssetDatabase.SaveAssets();
+            SherpaONNXRuntimeSettingsApplier.ReloadAndApplyInEditor();
         }
 
         private static void DrawSerializedPropertyWithLocalizedTooltip(SerializedProperty prop, GUIContent content, float preferredLabelWidth = -1f)

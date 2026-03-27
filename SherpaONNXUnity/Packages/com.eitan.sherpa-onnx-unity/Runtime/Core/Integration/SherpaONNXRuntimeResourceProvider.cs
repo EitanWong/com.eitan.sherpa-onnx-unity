@@ -129,14 +129,15 @@ namespace Eitan.SherpaONNXUnity.Runtime
         {
             lock (CacheLock)
             {
-                if (s_preloaded)
-                {
-                    return;
-                }
+                PreloadFromResourcesUnsafe();
+            }
+        }
 
-                s_runtimeSettings = BuildRuntimeSettingsSnapshot(SherpaONNXRuntimeSettings.LoadFromResources()) ?? SherpaONNXRuntimeSettingsSnapshot.Default;
-                s_customCatalog = BuildCustomCatalogSnapshot(SherpaONNXCustomModelSettings.LoadFromResources()) ?? SherpaONNXCustomModelCatalogSnapshot.Empty;
-                s_preloaded = true;
+        public static void ReloadFromResources()
+        {
+            lock (CacheLock)
+            {
+                PreloadFromResourcesUnsafe();
             }
         }
 
@@ -166,6 +167,13 @@ namespace Eitan.SherpaONNXUnity.Runtime
             }
 
             PreloadFromResources();
+        }
+
+        private static void PreloadFromResourcesUnsafe()
+        {
+            s_runtimeSettings = BuildRuntimeSettingsSnapshot(SherpaONNXRuntimeSettings.LoadFromResources()) ?? SherpaONNXRuntimeSettingsSnapshot.Default;
+            s_customCatalog = BuildCustomCatalogSnapshot(SherpaONNXCustomModelSettings.LoadFromResources()) ?? SherpaONNXCustomModelCatalogSnapshot.Empty;
+            s_preloaded = true;
         }
 
         private static SherpaONNXRuntimeSettingsSnapshot BuildRuntimeSettingsSnapshot(SherpaONNXRuntimeSettings settings)
