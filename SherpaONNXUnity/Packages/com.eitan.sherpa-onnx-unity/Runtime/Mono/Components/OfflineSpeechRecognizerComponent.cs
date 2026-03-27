@@ -40,7 +40,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         [Header("Events")]
         [SerializeField]
-        private UnityEvent<string> onTranscriptReady = new UnityEvent<string>();
+        private UnityEvent<SpeechRecognition.TranscriptionResult> onTranscriptReady = new UnityEvent<SpeechRecognition.TranscriptionResult>();
 
         [SerializeField]
         private UnityEvent<string> onTranscriptionFailed = new UnityEvent<string>();
@@ -48,7 +48,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Public hook for scripts that want to display offline transcripts without using the inspector.
         /// </summary>
-        public UnityEvent<string> TranscriptReadyEvent => onTranscriptReady;
+        public UnityEvent<SpeechRecognition.TranscriptionResult> TranscriptReadyEvent => onTranscriptReady;
 
         /// <summary>
         /// Public hook for scripts to surface error messages.
@@ -139,7 +139,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             return Module?.StartInitialization(cancellationToken) ?? Task.CompletedTask;
         }
 
-        public async Task<string> TranscribeClipAsync(AudioClip clip, CancellationToken cancellationToken = default)
+        public async Task<SpeechRecognition.TranscriptionResult> TranscribeClipAsync(AudioClip clip, CancellationToken cancellationToken = default)
         {
             if (clip == null)
             {
@@ -148,14 +148,13 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             if (!EnsureModuleReady(out var module))
             {
-                return string.Empty;
+                return new SpeechRecognition.TranscriptionResult(SpeechRecognition.TranscriptionStatus.NotReady);
             }
 
             var data = new float[clip.samples * clip.channels];
             clip.GetData(data, 0);
             var mono = DownmixToMono(data, clip.channels);
-            var result = await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
-            return result.Status == SpeechRecognition.TranscriptionStatus.Success ? result.Text ?? string.Empty : string.Empty;
+            return await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
         }
 
         private void HandleSpeechSegment(float[] samples, int sampleRate)
@@ -224,8 +223,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 var result = await module.TranscribeAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(false);
                 if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                 {
-                    var text = result.Text.Trim();
-                    DispatchToUnity(() => onTranscriptReady?.Invoke(text));
+                    DispatchToUnity(() => onTranscriptReady?.Invoke(result));
                 }
                 else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
                 {

@@ -33,7 +33,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         [Header("Transcription Events")]
         [SerializeField]
-        private UnityEvent<string> onTranscriptionReady = new UnityEvent<string>();
+        private UnityEvent<SpeechRecognition.TranscriptionResult> onTranscriptionReady = new UnityEvent<SpeechRecognition.TranscriptionResult>();
 
         [Header("Streaming")]
         [SerializeField]
@@ -68,7 +68,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Allows scripts to subscribe to transcription updates without relying on the inspector.
         /// </summary>
-        public UnityEvent<string> TranscriptionReadyEvent => onTranscriptionReady;
+        public UnityEvent<SpeechRecognition.TranscriptionResult> TranscriptionReadyEvent => onTranscriptionReady;
 
         private readonly Queue<AudioChunk> pendingChunks = new Queue<AudioChunk>();
         private readonly object queueLock = new object();
@@ -261,8 +261,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
                     if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                     {
-                        var text = result.Text.Trim();
-                        DispatchToUnity(() => PublishTranscript(text));
+                        DispatchToUnity(() => PublishTranscript(result));
                     }
                     else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
                     {
@@ -286,15 +285,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
         }
 
-        private void PublishTranscript(string text)
+        private void PublishTranscript(SpeechRecognition.TranscriptionResult result)
         {
-            if (deduplicateStreamingResults && string.Equals(text, lastTranscript, StringComparison.Ordinal))
+            if (deduplicateStreamingResults && string.Equals(result.Text, lastTranscript, StringComparison.Ordinal))
             {
                 return;
             }
 
-            lastTranscript = text;
-            onTranscriptionReady?.Invoke(text);
+            lastTranscript = result.Text;
+            onTranscriptionReady?.Invoke(result);
         }
 
         protected override void OnAudioChunkReceived(float[] samples, int sampleRate)
