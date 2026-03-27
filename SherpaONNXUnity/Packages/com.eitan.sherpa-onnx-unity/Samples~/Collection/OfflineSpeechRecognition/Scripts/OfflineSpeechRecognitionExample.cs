@@ -6,6 +6,7 @@ namespace Eitan.SherpaONNXUnity.Samples
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Modules;
     using UnityEngine;
     using UnityEngine.UI;
     using UnityEngine.Events;
@@ -359,15 +360,15 @@ namespace Eitan.SherpaONNXUnity.Samples
 
             try
             {
-                var transcript = await offlineRecognizer.TranscribeClipAsync(clip, operationCts?.Token ?? CancellationToken.None).ConfigureAwait(true);
-                if (string.IsNullOrWhiteSpace(transcript))
+                var result = await offlineRecognizer.TranscribeClipAsync(clip, operationCts?.Token ?? CancellationToken.None).ConfigureAwait(true);
+                if (result.Status != SpeechRecognition.TranscriptionStatus.Success || string.IsNullOrWhiteSpace(result.Text))
                 {
                     statusText.text = "No transcript returned.";
                     return;
                 }
 
                 statusText.text = "Transcription complete.";
-                HandleTranscriptReady(transcript);
+                HandleTranscriptReady(result);
             }
             catch (System.Exception ex)
             {
@@ -375,8 +376,9 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
         }
 
-        private void HandleTranscriptReady(string text)
+        private void HandleTranscriptReady(SpeechRecognition.TranscriptionResult result)
         {
+            var text = result.Text;
             if (string.IsNullOrWhiteSpace(text))
             {
                 return;

@@ -437,6 +437,39 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromDirectoryKeywords("qwen3-0.6b"));
                     config.ModelConfig.Tokens = string.Empty;
                     break;
+                case SpeechRecognitionModelType.Offline_Qwen3Asr:
+                    config.ModelConfig.Qwen3Asr.ConvFrontend = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR conv frontend",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.ConvFrontend },
+                        ModelFileCriteria.FromKeywords("conv_frontend", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("conv", "frontend", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("conv_frontend"),
+                        ModelFileCriteria.FromKeywords("conv", "frontend"));
+                    config.ModelConfig.Qwen3Asr.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR encoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
+                        ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Qwen3Asr.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR decoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
+                        ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Qwen3Asr.Tokenizer = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR tokenizer folder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Tokenizer },
+                        ModelFileCriteria.FromDirectoryKeywords("tokenizer"),
+                        ModelFileCriteria.FromDirectoryKeywords("qwen3"));
+                    config.ModelConfig.Tokens = string.Empty;
+                    break;
 
                 case SpeechRecognitionModelType.Dolphin:
                     config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
@@ -700,6 +733,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     AppendPathDiagnostic(parts, "llm", config.ModelConfig.FunAsrNano.LLM);
                     AppendPathDiagnostic(parts, "embedding", config.ModelConfig.FunAsrNano.Embedding);
                     AppendPathDiagnostic(parts, "tokenizer", config.ModelConfig.FunAsrNano.Tokenizer);
+                    break;
+                case SpeechRecognitionModelType.Offline_Qwen3Asr:
+                    AppendPathDiagnostic(parts, "convFrontend", config.ModelConfig.Qwen3Asr.ConvFrontend);
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Qwen3Asr.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Qwen3Asr.Decoder);
+                    AppendPathDiagnostic(parts, "tokenizer", config.ModelConfig.Qwen3Asr.Tokenizer);
                     break;
                 case SpeechRecognitionModelType.Dolphin:
                     AppendPathDiagnostic(parts, "model", config.ModelConfig.Dolphin.Model);
@@ -1034,8 +1073,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
             string tokensPath;
-            if (_modelType == SpeechRecognitionModelType.Offline_FunAsrNano)
-            {   //The FunAsrNano model does not have a token file, so please ignore it.
+            if (_modelType == SpeechRecognitionModelType.Offline_FunAsrNano
+                || _modelType == SpeechRecognitionModelType.Offline_Qwen3Asr)
+            {   // Some decoder-based offline models use a tokenizer directory instead of tokens.txt.
                 tokensPath = string.Empty;
             }
             else

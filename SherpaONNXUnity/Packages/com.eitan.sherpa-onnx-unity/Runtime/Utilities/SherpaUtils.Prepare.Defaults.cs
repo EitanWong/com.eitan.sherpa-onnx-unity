@@ -111,6 +111,46 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 return (index, result);
             }
 
+            private static bool ShouldAcceptVerificationResult(
+                SherpaONNXModelMetadata metadata,
+                string filePath,
+                string artifactLabel,
+                FileVerificationEventArgs verificationResult,
+                SherpaONNXFeedbackReporter reporter)
+            {
+                if (verificationResult == null)
+                {
+                    return false;
+                }
+
+                if (verificationResult.Status == FileVerificationStatus.Success)
+                {
+                    return true;
+                }
+
+                if (verificationResult.Status == FileVerificationStatus.HashMismatch && !IsHashValidationForced())
+                {
+                    var forceHashKey = SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation;
+                    var warningMessage =
+                        $"{metadata?.modelId ?? "<unknown-model>"}: {artifactLabel} hash mismatch. " +
+                        $"Proceeding because {forceHashKey}=false. {verificationResult.Message}";
+
+                    ReportSafe(
+                        reporter,
+                        new VerifyFeedback(
+                            metadata,
+                            message: warningMessage,
+                            filePath: filePath,
+                            calculatedHash: verificationResult.CalculatedHash,
+                            expectedHash: verificationResult.ExpectedHash,
+                            progress: 1f));
+                    SherpaLog.Warning($"[Prepare] {warningMessage}", category: "Prepare");
+                    return true;
+                }
+
+                return false;
+            }
+
             private static async Task<PrepareErrorCode> DownloadModelAsync(
                 SherpaONNXModelMetadata metadata,
                 string downloadFilePath,
@@ -130,7 +170,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     }
 
                     var (_, downloadedFileCheckResult) = await VerifyFileWithIndexAsync(metadata, 0, downloadFilePath, metadata.downloadFileHash, reporter, cancellationToken).ConfigureAwait(false);
-                    if (downloadedFileCheckResult.Status == FileVerificationStatus.Success)
+                    if (ShouldAcceptVerificationResult(metadata, downloadFilePath, "download archive", downloadedFileCheckResult, reporter))
                     {
                         SherpaLog.Info($"[Prepare] Reusing previously downloaded archive for {metadata.modelId}.", category: "Prepare");
                         return PrepareErrorCode.None;
@@ -331,7 +371,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 {
                     var (_, zipVerifyResult) = await VerifyFileWithIndexAsync(metadata, 0, zipFilePath, zipFileHash, reporter, cancellationToken).ConfigureAwait(false);
 
-                    if (zipVerifyResult.Status != FileVerificationStatus.Success)
+                    if (!ShouldAcceptVerificationResult(metadata, zipFilePath, "extracted archive", zipVerifyResult, reporter))
                     {
                         ReportSafe(reporter, new FailedFeedback(metadata, message: zipVerifyResult.Message, errorCode: PrepareErrorCode.VerificationFailed));
                         SherpaLog.Warning($"[Prepare] Zip verification failed for {metadata.modelId}: {zipVerifyResult.Message}", category: "Prepare");

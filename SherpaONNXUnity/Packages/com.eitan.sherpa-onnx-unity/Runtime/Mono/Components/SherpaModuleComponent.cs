@@ -3,7 +3,6 @@
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
     using System;
-    using System.Threading;
     using Eitan.SherpaONNXUnity.Runtime;
     using Eitan.SherpaONNXUnity.Runtime.Utilities;
     using UnityEngine;
@@ -86,9 +85,6 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         private bool loadInProgress;
         private bool disposeInProgress;
 
-        private SynchronizationContext unityContext;
-        private int unityThreadId;
-
         /// <summary>
         /// Gets the instantiated module or null when not loaded.
         /// </summary>
@@ -128,9 +124,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected virtual void Awake()
         {
-
-            unityContext = SynchronizationContext.Current ?? new SynchronizationContext();
-            unityThreadId = Thread.CurrentThread.ManagedThreadId;
+            UnityMainThreadScheduler.EnsureInitialized();
 
             if (Application.isPlaying && loadOnAwake)
             {
@@ -377,19 +371,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 return;
             }
 
-            if (unityContext == null)
-            {
-                action();
-                return;
-            }
-
-            if (Thread.CurrentThread.ManagedThreadId == unityThreadId)
-            {
-                action();
-                return;
-            }
-
-            unityContext.Post(_ => action(), null);
+            UnityMainThreadScheduler.Post(action);
         }
 
         private void MarkLoadComplete()

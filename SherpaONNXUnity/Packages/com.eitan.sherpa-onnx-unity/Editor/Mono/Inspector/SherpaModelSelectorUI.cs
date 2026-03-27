@@ -74,6 +74,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                     models.AddRange(
                         manifest.models
                             .Where(m => m != null && !string.IsNullOrWhiteSpace(m.modelId))
+                            .GroupBy(m => m.modelId, StringComparer.OrdinalIgnoreCase)
+                            .Select(g => g.First())
                             .OrderBy(m => m.modelId, StringComparer.OrdinalIgnoreCase));
                 }
             }

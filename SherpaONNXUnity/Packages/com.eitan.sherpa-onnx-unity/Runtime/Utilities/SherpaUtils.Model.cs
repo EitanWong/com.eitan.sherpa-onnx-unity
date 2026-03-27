@@ -39,6 +39,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] wenet_ctc_keywords = { "wenet-ctc", "wenet_ctc" };
             private static readonly string[] medasr_ctc_keywords = { "medasr", "med-asr", "med_asr" };
             private static readonly string[] funasr_nano_keywords = { "funasr-nano", "funasr_nano", "funasr" };
+            private static readonly string[] qwen3_asr_keywords = { "qwen3-asr", "qwen3_asr", "qwen3 asr" };
 
             private static readonly string[] omnilingual_keywords = { "omnilingual" };
 
@@ -72,6 +73,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] speech_enhancement_gtcrn_keywords = { "gtcrn" };
             private static readonly string[] speech_enhancement_dpdfnet_keywords = { "dpdfnet", "dpdf" };
 
+            #endregion
+
+            #region SourceSeparationModelKeywords
+            private static readonly string[] source_separation_spleeter_keywords = { "spleeter" };
+            private static readonly string[] source_separation_uvr_keywords = { "uvr", "mdx", "mdx-net" };
             #endregion
 
             #region SpokenLanguageIdentification
@@ -182,6 +188,16 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 return metadata == null ? SpeechEnhancementModelType.None : GetSpeechEnhancementModelType(metadata.modelId);
             }
 
+            internal static SourceSeparationModelType ResolveSourceSeparationModelType(SherpaONNXModelMetadata metadata)
+            {
+                if (metadata != null && TryParseEnum(metadata.modelTypeHint, out SourceSeparationModelType hinted) && hinted != SourceSeparationModelType.None)
+                {
+                    return hinted;
+                }
+
+                return metadata == null ? SourceSeparationModelType.None : GetSourceSeparationModelType(metadata.modelId);
+            }
+
             private static bool IsOnlineSpeechRecognitionModelType(SpeechRecognitionModelType modelType)
             {
                 return modelType == SpeechRecognitionModelType.Online_Transducer
@@ -220,6 +236,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
 
                 if (IsSpeechEnhancementModel(modelID))
                 { return SherpaONNXModuleType.SpeechEnhancement; }
+
+                if (IsSourceSeparationModel(modelID))
+                { return SherpaONNXModuleType.SourceSeparation; }
 
                 var lidType = GetSpokenLanguageIdentificationModelType(modelID);
                 if (lidType != SpokenLanguageIdentificationModelType.None)
@@ -287,6 +306,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Offline_MedAsrCtc; }
                 else if (ContainsAnyKeyword(lowerModelID, funasr_nano_keywords))
                 { return SpeechRecognitionModelType.Offline_FunAsrNano; }
+                else if (ContainsAnyKeyword(lowerModelID, qwen3_asr_keywords))
+                { return SpeechRecognitionModelType.Offline_Qwen3Asr; }
                 else if (ContainsAnyKeyword(lowerModelID, omnilingual_keywords))
                 { return SpeechRecognitionModelType.Omnilingual; }
                 // Determine architecture type
@@ -510,6 +531,32 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 return ContainsAnyKeyword(modelID.ToLowerInvariant(), embedding_keywords);
             }
 
+            internal static bool IsSourceSeparationModel(string modelID)
+            {
+                return GetSourceSeparationModelType(modelID) != SourceSeparationModelType.None;
+            }
+
+            internal static SourceSeparationModelType GetSourceSeparationModelType(string modelID)
+            {
+                if (string.IsNullOrEmpty(modelID))
+                {
+                    return SourceSeparationModelType.None;
+                }
+
+                string lowerModelID = modelID.ToLowerInvariant();
+                if (ContainsAnyKeyword(lowerModelID, source_separation_spleeter_keywords))
+                {
+                    return SourceSeparationModelType.Spleeter;
+                }
+
+                if (ContainsAnyKeyword(lowerModelID, source_separation_uvr_keywords))
+                {
+                    return SourceSeparationModelType.Uvr;
+                }
+
+                return SourceSeparationModelType.None;
+            }
+
             /// <summary>
             /// Helper method to check if a model ID contains any of the specified keywords as distinct segments
             /// A segment boundary is any non-alphanumeric character (e.g., '-', '_', '.') or string boundaries.
@@ -608,6 +655,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         return medasr_ctc_keywords;
                     case SpeechRecognitionModelType.Offline_FunAsrNano:
                         return funasr_nano_keywords;
+                    case SpeechRecognitionModelType.Offline_Qwen3Asr:
+                        return qwen3_asr_keywords;
                     default:
                         return new string[0];
                 }
@@ -635,6 +684,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Offline_WenetCtc: return "wenet_ctc";
                     case SpeechRecognitionModelType.Offline_MedAsrCtc: return "med_asr_ctc";
                     case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
+                    case SpeechRecognitionModelType.Offline_Qwen3Asr: return "qwen3_asr";
                     default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
                 }
             }

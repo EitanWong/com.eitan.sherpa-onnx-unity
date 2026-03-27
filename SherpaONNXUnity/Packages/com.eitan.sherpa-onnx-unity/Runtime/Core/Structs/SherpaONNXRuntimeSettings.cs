@@ -87,6 +87,19 @@ namespace Eitan.SherpaONNXUnity.Runtime
         [Tooltip("When enabled, Trace level entries include managed call stacks for every log message.")]
         private bool _traceWithStacks = true;
 
+        internal bool FetchLatestManifest => _fetchLatestManifest;
+        internal bool AutoDownloadModels => _autoDownloadModels;
+        internal bool AutoDeleteCorruptedModels => _autoDeleteCorruptedModels;
+        internal int DownloadAttemptTimeoutSeconds => _downloadAttemptTimeoutSeconds;
+        internal bool AllowInsecureModelDownload => _allowInsecureModelDownload;
+        internal bool ForceModelHashValidation => _forceModelHashValidation;
+        internal string GithubProxyUrl => _githubProxyUrl;
+        internal string ChecksumCacheDirectory => _checksumCacheDirectory;
+        internal int ChecksumCacheTtlSeconds => _checksumCacheTtlSeconds;
+        internal bool LoggingEnabled => _loggingEnabled;
+        internal SherpaLogLevel LoggingLevel => _loggingLevel;
+        internal bool TraceWithStacks => _traceWithStacks;
+
         internal static SherpaONNXRuntimeSettings LoadFromResources()
         {
             // Fast path: default root-level asset.
@@ -123,36 +136,6 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
             valid.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             return valid[0];
-        }
-
-        internal void ApplyEnvironmentDefaults()
-        {
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, _fetchLatestManifest);
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, _autoDownloadModels);
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, _autoDeleteCorruptedModels);
-            var downloadAttemptTimeoutSeconds = Mathf.Max(0, _downloadAttemptTimeoutSeconds);
-            SherpaONNXEnvironment.Set(
-                SherpaONNXEnvironment.BuiltinKeys.DownloadAttemptTimeoutSeconds,
-                downloadAttemptTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.AllowInsecureModelDownload, _allowInsecureModelDownload);
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, _forceModelHashValidation);
-            ApplyGithubProxyValue(ResolveProxyValue(_githubProxyUrl));
-            SetStringOrClear(
-                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheDirectory,
-                _checksumCacheDirectory);
-
-            var ttl = Mathf.Max(0, _checksumCacheTtlSeconds);
-            SherpaONNXEnvironment.Set(
-                SherpaONNXEnvironment.BuiltinKeys.ChecksumCacheTtlSeconds,
-                ttl.ToString(CultureInfo.InvariantCulture));
-
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.LoggingEnabled, _loggingEnabled);
-            SherpaONNXEnvironment.Set(
-                SherpaONNXEnvironment.BuiltinKeys.LoggingLevel,
-                _loggingLevel.ToString());
-            SetBool(SherpaONNXEnvironment.BuiltinKeys.LoggingTraceStacks, _traceWithStacks);
-
-            SherpaLog.Configure(_loggingLevel, _loggingEnabled, _traceWithStacks);
         }
 
         internal static void ApplyEnvironmentOverridesFromProcess()
@@ -207,17 +190,6 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
         private static void SetBool(string key, bool value) =>
             SherpaONNXEnvironment.Set(key, value ? bool.TrueString : bool.FalseString);
-
-        private static void SetStringOrClear(string key, string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                SherpaONNXEnvironment.Remove(key);
-                return;
-            }
-
-            SherpaONNXEnvironment.Set(key, value.Trim());
-        }
 
         private static void ApplyBoolEnvironmentOverride(string envKey, string targetKey)
         {
@@ -359,17 +331,10 @@ namespace Eitan.SherpaONNXUnity.Runtime
             // Capture Unity SystemInfo on the main thread to avoid background-thread access errors.
             ThreadingUtils.PrimeUnityInfo();
             SherpaPathResolver.PrimeUnityPaths();
+            SherpaONNXRuntimeResourceProvider.PreloadFromResources();
 
-            var asset = SherpaONNXRuntimeSettings.LoadFromResources();
-            if (asset != null)
-            {
-                asset.ApplyEnvironmentDefaults();
-            }
-            else
-            {
-                // Allow environment-only configuration even when no asset exists yet.
-                SherpaONNXRuntimeSettings.ApplyGithubProxyValue(SherpaONNXRuntimeSettings.ResolveProxyValue(string.Empty));
-            }
+            var snapshot = SherpaONNXRuntimeResourceProvider.GetRuntimeSettingsSnapshot();
+            snapshot.ApplyEnvironmentDefaults();
 
             SherpaONNXRuntimeSettings.ApplyEnvironmentOverridesFromProcess();
             // Always honor environment overrides for logging even when no asset exists.

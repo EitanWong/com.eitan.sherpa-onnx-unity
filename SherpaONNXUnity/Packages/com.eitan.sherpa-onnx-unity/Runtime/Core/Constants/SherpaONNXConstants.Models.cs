@@ -309,6 +309,34 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 },
                 new SherpaONNXModelMetadata
                 {
+                    modelId = "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
+                    modelTypeHint = nameof(SpeechRecognitionModelType.Offline_Qwen3Asr),
+                    fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>
+                    {
+                        new SherpaONNXModelFileBinding
+                        {
+                            key = SherpaONNXModelFileKey.ConvFrontend,
+                            path = "conv_frontend.onnx",
+                        },
+                        new SherpaONNXModelFileBinding
+                        {
+                            key = SherpaONNXModelFileKey.Encoder,
+                            path = "encoder.int8.onnx",
+                        },
+                        new SherpaONNXModelFileBinding
+                        {
+                            key = SherpaONNXModelFileKey.Decoder,
+                            path = "decoder.int8.onnx",
+                        },
+                        new SherpaONNXModelFileBinding
+                        {
+                            key = SherpaONNXModelFileKey.Tokenizer,
+                            path = "tokenizer",
+                        },
+                    },
+                },
+                new SherpaONNXModelMetadata
+                {
                     modelId = "sherpa-onnx-lstm-en-2023-02-17",
                 },
                 new SherpaONNXModelMetadata

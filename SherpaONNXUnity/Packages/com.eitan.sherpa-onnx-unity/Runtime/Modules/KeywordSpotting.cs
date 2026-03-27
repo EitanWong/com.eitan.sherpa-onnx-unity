@@ -109,10 +109,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                             category: "KeywordSpotting");
 
                         _keywordSpotter = new KeywordSpotter(config);
-                        var spotterHandle = _keywordSpotter?.Handle ?? IntPtr.Zero;
-                        var initialized = spotterHandle != IntPtr.Zero;
+                        var initialized = _keywordSpotter != null;
                         SherpaLog.Info(
-                            $"[KeywordSpotting] Native spotter handle: 0x{spotterHandle.ToInt64():X} Valid={initialized}",
+                            $"[KeywordSpotting] Keyword spotter created: {initialized}",
                             category: "KeywordSpotting");
 
                         if (!initialized)
@@ -136,10 +135,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                             _stream = _keywordSpotter.CreateStream();
                         }
 
-                        var streamHandle = _stream?.Handle ?? IntPtr.Zero;
-                        var streamInitialized = streamHandle != IntPtr.Zero;
+                        var streamInitialized = _stream != null;
                         SherpaLog.Info(
-                            $"[KeywordSpotting] Stream handle: 0x{streamHandle.ToInt64():X} Valid={streamInitialized}",
+                            $"[KeywordSpotting] Keyword stream created: {streamInitialized}",
                             category: "KeywordSpotting");
 
                         if (!streamInitialized)

@@ -799,7 +799,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             entryProp.FindPropertyRelative("downloadFileHash").stringValue = string.Empty;
             entryProp.FindPropertyRelative("numberOfSpeakers").intValue = 0;
             entryProp.FindPropertyRelative("sampleRate").intValue = 16000;
-            entryProp.FindPropertyRelative("modelTypeHint").stringValue = InferModelTypeHint(moduleType, modelId);
+            entryProp.FindPropertyRelative("modelTypeHint").stringValue = SherpaONNXModelImportRules.InferModelTypeHint(moduleType, modelId);
 
             var bindingsProp = entryProp.FindPropertyRelative("fileBindings");
             if (bindingsProp != null)
@@ -817,23 +817,19 @@ namespace Eitan.SherpaONNXUnity.Editor
                 }
             }
 
-            _customModelsObject.ApplyModifiedProperties();
+            if (_customModelsObject.ApplyModifiedProperties())
+            {
+                AssetDatabase.SaveAssets();
+                SherpaONNXModelRegistry.Instance?.Uninitialize();
+            }
 
             var warnings = new List<string>();
-            var hasModel = HasBinding(entryProp, SherpaONNXModelFileKey.Model);
-            var hasTokens = HasBinding(entryProp, SherpaONNXModelFileKey.Tokens);
-            if (!hasModel)
-            {
-                warnings.Add(SherpaONNXLocalization.Tr(
-                    SherpaONNXL10n.Settings.CustomModelsImportWarnMissingModel,
-                    "Model file (.onnx) not detected. Please bind it manually."));
-            }
-            if (!hasTokens)
-            {
-                warnings.Add(SherpaONNXLocalization.Tr(
-                    SherpaONNXL10n.Settings.CustomModelsImportWarnMissingTokens,
-                    "Tokens file not detected. Please bind tokens.txt manually if required."));
-            }
+            var modelTypeHint = entryProp.FindPropertyRelative("modelTypeHint")?.stringValue?.Trim();
+            SherpaONNXModelImportRules.AppendImportWarnings(
+                moduleType,
+                modelTypeHint,
+                key => HasBinding(entryProp, key),
+                warnings);
 
             var success = SherpaONNXLocalization.Tr(
                 SherpaONNXL10n.Settings.CustomModelsImportSuccess,
@@ -873,41 +869,6 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             return false;
-        }
-
-        private static string InferModelTypeHint(SherpaONNXModuleType moduleType, string modelId)
-        {
-            if (string.IsNullOrWhiteSpace(modelId))
-            {
-                return string.Empty;
-            }
-
-            var lower = modelId.ToLowerInvariant();
-            switch (moduleType)
-            {
-                case SherpaONNXModuleType.SpeechSynthesis:
-                    if (lower.Contains("vits")) return "Vits";
-                    if (lower.Contains("matcha")) return "Matcha";
-                    if (lower.Contains("kokoro")) return "Kokoro";
-                    if (lower.Contains("kitten")) return "KittenTTS";
-                    if (lower.Contains("zipvoice")) return "ZipVoice";
-                    break;
-                case SherpaONNXModuleType.VoiceActivityDetection:
-                    if (lower.Contains("silero")) return "SileroVad";
-                    if (lower.Contains("ten")) return "TenVad";
-                    break;
-                case SherpaONNXModuleType.SpokenLanguageIdentification:
-                    if (lower.Contains("whisper")) return "Whisper";
-                    break;
-                case SherpaONNXModuleType.AudioTagging:
-                    if (lower.Contains("ced")) return "Ced";
-                    if (lower.Contains("zipformer")) return "Zipformer";
-                    break;
-                default:
-                    break;
-            }
-
-            return string.Empty;
         }
 
         private static bool HasBinding(SerializedProperty entryProp, SherpaONNXModelFileKey key)
@@ -950,7 +911,7 @@ namespace Eitan.SherpaONNXUnity.Editor
                 }
 
                 var isDir = Directory.Exists(entry);
-                var key = MapBindingKey(Path.GetFileName(entry), relative, isDir);
+                var key = SherpaONNXModelImportRules.MapBindingKey(Path.GetFileName(entry), relative, isDir);
                 if (key == SherpaONNXModelFileKey.None)
                 {
                     continue;
@@ -986,61 +947,6 @@ namespace Eitan.SherpaONNXUnity.Editor
             }
 
             return normalizedPath.Substring(normalizedRoot.Length);
-        }
-
-        private static SherpaONNXModelFileKey MapBindingKey(string name, string relativePath, bool isDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return SherpaONNXModelFileKey.None;
-            }
-
-            var lowerName = name.ToLowerInvariant();
-            var lowerPath = relativePath.ToLowerInvariant();
-
-            if (isDirectory)
-            {
-                if (lowerName.Contains("dict")) return SherpaONNXModelFileKey.DictDir;
-                if (lowerName.Contains("espeak-ng-data") || lowerName == "data") return SherpaONNXModelFileKey.DataDir;
-                if (lowerName.Contains("tokenizer") || lowerName.Contains("qwen")) return SherpaONNXModelFileKey.Tokenizer;
-                if (lowerName.Contains("voices")) return SherpaONNXModelFileKey.Voices;
-                return SherpaONNXModelFileKey.None;
-            }
-
-            var ext = Path.GetExtension(lowerName);
-            if (ext == ".fst") return SherpaONNXModelFileKey.RuleFsts;
-            if (ext == ".far") return SherpaONNXModelFileKey.RuleFars;
-
-            if (lowerName.Contains("tokens")) return SherpaONNXModelFileKey.Tokens;
-            if (lowerName.Contains("lexicon")) return SherpaONNXModelFileKey.Lexicon;
-            if (lowerName.Contains("vocos") || lowerName.Contains("vocoder")) return SherpaONNXModelFileKey.Vocoder;
-            if (lowerName.Contains("acoustic") || lowerName.Contains("matcha")) return SherpaONNXModelFileKey.AcousticModel;
-            if (lowerName.Contains("fm") || lowerName.Contains("flow")) return SherpaONNXModelFileKey.FlowMatchingModel;
-            if (lowerName.Contains("text")) return SherpaONNXModelFileKey.TextModel;
-            if (lowerName.Contains("preprocess")) return SherpaONNXModelFileKey.Preprocessor;
-            if (lowerName.Contains("cached")) return SherpaONNXModelFileKey.CachedDecoder;
-            if (lowerName.Contains("uncached")) return SherpaONNXModelFileKey.UncachedDecoder;
-            if (lowerName.Contains("embedding")) return SherpaONNXModelFileKey.Embedding;
-            if (lowerName.Contains("tokenizer")) return SherpaONNXModelFileKey.Tokenizer;
-            if (lowerName.Contains("llm")) return SherpaONNXModelFileKey.Llm;
-            if (lowerName.Contains("adaptor") || lowerName.Contains("adapter")) return SherpaONNXModelFileKey.EncoderAdaptor;
-            if (lowerName.Contains("labels")) return SherpaONNXModelFileKey.Labels;
-            if (lowerName.Contains("keywords")) return SherpaONNXModelFileKey.Keywords;
-            if (lowerName.Contains("hotwords")) return SherpaONNXModelFileKey.Hotwords;
-            if (lowerName.Contains("pinyin")) return SherpaONNXModelFileKey.Pinyin;
-            if (lowerName.Contains("silero")) return SherpaONNXModelFileKey.SileroVad;
-            if (lowerName.Contains("ten")) return SherpaONNXModelFileKey.TenVad;
-            if (lowerName.Contains("tdnn")) return SherpaONNXModelFileKey.Tdnn;
-            if (lowerName.Contains("gtcrn")) return SherpaONNXModelFileKey.Gtcrn;
-            if (lowerName.Contains("ced")) return SherpaONNXModelFileKey.Ced;
-            if (lowerName.Contains("zipformer")) return SherpaONNXModelFileKey.Zipformer;
-            if (lowerName.Contains("encoder") || lowerName.Contains("encode")) return SherpaONNXModelFileKey.Encoder;
-            if (lowerName.Contains("decoder")) return SherpaONNXModelFileKey.Decoder;
-            if (lowerName.Contains("joiner")) return SherpaONNXModelFileKey.Joiner;
-
-            if (ext == ".onnx") return SherpaONNXModelFileKey.Model;
-
-            return SherpaONNXModelFileKey.None;
         }
 
         private sealed class ModuleTypePickerWindow : EditorWindow
@@ -1371,7 +1277,11 @@ namespace Eitan.SherpaONNXUnity.Editor
 
                 _customModelsObject.Update();
                 _customCatalogList?.DoLayoutList();
-                _customModelsObject.ApplyModifiedProperties();
+                if (_customModelsObject.ApplyModifiedProperties())
+                {
+                    AssetDatabase.SaveAssets();
+                    SherpaONNXModelRegistry.Instance?.Uninitialize();
+                }
             });
 
             container.style.marginBottom = 4;

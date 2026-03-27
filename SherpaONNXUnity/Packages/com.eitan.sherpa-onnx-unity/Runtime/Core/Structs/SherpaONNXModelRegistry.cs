@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Eitan.SherpaONNXUnity.Runtime.Constants;
 using Eitan.SherpaONNXUnity.Runtime.Utilities;
 using UnityEngine;
 
@@ -19,9 +20,12 @@ namespace Eitan.SherpaONNXUnity.Runtime
         private readonly SemaphoreSlim _customManifestSemaphore = new SemaphoreSlim(1, 1);
         private readonly Dictionary<string, SherpaONNXModuleType> _customModelTypeOverrides =
             new Dictionary<string, SherpaONNXModuleType>(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan RemoteManifestRefreshInterval = TimeSpan.FromSeconds(30);
 
         private SherpaONNXModelManifest _manifest;
         private bool _customRemoteLoaded;
+        private string _customRemoteManifestSignature = string.Empty;
+        private DateTime _lastCustomRemoteLoadUtc = DateTime.MinValue;
 
         public bool IsInitialized { get; private set; }
         public bool IsInitializing { get; private set; }
@@ -92,6 +96,8 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 _resolvedModelIds.Clear();
                 _customModelTypeOverrides.Clear();
                 _customRemoteLoaded = false;
+                _customRemoteManifestSignature = string.Empty;
+                _lastCustomRemoteLoadUtc = DateTime.MinValue;
                 IsInitialized = false;
                 IsInitializing = false;
             }
@@ -335,7 +341,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         public bool TryGetManifest(out SherpaONNXModelManifest manifest)
         {
             manifest = _manifest;
-            return IsInitialized && manifest != null && IsManifestFullyLoaded();
+            return IsInitialized && manifest != null && IsManifestFullyLoaded() && IsCustomRemoteCacheFresh();
         }
 
         /// <summary>
@@ -404,7 +410,12 @@ namespace Eitan.SherpaONNXUnity.Runtime
 
         private async Task EnsureCustomRemoteManifestsAsync(CancellationToken cancellationToken)
         {
-            if (_customRemoteLoaded)
+            var remoteUrls = SherpaONNXCustomModelCatalog.GetRemoteManifestUrls();
+            var remoteSignature = BuildRemoteManifestSignature(remoteUrls);
+
+            if (_customRemoteLoaded
+                && string.Equals(_customRemoteManifestSignature, remoteSignature, StringComparison.Ordinal)
+                && DateTime.UtcNow - _lastCustomRemoteLoadUtc < RemoteManifestRefreshInterval)
             {
                 return;
             }
@@ -412,40 +423,120 @@ namespace Eitan.SherpaONNXUnity.Runtime
             await _customManifestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
             try
             {
-                if (_customRemoteLoaded)
+                remoteUrls = SherpaONNXCustomModelCatalog.GetRemoteManifestUrls();
+                remoteSignature = BuildRemoteManifestSignature(remoteUrls);
+
+                if (_customRemoteLoaded
+                    && string.Equals(_customRemoteManifestSignature, remoteSignature, StringComparison.Ordinal)
+                    && DateTime.UtcNow - _lastCustomRemoteLoadUtc < RemoteManifestRefreshInterval)
                 {
                     return;
                 }
 
-                var remoteUrls = SherpaONNXCustomModelCatalog.GetRemoteManifestUrls();
                 if (remoteUrls.Count == 0)
-                {
-                    _customRemoteLoaded = true;
-                    return;
-                }
-
-                var remoteModels = await SherpaONNXCustomModelCatalog.FetchRemoteModelsAsync(remoteUrls, cancellationToken).ConfigureAwait(true);
-                if (remoteModels != null && remoteModels.Count > 0)
                 {
                     await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
                     try
                     {
-                        for (int i = 0; i < remoteModels.Count; i++)
-                        {
-                            AddOrUpdateMetadata(remoteModels[i], overwriteExisting: true);
-                        }
+                        await RebuildManifestWithCustomSourcesAsync(null, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
                         _manifestUpdateSemaphore.Release();
                     }
+
+                    _customRemoteLoaded = true;
+                    _customRemoteManifestSignature = string.Empty;
+                    _lastCustomRemoteLoadUtc = DateTime.UtcNow;
+                    return;
+                }
+
+                var remoteModels = await SherpaONNXCustomModelCatalog.FetchRemoteModelsAsync(remoteUrls, cancellationToken).ConfigureAwait(true);
+                await _manifestUpdateSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+                try
+                {
+                    await RebuildManifestWithCustomSourcesAsync(remoteModels, cancellationToken).ConfigureAwait(true);
+                }
+                finally
+                {
+                    _manifestUpdateSemaphore.Release();
                 }
 
                 _customRemoteLoaded = true;
+                _customRemoteManifestSignature = remoteSignature;
+                _lastCustomRemoteLoadUtc = DateTime.UtcNow;
             }
             finally
             {
                 _customManifestSemaphore.Release();
+            }
+        }
+
+        private static string BuildRemoteManifestSignature(List<string> remoteUrls)
+        {
+            if (remoteUrls == null || remoteUrls.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return string.Join(
+                "\n",
+                remoteUrls
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Select(url => url.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(url => url, StringComparer.OrdinalIgnoreCase));
+        }
+
+        private bool IsCustomRemoteCacheFresh()
+        {
+            var remoteUrls = SherpaONNXCustomModelCatalog.GetRemoteManifestUrls();
+            var remoteSignature = BuildRemoteManifestSignature(remoteUrls);
+
+            if (string.IsNullOrEmpty(remoteSignature))
+            {
+                return true;
+            }
+
+            return _customRemoteLoaded
+                && string.Equals(_customRemoteManifestSignature, remoteSignature, StringComparison.Ordinal)
+                && DateTime.UtcNow - _lastCustomRemoteLoadUtc < RemoteManifestRefreshInterval;
+        }
+
+        private async Task RebuildManifestWithCustomSourcesAsync(
+            List<SherpaONNXModelMetadata> remoteModels,
+            CancellationToken cancellationToken)
+        {
+            var loadedModuleTypes = (_manifest?.models ?? Enumerable.Empty<SherpaONNXModelMetadata>())
+                .Where(m => m != null && m.moduleType != SherpaONNXModuleType.Undefined)
+                .Select(m => m.moduleType)
+                .Distinct()
+                .ToArray();
+
+            var rebuiltManifest = new SherpaONNXModelManifest();
+            if (loadedModuleTypes.Length > 0)
+            {
+                await Constants.SherpaONNXConstants.PopulateManifestAsync(
+                    rebuiltManifest,
+                    loadedModuleTypes,
+                    cancellationToken).ConfigureAwait(true);
+            }
+
+            _manifest = rebuiltManifest;
+            PopulateDictionaryFromManifest(_manifest, clearExisting: true);
+            _resolvedModelIds.Clear();
+            _customModelTypeOverrides.Clear();
+
+            LoadLocalCustomModels();
+
+            if (remoteModels == null || remoteModels.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < remoteModels.Count; i++)
+            {
+                AddOrUpdateMetadata(remoteModels[i], overwriteExisting: true);
             }
         }
 
@@ -459,6 +550,12 @@ namespace Eitan.SherpaONNXUnity.Runtime
             if (string.IsNullOrWhiteSpace(metadata.modelId))
             {
                 SherpaLog.Warning("Custom model entry missing modelId. Entry skipped.", category: "Catalog");
+                return;
+            }
+
+            if (!SherpaONNXConstants.IsUnitySupportedModelId(metadata.modelId))
+            {
+                SherpaLog.Info($"Skipping unsupported model for Unity catalog: {metadata.modelId}", category: "Catalog");
                 return;
             }
 

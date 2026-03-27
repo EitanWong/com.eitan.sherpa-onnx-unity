@@ -39,23 +39,27 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
         private static void CreateSpeechEnhancement(MenuCommand command) =>
             CreateWithComponent<SpeechEnhancementComponent>("Speech Enhancement Component", command);
 
-        [MenuItem(Root + "Keyword Spotting/Keyword Spotter", false, MenuPriority + 6)]
+        [MenuItem(Root + "Audio/Source Separation", false, MenuPriority + 6)]
+        private static void CreateSourceSeparation(MenuCommand command) =>
+            CreateWithComponent<SourceSeparationComponent>("Source Separation", command);
+
+        [MenuItem(Root + "Keyword Spotting/Keyword Spotter", false, MenuPriority + 7)]
         private static void CreateKeywordSpotter(MenuCommand command) =>
             CreateWithComponent<KeywordSpottingComponent>("Keyword Spotter", command);
 
-        [MenuItem(Root + "Language/Spoken Language Identification", false, MenuPriority + 7)]
+        [MenuItem(Root + "Language/Spoken Language Identification", false, MenuPriority + 8)]
         private static void CreateSpokenLanguage(MenuCommand command) =>
             CreateWithComponent<SpokenLanguageIdentificationComponent>("Spoken Language Identification", command);
 
-        [MenuItem(Root + "Speaker/Speaker Diarization", false, MenuPriority + 8)]
+        [MenuItem(Root + "Speaker/Speaker Diarization", false, MenuPriority + 9)]
         private static void CreateSpeakerDiarization(MenuCommand command) =>
             CreateWithComponent<SpeakerDiarizationComponent>("Speaker Diarization", command);
 
-        [MenuItem(Root + "Text/Punctuation", false, MenuPriority + 8)]
+        [MenuItem(Root + "Text/Punctuation", false, MenuPriority + 10)]
         private static void CreatePunctuation(MenuCommand command) =>
             CreateWithComponent<PunctuationComponent>("Punctuation", command);
 
-        [MenuItem(Root + "Text/AudioTagging", false, MenuPriority + 8)]
+        [MenuItem(Root + "Text/AudioTagging", false, MenuPriority + 11)]
         private static void CreateAudioTagging(MenuCommand command) =>
             CreateWithComponent<AudioTaggingComponent>("AudioTagging", command);
 

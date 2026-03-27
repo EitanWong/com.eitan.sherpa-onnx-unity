@@ -331,6 +331,17 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             }
         }
 
+        private static readonly string[] UNITY_UNSUPPORTED_MODEL_ID_KEYWORDS =
+        {
+            "ascend",
+            "rknn",
+            "librknnrt",
+            "cann",
+        };
+
+        private static readonly Regex UNITY_UNSUPPORTED_RK_MODEL_REGEX =
+            new Regex(@"(^|[-_])rk\d{4}([_-]|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
         // Extend this list to add more filters.
         private static readonly InitFileNameBlacklistRule[] INIT_FILENAME_BLACKLIST = new[]
         {
@@ -619,6 +630,30 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             return false;
         }
 
+        internal static bool IsUnitySupportedModelId(string modelId)
+        {
+            if (string.IsNullOrWhiteSpace(modelId))
+            {
+                return false;
+            }
+
+            var normalized = modelId.Trim().ToLowerInvariant();
+            if (UNITY_UNSUPPORTED_RK_MODEL_REGEX.IsMatch(normalized))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < UNITY_UNSUPPORTED_MODEL_ID_KEYWORDS.Length; i++)
+            {
+                if (normalized.Contains(UNITY_UNSUPPORTED_MODEL_ID_KEYWORDS[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private static bool TryHttpGetTextWithProxyFallback(string rawUrl, out string text, int timeoutMs = 20000)
         {
             text = string.Empty;
@@ -745,10 +780,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 ? moduleType
                 : SherpaUtils.Model.GetModuleTypeByModelId(modelId);
             var tag = GetReleaseTagByModuleType(sherpaModelType);
-            var ext = sherpaModelType == SherpaONNXModuleType.VoiceActivityDetection
-                   || sherpaModelType == SherpaONNXModuleType.Embedding
-                ? ".onnx"
-                : ".tar.bz2";
+            var ext = UsesDirectOnnxDownload(sherpaModelType, modelId) ? ".onnx" : ".tar.bz2";
             var fileName = modelId.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
                 ? modelId
                 : modelId + ext;
@@ -757,11 +789,32 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             return rawUrl;
         }
 
+        private static bool UsesDirectOnnxDownload(SherpaONNXModuleType moduleType, string modelId)
+        {
+            if (moduleType == SherpaONNXModuleType.VoiceActivityDetection
+                || moduleType == SherpaONNXModuleType.Embedding)
+            {
+                return true;
+            }
+
+            if (moduleType == SherpaONNXModuleType.SourceSeparation)
+            {
+                return SherpaUtils.Model.GetSourceSeparationModelType(modelId) == SourceSeparationModelType.Uvr;
+            }
+
+            return false;
+        }
+
         private static void AddToManifest(SherpaONNXModelManifest manifest, SherpaONNXModelMetadata[] modelMetadataList, SherpaONNXModuleType moduleType)
         {
             foreach (var modelConfig in modelMetadataList)
             {
                 if (modelConfig == null)
+                {
+                    continue;
+                }
+
+                if (!IsUnitySupportedModelId(modelConfig.modelId))
                 {
                     continue;
                 }
@@ -1023,12 +1076,11 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
 
             var list = new List<SherpaONNXModelMetadata>();
             var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            var rkRegex = new Regex(@"rk\d{4}", RegexOptions.IgnoreCase);
 
             bool isOnnxOnly = moduleType == SherpaONNXModuleType.VoiceActivityDetection
                            || moduleType == SherpaONNXModuleType.SpeechEnhancement
                            || moduleType == SherpaONNXModuleType.Embedding;
-            string wantedExt = isOnnxOnly ? ".onnx" : ".tar.bz2";
+            bool supportsPackedAndOnnx = moduleType == SherpaONNXModuleType.SourceSeparation;
             bool isSlidModel = moduleType == SherpaONNXModuleType.SpokenLanguageIdentification;
 
             foreach (var raw in lines)
@@ -1054,12 +1106,14 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                     continue;
                 }
 
-                if (!fileName.EndsWith(wantedExt, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
+                bool isOnnxFile = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase);
+                bool isPackedFile = fileName.EndsWith(".tar.bz2", StringComparison.OrdinalIgnoreCase);
+                bool matchesExpectedExtension =
+                    isOnnxOnly ? isOnnxFile :
+                    supportsPackedAndOnnx ? (isOnnxFile || isPackedFile) :
+                    isPackedFile;
 
-                if (rkRegex.IsMatch(fileName))
+                if (!matchesExpectedExtension)
                 {
                     continue;
                 }
@@ -1070,19 +1124,23 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 }
 
                 string modelId;
-                if (isOnnxOnly)
+                if (isOnnxFile)
                 {
-                    modelId = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)
-                        ? fileName.Substring(0, fileName.Length - ".onnx".Length)
-                        : fileName;
+                    modelId = fileName.Substring(0, fileName.Length - ".onnx".Length);
                 }
                 else
                 {
                     modelId = fileName.Substring(0, fileName.Length - ".tar.bz2".Length);
                 }
 
+                if (!IsUnitySupportedModelId(modelId))
+                {
+                    continue;
+                }
+
+                var downloadFileName = isOnnxFile ? modelId + ".onnx" : modelId + ".tar.bz2";
                 var downloadUrl = ApplyGithubProxyIfAny(
-                    $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{(isOnnxOnly ? modelId + ".onnx" : modelId + ".tar.bz2")}"
+                    $"https://github.com/k2-fsa/sherpa-onnx/releases/download/{tag}/{downloadFileName}"
                 );
 
                 var meta = new SherpaONNXModelMetadata

@@ -167,6 +167,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 { SherpaONNXModelFileKey.FlowMatchingModel, new [] { "flow", "flow-matching", "flow_matching", "fm", "fm_decoder" } },
                 { SherpaONNXModelFileKey.TextModel, new [] { "text", "language", "text_encoder" } },
                 { SherpaONNXModelFileKey.Preprocessor, new [] { "preprocessor", "preprocess" } },
+                { SherpaONNXModelFileKey.ConvFrontend, new [] { "conv_frontend", "frontend", "conv-frontend" } },
                 { SherpaONNXModelFileKey.CachedDecoder, new [] { "cached", "cached-decoder", "cached_decode" } },
                 { SherpaONNXModelFileKey.UncachedDecoder, new [] { "uncached", "uncached-decoder", "uncached_decode" } },
                 { SherpaONNXModelFileKey.Embedding, new [] { "embedding" } },
