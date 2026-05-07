@@ -267,6 +267,15 @@ namespace Eitan.SherpaONNXUnity.Editor
                         Require("Qwen3 ASR decoder not detected. Please bind it manually.", SherpaONNXModelFileKey.Decoder),
                         Require("Qwen3 ASR tokenizer directory not detected. Please bind it manually.", SherpaONNXModelFileKey.Tokenizer))
                 },
+                {
+                   nameof(SpeechRecognitionModelType.Offline_CohereTranscribe),
+                   new ImportRule(
+                    SherpaONNXModuleType.SpeechRecognition,
+                    nameof(SpeechRecognitionModelType.Offline_CohereTranscribe),
+                    Require("Cohere Transcribe encoder not detected. Please bind it manually.", SherpaONNXModelFileKey.Encoder),
+                    Require("Cohere Transcribe decoder not detected. Please bind it manually.", SherpaONNXModelFileKey.Decoder)
+                   )
+                }
             };
 
         public static string InferModelTypeHint(SherpaONNXModuleType moduleType, string modelId)

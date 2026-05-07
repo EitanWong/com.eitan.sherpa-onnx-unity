@@ -337,6 +337,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
             "rknn",
             "librknnrt",
             "cann",
+            "qnn"
         };
 
         private static readonly Regex UNITY_UNSUPPORTED_RK_MODEL_REGEX =

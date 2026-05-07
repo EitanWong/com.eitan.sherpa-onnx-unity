@@ -20,6 +20,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             public float Rule1MinTrailingSilence { get; set; } = 2.4f;
             public float Rule2MinTrailingSilence { get; set; } = 1.2f;
             public float Rule3MinUtteranceLength { get; set; } = 30f;
+            public string Language { get; set; }
         }
 
         private OnlineRecognizer _onlineRecognizer;
@@ -435,6 +436,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         context.FallbackReporter,
                         new[] { SherpaONNXModelFileKey.Tokenizer },
                         ModelFileCriteria.FromDirectoryKeywords("qwen3-0.6b"));
+                    config.ModelConfig.FunAsrNano.Language = GetConfiguredLanguageOrDefault(string.Empty);
                     config.ModelConfig.Tokens = string.Empty;
                     break;
                 case SpeechRecognitionModelType.Offline_Qwen3Asr:
@@ -470,7 +472,25 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromDirectoryKeywords("qwen3"));
                     config.ModelConfig.Tokens = string.Empty;
                     break;
+                case SpeechRecognitionModelType.Offline_CohereTranscribe:
+                    config.ModelConfig.CohereTranscribe.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Cohere Transcribe decoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
+                        ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
 
+                    config.ModelConfig.CohereTranscribe.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Cohere Transcribe encoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
+                        ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.CohereTranscribe.Language = GetConfiguredLanguageOrDefault("en");
+
+                    break;
                 case SpeechRecognitionModelType.Dolphin:
                     config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
@@ -506,7 +526,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
-                    config.ModelConfig.Whisper.Language = string.Empty;
+                    config.ModelConfig.Whisper.Language = GetConfiguredLanguageOrDefault(string.Empty);
                     config.ModelConfig.Whisper.Task = "transcribe";
                     break;
 
@@ -530,7 +550,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
-                    config.ModelConfig.SenseVoice.Language = "auto";
+                    config.ModelConfig.SenseVoice.Language = GetConfiguredLanguageOrDefault("auto");
                     break;
 
                 case SpeechRecognitionModelType.Moonshine:
@@ -623,6 +643,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Canary.SrcLang = GetConfiguredLanguageOrDefault("en");
+                    config.ModelConfig.Canary.TgtLang = GetConfiguredLanguageOrDefault("en");
                     break;
                 case SpeechRecognitionModelType.Omnilingual:
                     config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
@@ -640,6 +662,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
 
             return config;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private string GetConfiguredLanguageOrDefault(string fallback)
+        {
+            return string.IsNullOrWhiteSpace(_options.Language) ? fallback : _options.Language;
         }
 
         private void ReportRecognizerConfigDiagnostics(

@@ -309,6 +309,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Constants
                 },
                 new SherpaONNXModelMetadata
                 {
+                    modelId = "sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01",
+                },
+                new SherpaONNXModelMetadata
+                {
                     modelId = "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
                     modelTypeHint = nameof(SpeechRecognitionModelType.Offline_Qwen3Asr),
                     fileBindings = new System.Collections.Generic.List<SherpaONNXModelFileBinding>

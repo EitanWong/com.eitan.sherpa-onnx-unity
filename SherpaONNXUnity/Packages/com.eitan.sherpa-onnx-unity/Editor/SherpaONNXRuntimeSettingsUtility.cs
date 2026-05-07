@@ -8,6 +8,7 @@ namespace Eitan.SherpaONNXUnity.Editor
     using System.Text;
     using UnityEditor;
     using UnityEngine;
+    using Eitan.Sherpa.Onnx.Unity.Editor.Mono.Icons;
     using Eitan.SherpaONNXUnity.Runtime;
 
     internal static class SherpaONNXRuntimeSettingsUtility
@@ -25,6 +26,7 @@ namespace Eitan.SherpaONNXUnity.Editor
             EnsureResourcesFolder();
             var settings = ScriptableObject.CreateInstance<SherpaONNXRuntimeSettings>();
             AssetDatabase.CreateAsset(settings, SherpaONNXRuntimeSettings.AssetPath);
+            SherpaMonoIconRegistry.ApplyIconForAsset(settings);
             AssetDatabase.SaveAssets();
             return settings;
         }

@@ -40,6 +40,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             private static readonly string[] medasr_ctc_keywords = { "medasr", "med-asr", "med_asr" };
             private static readonly string[] funasr_nano_keywords = { "funasr-nano", "funasr_nano", "funasr" };
             private static readonly string[] qwen3_asr_keywords = { "qwen3-asr", "qwen3_asr", "qwen3 asr" };
+            private static readonly string[] cohere_transcribe_keywords = { "cohere", "cohere-transcribe" };
 
             private static readonly string[] omnilingual_keywords = { "omnilingual" };
 
@@ -69,7 +70,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
             #endregion
 
             #region SpeechEnhancementModelKeyewords
-            private static readonly string[] speechEnhancement_keywords = { "gtcrn", "dpdfnet", "dpdf" };
             private static readonly string[] speech_enhancement_gtcrn_keywords = { "gtcrn" };
             private static readonly string[] speech_enhancement_dpdfnet_keywords = { "dpdfnet", "dpdf" };
 
@@ -308,6 +308,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                 { return SpeechRecognitionModelType.Offline_FunAsrNano; }
                 else if (ContainsAnyKeyword(lowerModelID, qwen3_asr_keywords))
                 { return SpeechRecognitionModelType.Offline_Qwen3Asr; }
+                else if(ContainsAnyKeyword(lowerModelID, cohere_transcribe_keywords))
+                { return SpeechRecognitionModelType.Offline_CohereTranscribe; }
                 else if (ContainsAnyKeyword(lowerModelID, omnilingual_keywords))
                 { return SpeechRecognitionModelType.Omnilingual; }
                 // Determine architecture type
@@ -657,6 +659,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                         return funasr_nano_keywords;
                     case SpeechRecognitionModelType.Offline_Qwen3Asr:
                         return qwen3_asr_keywords;
+                    case SpeechRecognitionModelType.Offline_CohereTranscribe:
+                        return cohere_transcribe_keywords;
                     default:
                         return new string[0];
                 }
@@ -685,6 +689,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities
                     case SpeechRecognitionModelType.Offline_MedAsrCtc: return "med_asr_ctc";
                     case SpeechRecognitionModelType.Offline_FunAsrNano: return "funasr_nano";
                     case SpeechRecognitionModelType.Offline_Qwen3Asr: return "qwen3_asr";
+                    case SpeechRecognitionModelType.Offline_CohereTranscribe: return "cohere_transcribe";
                     default: throw new NotSupportedException($"Unsupported offline model type: {modelType}");
                 }
             }

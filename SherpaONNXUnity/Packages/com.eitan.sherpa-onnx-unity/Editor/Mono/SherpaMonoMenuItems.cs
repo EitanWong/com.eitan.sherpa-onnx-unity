@@ -2,6 +2,8 @@
 
 namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
 {
+    using System;
+    using Eitan.Sherpa.Onnx.Unity.Editor.Mono.Icons;
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using UnityEditor;
@@ -20,11 +22,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
         private static void CreateVoiceActivity(MenuCommand command) =>
             CreateWithComponent<VoiceActivityDetectionComponent>("Voice Activity Detector", command);
 
-        [MenuItem(Root + "Speech Recognition/Streaming Recognizer", false, MenuPriority + 2)]
+        [MenuItem(Root + "Speech Recognition/Realtime Speech Recognizer", false, MenuPriority + 2)]
         private static void CreateSpeechRecognizer(MenuCommand command) =>
-            CreateWithComponent<SpeechRecognizerComponent>("Speech Recognizer", command);
+            CreateWithComponent<RealtimeSpeechRecognizerComponent>("Realtime Speech Recognizer", command);
 
-        [MenuItem(Root + "Speech Recognition/Offline Recognizer", false, MenuPriority + 3)]
+        [MenuItem(Root + "Speech Recognition/Offline Speech Recognizer", false, MenuPriority + 3)]
         private static void CreateOfflineSpeechRecognizer(MenuCommand command) =>
             CreateWithComponent<OfflineSpeechRecognizerComponent>("Offline Speech Recognizer", command);
 
@@ -67,7 +69,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono
         {
             var target = ResolveTarget(label, command);
             Undo.AddComponent<T>(target);
+            ApplyGameObjectIcon(target, typeof(T));
             Selection.activeGameObject = target;
+        }
+
+        private static void ApplyGameObjectIcon(GameObject target, Type componentType)
+        {
+            if (target == null || !SherpaMonoIconProvider.TryGetIconIdForType(componentType, out var iconId))
+            {
+                return;
+            }
+
+            EditorGUIUtility.SetIconForObject(target, SherpaMonoIconProvider.GetLargeIcon(iconId));
+            EditorUtility.SetDirty(target);
         }
 
         private static GameObject ResolveTarget(string label, MenuCommand command)
