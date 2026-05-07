@@ -917,6 +917,8 @@ namespace Eitan.SherpaONNXUnity.Editor
 
         private void PopulateModelsFromManifest(SherpaONNXModelManifest manifest)
         {
+            _allModels.Clear();
+
             if (manifest?.models == null)
             {
                 return;

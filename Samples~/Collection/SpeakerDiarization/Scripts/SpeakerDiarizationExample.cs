@@ -61,6 +61,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         private const float SpeakerPlaybackPanelHeightRatio = 0.3f;
         private const float SpeakerPlaybackPanelGapRatio = 0.02f;
         private const float SpeakerPlaybackPanelMarginRatio = 0.02f;
+        private const float SpeakerPlaybackPanelBottomLiftRatio = 0.08f;
         private const string SpeakerPlaybackPlaceholder = "Speaker reels will appear here after analysis.";
 
         private sealed class SpeakerClipSummary
@@ -831,12 +832,13 @@ namespace Eitan.SherpaONNXUnity.Samples
                 SpeakerPlaybackPanelMinHeight,
                 SpeakerPlaybackPanelMaxHeight);
             var height = Mathf.Clamp(targetHeight, SpeakerPlaybackPanelMinHeight, Mathf.Max(SpeakerPlaybackPanelMinHeight, parentHeight - (margin * 2f)));
+            var bottomLift = Mathf.Clamp(Screen.height * SpeakerPlaybackPanelBottomLiftRatio * unitsPerScreenPixel, 36f, 96f);
 
-            speakerPlaybackPanel.anchorMin = Vector2.zero;
-            speakerPlaybackPanel.anchorMax = Vector2.zero;
-            speakerPlaybackPanel.pivot = Vector2.zero;
+            speakerPlaybackPanel.anchorMin = new Vector2(1f, 0f);
+            speakerPlaybackPanel.anchorMax = new Vector2(1f, 0f);
+            speakerPlaybackPanel.pivot = new Vector2(1f, 0f);
             speakerPlaybackPanel.sizeDelta = new Vector2(width, height);
-            speakerPlaybackPanel.anchoredPosition = new Vector2(margin, margin);
+            speakerPlaybackPanel.anchoredPosition = new Vector2(-margin, margin + bottomLift);
         }
 
         private List<SpeakerClipSummary> RenderSpeakerPlayback(

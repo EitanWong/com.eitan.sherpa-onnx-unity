@@ -36,6 +36,7 @@ namespace Eitan.SherpaONNXUnity.Runtime
         FlowMatchingModel,
         TextModel,
         Preprocessor,
+        ConvFrontend,
         CachedDecoder,
         UncachedDecoder,
         Embedding,

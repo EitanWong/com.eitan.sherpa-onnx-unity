@@ -273,7 +273,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Utilities.Pinyin
 
             if (format.Contains(CAPITALIZE_FIRST_LETTER))
             {
-                return CapitalizeFirstLetter(pinyin); ;
+                return CapitalizeFirstLetter(pinyin);
             }
             if (format.Contains(LOWERCASE))
             {

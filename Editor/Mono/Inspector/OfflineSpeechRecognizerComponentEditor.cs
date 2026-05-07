@@ -21,6 +21,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
         private SerializedProperty autoBindVadProp;
         private SerializedProperty onTranscriptProp;
         private SerializedProperty onFailedProp;
+        private SerializedProperty recognitionLanguageProp;
 
         private SherpaModelSelectorUI modelSelector;
 
@@ -42,10 +43,14 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 
             vadSourceProp = serializedObject.FindProperty("voiceActivitySource");
             autoBindVadProp = serializedObject.FindProperty("autoBindVoiceActivitySource");
+            recognitionLanguageProp = serializedObject.FindProperty("recognitionLanguage");
             onTranscriptProp = serializedObject.FindProperty("onTranscriptReady");
             onFailedProp = serializedObject.FindProperty("onTranscriptionFailed");
 
-            modelSelector = new SherpaModelSelectorUI(SherpaONNXModuleType.SpeechRecognition, Repaint);
+            modelSelector = new SherpaModelSelectorUI(
+                SherpaONNXModuleType.SpeechRecognition,
+                Repaint,
+                RealtimeSpeechRecognizerComponentEditor.IsOfflineSpeechRecognitionModel);
             modelSelector.Refresh();
         }
 
@@ -59,6 +64,8 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
             serializedObject.Update();
 
             DrawModelSection();
+            EditorGUILayout.Space();
+            DrawRecognitionOptionsSection();
             EditorGUILayout.Space();
             DrawPipelineSection();
             EditorGUILayout.Space();
@@ -81,6 +88,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                 EditorGUILayout.PropertyField(disposeOnDestroyProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldDisposeOnDestroy, "Dispose On Destroy"));
                 EditorGUILayout.PropertyField(logFeedbackProp, SherpaInspectorContent.Label(SherpaONNXL10n.Inspectors.Common.FieldLogFeedback, "Log Feedback"));
             }
+        }
+
+        private void DrawRecognitionOptionsSection()
+        {
+            RealtimeSpeechRecognizerComponentEditor.DrawRecognitionOptionsSection(
+                modelIdProp,
+                recognitionLanguageProp,
+                Styles.Section,
+                Styles.Header);
         }
 
         private void DrawPipelineSection()

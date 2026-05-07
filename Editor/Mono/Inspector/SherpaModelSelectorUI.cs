@@ -22,16 +22,21 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
 
         private readonly SherpaONNXModuleType moduleType;
         private readonly Action repaintRequest;
+        private readonly Func<SherpaONNXModelMetadata, bool> modelFilter;
         private readonly List<SherpaONNXModelMetadata> models = new List<SherpaONNXModelMetadata>();
 
         private CancellationTokenSource loadCts;
         private bool isLoading;
         private string loadError;
 
-        public SherpaModelSelectorUI(SherpaONNXModuleType moduleType, Action repaintRequest)
+        public SherpaModelSelectorUI(
+            SherpaONNXModuleType moduleType,
+            Action repaintRequest,
+            Func<SherpaONNXModelMetadata, bool> modelFilter = null)
         {
             this.moduleType = moduleType;
             this.repaintRequest = repaintRequest;
+            this.modelFilter = modelFilter;
         }
 
         public void Dispose()
@@ -74,6 +79,9 @@ namespace Eitan.Sherpa.Onnx.Unity.Editor.Mono.Inspector
                     models.AddRange(
                         manifest.models
                             .Where(m => m != null && !string.IsNullOrWhiteSpace(m.modelId))
+                            .Where(m => modelFilter == null || modelFilter(m))
+                            .GroupBy(m => m.modelId, StringComparer.OrdinalIgnoreCase)
+                            .Select(g => g.First())
                             .OrderBy(m => m.modelId, StringComparer.OrdinalIgnoreCase));
                 }
             }

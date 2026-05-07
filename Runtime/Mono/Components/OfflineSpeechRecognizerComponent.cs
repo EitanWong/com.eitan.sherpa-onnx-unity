@@ -8,12 +8,15 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using System.Threading.Tasks;
     using Eitan.SherpaONNXUnity.Runtime;
     using Eitan.SherpaONNXUnity.Runtime.Modules;
+    using Eitan.SherpaONNXUnity.Runtime.Utilities;
 
     using UnityEngine;
     using UnityEngine.Events;
+    using UnityEngine.Serialization;
 
     /// <summary>
     /// Offline ASR wrapper that expects pre-segmented speech (e.g., from <see cref="VoiceActivityDetectionComponent"/>).
+    /// Use this component with offline speech recognition models.
     /// </summary>
     [AddComponentMenu("SherpaONNX/Speech Recognition/Offline Speech Recognizer")]
     [DisallowMultipleComponent]
@@ -33,6 +36,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [Tooltip("Start module initialization immediately when constructed. Disable to configure first, then call StartModuleInitialization manually.")]
         private bool startModuleImmediately = true;
 
+        [Header("Recognition Options")]
+        [SerializeField]
+        [HideInInspector]
+        [FormerlySerializedAs("language")]
+        private string recognitionLanguage = string.Empty;
+
         [Header("Queue")]
         [SerializeField]
         [Tooltip("Maximum pending segments to buffer. Oldest is dropped when the limit is exceeded (0 = unbounded).")]
@@ -40,7 +49,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         [Header("Events")]
         [SerializeField]
-        private UnityEvent<string> onTranscriptReady = new UnityEvent<string>();
+        private UnityEvent<SpeechRecognition.TranscriptionResult> onTranscriptReady = new UnityEvent<SpeechRecognition.TranscriptionResult>();
 
         [SerializeField]
         private UnityEvent<string> onTranscriptionFailed = new UnityEvent<string>();
@@ -48,12 +57,21 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Public hook for scripts that want to display offline transcripts without using the inspector.
         /// </summary>
-        public UnityEvent<string> TranscriptReadyEvent => onTranscriptReady;
+        public UnityEvent<SpeechRecognition.TranscriptionResult> TranscriptReadyEvent => onTranscriptReady;
 
         /// <summary>
         /// Public hook for scripts to surface error messages.
         /// </summary>
         public UnityEvent<string> TranscriptionFailedEvent => onTranscriptionFailed;
+
+        /// <summary>
+        /// Optional language code used by models that support language selection.
+        /// </summary>
+        public string RecognitionLanguage
+        {
+            get => recognitionLanguage;
+            set => recognitionLanguage = value ?? string.Empty;
+        }
 
         private readonly Queue<AudioChunk> pendingSegments = new Queue<AudioChunk>();
         private readonly object queueLock = new object();
@@ -66,7 +84,19 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
-            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter, startImmediately: startModuleImmediately);
+            if (SherpaUtils.Model.IsOnlineModel(resolvedModelId))
+            {
+                throw new ArgumentException(
+                    $"{nameof(OfflineSpeechRecognizerComponent)} requires an offline speech recognition model. Model '{resolvedModelId}' is online/realtime.",
+                    nameof(resolvedModelId));
+            }
+
+            var options = new SpeechRecognition.Options
+            {
+                Language = recognitionLanguage
+            };
+
+            return new SpeechRecognition(resolvedModelId, resolvedSampleRate, resolvedReporter, startImmediately: startModuleImmediately, options: options);
         }
 
         private void OnEnable()
@@ -139,7 +169,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             return Module?.StartInitialization(cancellationToken) ?? Task.CompletedTask;
         }
 
-        public async Task<string> TranscribeClipAsync(AudioClip clip, CancellationToken cancellationToken = default)
+        public async Task<SpeechRecognition.TranscriptionResult> TranscribeClipAsync(AudioClip clip, CancellationToken cancellationToken = default)
         {
             if (clip == null)
             {
@@ -148,14 +178,13 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
             if (!EnsureModuleReady(out var module))
             {
-                return string.Empty;
+                return new SpeechRecognition.TranscriptionResult(SpeechRecognition.TranscriptionStatus.NotReady);
             }
 
             var data = new float[clip.samples * clip.channels];
             clip.GetData(data, 0);
             var mono = DownmixToMono(data, clip.channels);
-            var result = await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
-            return result.Status == SpeechRecognition.TranscriptionStatus.Success ? result.Text ?? string.Empty : string.Empty;
+            return await module.TranscribeAsync(mono, clip.frequency, cancellationToken).ConfigureAwait(false);
         }
 
         private void HandleSpeechSegment(float[] samples, int sampleRate)
@@ -224,12 +253,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 var result = await module.TranscribeAsync(chunk.Samples, chunk.SampleRate, token).ConfigureAwait(false);
                 if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                 {
-                    var text = result.Text.Trim();
-                    DispatchToUnity(() => onTranscriptReady?.Invoke(text));
+                    DispatchToUnity(() => onTranscriptReady?.Invoke(result));
                 }
                 else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
                 {
-                    SherpaLog.Error($"[OfflineSpeechRecognizerComponent] Transcription failed: {result.Error.Message}");
+                    SherpaLog.Error($"[{nameof(OfflineSpeechRecognizerComponent)}] Transcription failed: {result.Error.Message}");
                     var message = result.Error.Message;
                     DispatchToUnity(() => onTranscriptionFailed?.Invoke(message));
                     RaiseError(result.Error.Message);
@@ -241,7 +269,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
             }
             catch (Exception ex)
             {
-                SherpaLog.Error($"[OfflineSpeechRecognizerComponent] Transcription failed: {ex.Message}");
+                SherpaLog.Error($"[{nameof(OfflineSpeechRecognizerComponent)}] Transcription failed: {ex.Message}");
                 var message = ex.Message;
                 DispatchToUnity(() => onTranscriptionFailed?.Invoke(message));
                 RaiseError(ex.Message);
@@ -296,7 +324,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 return;
             }
 
-            SherpaLog.Warning($"[OfflineSpeechRecognizerComponent] Dropped {droppedSegments} pending segment(s) due to back-pressure (maxPendingSegments={maxPendingSegments}).");
+            SherpaLog.Warning($"[{nameof(OfflineSpeechRecognizerComponent)}] Dropped {droppedSegments} pending segment(s) due to back-pressure (maxPendingSegments={maxPendingSegments}).");
             lastDropLog = now;
             droppedSegments = 0;
         }

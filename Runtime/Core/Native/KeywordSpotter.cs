@@ -96,7 +96,6 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         }
 
         private HandleRef _handle;
-        public IntPtr Handle => _handle.Handle;
 
         [DllImport(Dll.Filename)]
         private static extern IntPtr SherpaOnnxCreateKeywordSpotter(ref KeywordSpotterConfig config);
