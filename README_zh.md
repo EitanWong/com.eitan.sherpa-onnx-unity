@@ -31,7 +31,7 @@ SherpaONNXUnity 将 sherpa-onnx 的主要语音与音频能力集成到 Unity，
 ## v0.1.3-exp.4 更新亮点
 
 - 同步 sherpa-onnx 原生库至 `v1.13.0`。
-- 支持 iOS 平台，包含真机和模拟器 xcframework slice。
+- 支持 iOS 平台，内置静态原生库。
 - 完善 SherpaONNXUnity 在 Unity 场景和 Inspector 中的组件工作流。
 - 新增 Source Separation 支持。
 - 新增 Speaker Diarization 支持。

@@ -31,7 +31,7 @@ It is built for offline-first Unity applications that need speech recognition, s
 ## What's New in v0.1.3-exp.4
 
 - Updated bundled sherpa-onnx native libraries to `v1.13.0`.
-- Added iOS support with device and simulator xcframework slices.
+- Added iOS support with bundled static native libraries.
 - Improved the SherpaONNXUnity component workflow for Unity scenes and Inspectors.
 - Added Source Separation support.
 - Added Speaker Diarization support.
