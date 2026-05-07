@@ -6,18 +6,18 @@ namespace Eitan.SherpaONNXUnity.Samples
     using Eitan.Sherpa.Onnx.Unity.Mono.Components;
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using Eitan.SherpaONNXUnity.Runtime;
+    using Eitan.SherpaONNXUnity.Runtime.Modules;
     using UnityEngine;
     using UnityEngine.UI;
     using UnityEngine.Events;
-    using Stage = Eitan.SherpaONNXUnity.Samples.ModelLoadProgressTracker.Stage;
     using System.Threading;
     using System;
 
 
 
     /// <summary>
-    /// Push-to-record offline transcription demo with progress UI.
-    /// 离线语音识别示例，按下录音并带有加载进度显示。
+    /// Push-to-record non-streaming transcription demo with progress UI.
+    /// 非流式语音识别示例，按下录音并带有加载进度显示。
     /// </summary>
     public sealed class OfflineSpeechRecognitionExample : MonoBehaviour
     {
@@ -27,6 +27,7 @@ namespace Eitan.SherpaONNXUnity.Samples
 
         [Header("UI")]
         [SerializeField] private Dropdown modelDropdown;
+        [SerializeField] private Dropdown languageDropdown;
         [SerializeField] private Button loadOrUnloadButton;
         [SerializeField] private Button recordButton;
         [SerializeField] private Text statusText;
@@ -61,6 +62,11 @@ namespace Eitan.SherpaONNXUnity.Samples
                 loadOrUnloadButton.onClick.AddListener(ToggleModules);
             }
 
+            if (modelDropdown != null)
+            {
+                modelDropdown.onValueChanged.AddListener(HandleModelDropdownValueChanged);
+            }
+
             failureHandler = HandleTranscriptionFailed;
 
             if (recordButton != null)
@@ -89,7 +95,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             operationCts = new CancellationTokenSource();
             manifestCts = new CancellationTokenSource();
             _ = PopulateSpeechModelsAsync(manifestCts.Token);
-            ClearTranscript("Load a model, then tap Record to capture speech.");
+            ClearTranscript("Load a non-streaming model, then tap Record to capture speech.");
             UpdateLoadButtonLabel();
             UpdateRecordButtonState(false);
         }
@@ -99,6 +105,11 @@ namespace Eitan.SherpaONNXUnity.Samples
             if (loadOrUnloadButton != null)
             {
                 loadOrUnloadButton.onClick.RemoveListener(ToggleModules);
+            }
+
+            if (modelDropdown != null)
+            {
+                modelDropdown.onValueChanged.RemoveListener(HandleModelDropdownValueChanged);
             }
 
             if (recordButton != null)
@@ -129,6 +140,9 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 return;
             }
+
+            languageDropdown = DemoUIShared.EnsureLanguageDropdown(languageDropdown, modelDropdown);
+            DemoUIShared.ConfigureSpeechLanguageDropdown(languageDropdown, string.Empty);
 
             modelDropdown.options.Clear();
             if (!string.IsNullOrEmpty(loadingMessage))
@@ -174,6 +188,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 var defaultIndex = options.FindIndex(m => m.text == defaultModelID);
                 modelDropdown.value = defaultIndex >= 0 ? defaultIndex : Mathf.Clamp(modelDropdown.value, 0, Mathf.Max(0, options.Count - 1));
                 modelDropdown.interactable = options.Count > 0;
+                UpdateLanguageDropdown();
             }
             catch (OperationCanceledException)
             {
@@ -188,6 +203,8 @@ namespace Eitan.SherpaONNXUnity.Samples
                 {
                     loadOrUnloadButton.interactable = false;
                 }
+
+                UpdateLanguageDropdown();
             }
         }
 
@@ -209,11 +226,12 @@ namespace Eitan.SherpaONNXUnity.Samples
                 var asrModelId = SelectedSpeechModelId;
                 if (string.IsNullOrWhiteSpace(asrModelId))
                 {
-                    statusText.text = "Select an offline ASR model first.";
+                    statusText.text = "Select a non-streaming ASR model first.";
                     return;
                 }
 
                 offlineRecognizer.ModelId = asrModelId.Trim();
+                offlineRecognizer.RecognitionLanguage = DemoUIShared.GetSelectedSpeechLanguage(languageDropdown, asrModelId);
                 moduleRequested = offlineRecognizer.TryLoadModule();
                 statusText.text = moduleRequested ? $"Loading {offlineRecognizer.ModelId}…" : "Unable to start module.";
                 if (moduleRequested)
@@ -230,7 +248,7 @@ namespace Eitan.SherpaONNXUnity.Samples
                 isRecording = false;
                 recordedSamples.Clear();
                 ClearTranscript();
-                statusText.text = "Module disposed.";
+                statusText.text = "Model disposed.";
                 progressTracker?.Reset();
                 progressTracker?.SetVisible(false);
                 operationCts?.Dispose();
@@ -251,7 +269,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             var label = loadOrUnloadButton.GetComponentInChildren<Text>();
             if (label != null)
             {
-                label.text = moduleRequested ? "Unload Module" : "Load Module";
+                label.text = moduleRequested ? "Unload Model" : "Load Model";
             }
 
             DemoUIShared.SetButtonColor(loadOrUnloadButton, moduleRequested ? DemoUIShared.UnloadColor : DemoUIShared.LoadColor);
@@ -260,6 +278,21 @@ namespace Eitan.SherpaONNXUnity.Samples
             {
                 modelDropdown.interactable = !moduleRequested;
             }
+
+            if (languageDropdown != null)
+            {
+                languageDropdown.interactable = !moduleRequested;
+            }
+        }
+
+        private void HandleModelDropdownValueChanged(int _)
+        {
+            UpdateLanguageDropdown();
+        }
+
+        private void UpdateLanguageDropdown()
+        {
+            DemoUIShared.ConfigureSpeechLanguageDropdown(languageDropdown, SelectedSpeechModelId);
         }
 
         private void HandleRecognizerReadyState(bool ready)
@@ -270,7 +303,7 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
 
             statusText.text = ready
-                ? "Model ready. Tap Record to capture speech."
+                ? "Non-streaming model ready. Tap Record to capture speech."
                 : "Recognizer not ready.";
 
             if (ready)
@@ -289,7 +322,7 @@ namespace Eitan.SherpaONNXUnity.Samples
         {
             if (!moduleRequested || offlineRecognizer == null || !offlineRecognizer.IsInitialized)
             {
-                statusText.text = "Load the offline model before recording.";
+                statusText.text = "Load the non-streaming model before recording.";
                 return;
             }
 
@@ -359,15 +392,15 @@ namespace Eitan.SherpaONNXUnity.Samples
 
             try
             {
-                var transcript = await offlineRecognizer.TranscribeClipAsync(clip, operationCts?.Token ?? CancellationToken.None).ConfigureAwait(true);
-                if (string.IsNullOrWhiteSpace(transcript))
+                var result = await offlineRecognizer.TranscribeClipAsync(clip, operationCts?.Token ?? CancellationToken.None).ConfigureAwait(true);
+                if (result.Status != SpeechRecognition.TranscriptionStatus.Success || string.IsNullOrWhiteSpace(result.Text))
                 {
                     statusText.text = "No transcript returned.";
                     return;
                 }
 
                 statusText.text = "Transcription complete.";
-                HandleTranscriptReady(transcript);
+                HandleTranscriptReady(result);
             }
             catch (System.Exception ex)
             {
@@ -375,8 +408,9 @@ namespace Eitan.SherpaONNXUnity.Samples
             }
         }
 
-        private void HandleTranscriptReady(string text)
+        private void HandleTranscriptReady(SpeechRecognition.TranscriptionResult result)
         {
+            var text = result.Text;
             if (string.IsNullOrWhiteSpace(text))
             {
                 return;

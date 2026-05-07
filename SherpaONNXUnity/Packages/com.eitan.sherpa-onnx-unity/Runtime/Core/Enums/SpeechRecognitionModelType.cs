@@ -26,7 +26,9 @@ namespace Eitan.SherpaONNXUnity.Runtime
         Offline_Canary,
         Offline_WenetCtc,
         Offline_MedAsrCtc,
-        Offline_FunAsrNano
+        Offline_FunAsrNano,
+        Offline_Qwen3Asr,
+        Offline_CohereTranscribe
     }
 
 }

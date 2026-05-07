@@ -1,4 +1,4 @@
-// Runtime: Packages/com.eitan.sherpa-onnx-unity/Runtime/Mono/Components/SpeechRecognizerComponent.cs
+// Runtime: Packages/com.eitan.sherpa-onnx-unity/Runtime/Mono/Components/RealtimeSpeechRecognizerComponent.cs
 
 namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 {
@@ -9,18 +9,20 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
     using Eitan.Sherpa.Onnx.Unity.Mono.Inputs;
     using Eitan.SherpaONNXUnity.Runtime;
     using Eitan.SherpaONNXUnity.Runtime.Modules;
+    using Eitan.SherpaONNXUnity.Runtime.Utilities;
 
     using UnityEngine;
     using UnityEngine.Events;
+    using UnityEngine.Serialization;
 
     /// <summary>
-    /// High-level wrapper around <see cref="SpeechRecognition"/> that consumes PCM chunks
+    /// Realtime ASR wrapper around <see cref="SpeechRecognition"/> that consumes PCM chunks
     /// from any <see cref="SherpaAudioInputSource"/> (e.g., <see cref="SherpaMicrophoneInput"/>).
-    /// Streams audio into the recognizer and exposes transcripts through UnityEvents.
+    /// Use this component with realtime/online speech recognition models.
     /// </summary>
-    [AddComponentMenu("SherpaONNX/Speech Recognition/Speech Recognizer")]
+    [AddComponentMenu("SherpaONNX/Speech Recognition/Realtime Speech Recognizer")]
     [DisallowMultipleComponent]
-    public sealed class SpeechRecognizerComponent : SherpaAudioStreamingComponent<SpeechRecognition>
+    public sealed class RealtimeSpeechRecognizerComponent : SherpaAudioStreamingComponent<SpeechRecognition>
     {
         [SerializeField]
         [Tooltip("Avoid emitting duplicate transcripts when the recognizer returns the same value repeatedly.")]
@@ -33,7 +35,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         [Header("Transcription Events")]
         [SerializeField]
-        private UnityEvent<string> onTranscriptionReady = new UnityEvent<string>();
+        private UnityEvent<SpeechRecognition.TranscriptionResult> onTranscriptionReady = new UnityEvent<SpeechRecognition.TranscriptionResult>();
 
         [Header("Streaming")]
         [SerializeField]
@@ -47,6 +49,12 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         [SerializeField]
         [Tooltip("Drop incoming audio when the recognizer is busy to keep latency low.")]
         private bool dropIfRecognizerBusy = true;
+
+        [Header("Recognition Options")]
+        [SerializeField]
+        [HideInInspector]
+        [FormerlySerializedAs("language")]
+        private string recognitionLanguage = string.Empty;
 
         [Header("Endpointing (online models only)")]
         [SerializeField]
@@ -68,7 +76,16 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
         /// <summary>
         /// Allows scripts to subscribe to transcription updates without relying on the inspector.
         /// </summary>
-        public UnityEvent<string> TranscriptionReadyEvent => onTranscriptionReady;
+        public UnityEvent<SpeechRecognition.TranscriptionResult> TranscriptionReadyEvent => onTranscriptionReady;
+
+        /// <summary>
+        /// Optional language code used by models that support language selection.
+        /// </summary>
+        public string RecognitionLanguage
+        {
+            get => recognitionLanguage;
+            set => recognitionLanguage = value ?? string.Empty;
+        }
 
         private readonly Queue<AudioChunk> pendingChunks = new Queue<AudioChunk>();
         private readonly object queueLock = new object();
@@ -98,15 +115,22 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
         protected override SpeechRecognition CreateModule(string resolvedModelId, int resolvedSampleRate, SherpaONNXFeedbackReporter resolvedReporter)
         {
-            SpeechRecognition.Options options = null;
+            if (!SherpaUtils.Model.IsOnlineModel(resolvedModelId))
+            {
+                throw new ArgumentException(
+                    $"{nameof(RealtimeSpeechRecognizerComponent)} requires an online/realtime speech recognition model. Model '{resolvedModelId}' is not online/realtime.",
+                    nameof(resolvedModelId));
+            }
+
+            var options = new SpeechRecognition.Options
+            {
+                Language = recognitionLanguage
+            };
             if (overrideEndpointRules)
             {
-                options = new SpeechRecognition.Options
-                {
-                    Rule1MinTrailingSilence = rule1MinTrailingSilence,
-                    Rule2MinTrailingSilence = rule2MinTrailingSilence,
-                    Rule3MinUtteranceLength = rule3MinUtteranceLength
-                };
+                options.Rule1MinTrailingSilence = rule1MinTrailingSilence;
+                options.Rule2MinTrailingSilence = rule2MinTrailingSilence;
+                options.Rule3MinUtteranceLength = rule3MinUtteranceLength;
             }
 
             var maxInFlight = Mathf.Max(1, maxInFlightTranscriptions);
@@ -261,12 +285,11 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
 
                     if (result.Status == SpeechRecognition.TranscriptionStatus.Success && !string.IsNullOrWhiteSpace(result.Text))
                     {
-                        var text = result.Text.Trim();
-                        DispatchToUnity(() => PublishTranscript(text));
+                        DispatchToUnity(() => PublishTranscript(result));
                     }
                     else if (result.Status == SpeechRecognition.TranscriptionStatus.Error && result.Error != null)
                     {
-                        SherpaLog.Error($"[SpeechRecognizerComponent] Transcription failed: {result.Error.Message}");
+                        SherpaLog.Error($"[{nameof(RealtimeSpeechRecognizerComponent)}] Transcription failed: {result.Error.Message}");
                         RaiseError(result.Error.Message);
                     }
                     else if (result.Status == SpeechRecognition.TranscriptionStatus.Disposed)
@@ -280,21 +303,21 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 }
                 catch (Exception ex)
                 {
-                    SherpaLog.Error($"[SpeechRecognizerComponent] Transcription failed: {ex.Message}");
+                    SherpaLog.Error($"[{nameof(RealtimeSpeechRecognizerComponent)}] Transcription failed: {ex.Message}");
                     RaiseError(ex.Message);
                 }
             }
         }
 
-        private void PublishTranscript(string text)
+        private void PublishTranscript(SpeechRecognition.TranscriptionResult result)
         {
-            if (deduplicateStreamingResults && string.Equals(text, lastTranscript, StringComparison.Ordinal))
+            if (deduplicateStreamingResults && string.Equals(result.Text, lastTranscript, StringComparison.Ordinal))
             {
                 return;
             }
 
-            lastTranscript = text;
-            onTranscriptionReady?.Invoke(text);
+            lastTranscript = result.Text;
+            onTranscriptionReady?.Invoke(result);
         }
 
         protected override void OnAudioChunkReceived(float[] samples, int sampleRate)
@@ -328,7 +351,7 @@ namespace Eitan.Sherpa.Onnx.Unity.Mono.Components
                 return;
             }
 
-            SherpaLog.Warning($"[SpeechRecognizerComponent] Dropped {droppedChunks} audio chunk(s) due to back-pressure (maxPendingChunks={maxPendingChunks}).");
+            SherpaLog.Warning($"[{nameof(RealtimeSpeechRecognizerComponent)}] Dropped {droppedChunks} audio chunk(s) due to back-pressure (maxPendingChunks={maxPendingChunks}).");
             droppedChunks = 0;
             lastDropLog = now;
         }

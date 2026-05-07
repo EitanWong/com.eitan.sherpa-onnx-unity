@@ -5,6 +5,20 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http.keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.1.3-exp.4] - 2026-05-07
+
+### Added
+- Added iOS platform support using iOS-targeted sherpa-onnx and ONNX Runtime xcframework bundles for device and simulator builds.
+- Added documentation coverage for `SourceSeparationComponent`, `SpeakerDiarizationComponent`, the split realtime/offline speech recognition components, and the expanded runtime configuration API.
+
+### Changed
+- Updated bundled sherpa-onnx native libraries to v1.13.0.
+- Replaced the previous iOS native library layout with xcframework-based iOS native plugins.
+- Refreshed the bilingual package documentation and restored readable Chinese documentation text.
+
+### Fixed
+- Documented the missing runtime environment variables for download timeout, insecure download policy, and strict model hash validation.
+
 ## [0.1.3-exp.3] - 2026-03-22
 
 ### Changed

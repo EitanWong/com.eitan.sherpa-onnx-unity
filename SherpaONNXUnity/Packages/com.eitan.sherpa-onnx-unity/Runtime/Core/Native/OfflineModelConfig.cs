@@ -34,6 +34,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
             MedAsr = new OfflineMedAsrCtcModelConfig();
             FunAsrNano = new OfflineFunAsrNanoModelConfig();
             FireRedAsrCtc = new OfflineFireRedAsrCtcModelConfig();
+            Qwen3Asr = new OfflineQwen3AsrModelConfig();
+            CohereTranscribe = new OfflineCohereTranscribeModelConfig();
         }
         public OfflineTransducerModelConfig Transducer;
         public OfflineParaformerModelConfig Paraformer;
@@ -74,5 +76,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Native
         public OfflineMedAsrCtcModelConfig MedAsr;
         public OfflineFunAsrNanoModelConfig FunAsrNano;
         public OfflineFireRedAsrCtcModelConfig FireRedAsrCtc;
+        public OfflineQwen3AsrModelConfig Qwen3Asr;
+        public OfflineCohereTranscribeModelConfig CohereTranscribe;
     }
 }

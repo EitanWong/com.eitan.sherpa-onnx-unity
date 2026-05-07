@@ -12,44 +12,27 @@ namespace Eitan.SherpaONNXUnity.Runtime
     {
         internal static List<SherpaONNXModelMetadata> GetLocalModels()
         {
-            var settings = SherpaONNXCustomModelSettings.LoadFromResources();
-            if (settings == null)
+            var snapshot = SherpaONNXRuntimeResourceProvider.GetCustomModelCatalogSnapshot();
+            if (snapshot.LocalModels.Count == 0)
             {
                 return new List<SherpaONNXModelMetadata>();
             }
 
-            var results = new List<SherpaONNXModelMetadata>();
-            foreach (var metadata in settings.EnumerateEnabledModels())
+            var models = new List<SherpaONNXModelMetadata>(snapshot.LocalModels.Count);
+            foreach (var metadata in snapshot.LocalModels)
             {
-                if (metadata == null || string.IsNullOrWhiteSpace(metadata.modelId))
-                {
-                    continue;
-                }
-
-                results.Add(NormalizeMetadata(metadata));
+                models.Add(CloneMetadata(metadata));
             }
 
-            return results;
+            return models;
         }
 
         internal static List<string> GetRemoteManifestUrls()
         {
-            var settings = SherpaONNXCustomModelSettings.LoadFromResources();
-            if (settings == null)
-            {
-                return new List<string>();
-            }
-
-            var urls = new List<string>();
-            foreach (var url in settings.EnumerateEnabledRemoteManifestUrls())
-            {
-                if (!string.IsNullOrWhiteSpace(url))
-                {
-                    urls.Add(url.Trim());
-                }
-            }
-
-            return urls;
+            var snapshot = SherpaONNXRuntimeResourceProvider.GetCustomModelCatalogSnapshot();
+            return snapshot.RemoteManifestUrls.Count == 0
+                ? new List<string>()
+                : new List<string>(snapshot.RemoteManifestUrls);
         }
 
         internal static async Task<List<SherpaONNXModelMetadata>> FetchRemoteModelsAsync(
@@ -120,6 +103,8 @@ namespace Eitan.SherpaONNXUnity.Runtime
                 return null;
             }
 
+            metadata = CloneMetadata(metadata);
+
             metadata.modelId = metadata.modelId?.Trim();
             metadata.moduleTypeHint = metadata.moduleTypeHint?.Trim();
             metadata.downloadUrl = metadata.downloadUrl?.Trim();
@@ -127,6 +112,38 @@ namespace Eitan.SherpaONNXUnity.Runtime
             metadata.modelTypeHint = metadata.modelTypeHint?.Trim();
             NormalizeBindings(metadata.fileBindings);
             return metadata;
+        }
+
+        private static SherpaONNXModelMetadata CloneMetadata(SherpaONNXModelMetadata metadata)
+        {
+            var clone = new SherpaONNXModelMetadata
+            {
+                modelId = metadata.modelId,
+                moduleType = metadata.moduleType,
+                moduleTypeHint = metadata.moduleTypeHint,
+                downloadUrl = metadata.downloadUrl,
+                downloadFileHash = metadata.downloadFileHash,
+                modelTypeHint = metadata.modelTypeHint,
+                numberOfSpeakers = metadata.numberOfSpeakers,
+                sampleRate = metadata.sampleRate,
+                fileBindings = new List<SherpaONNXModelFileBinding>()
+            };
+
+            if (metadata.fileBindings != null)
+            {
+                foreach (var binding in metadata.fileBindings)
+                {
+                    clone.fileBindings.Add(binding == null
+                        ? null
+                        : new SherpaONNXModelFileBinding
+                        {
+                            key = binding.key,
+                            path = binding.path
+                        });
+                }
+            }
+
+            return clone;
         }
 
         private static void NormalizeBindings(List<SherpaONNXModelFileBinding> bindings)

@@ -20,6 +20,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             public float Rule1MinTrailingSilence { get; set; } = 2.4f;
             public float Rule2MinTrailingSilence { get; set; } = 1.2f;
             public float Rule3MinUtteranceLength { get; set; } = 30f;
+            public string Language { get; set; }
         }
 
         private OnlineRecognizer _onlineRecognizer;
@@ -66,18 +67,31 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
         public readonly struct TranscriptionResult
         {
-            public TranscriptionResult(TranscriptionStatus status, string text = "", bool isFinal = false, Exception error = null)
+            public TranscriptionResult(
+                TranscriptionStatus status,
+                string text = "",
+                bool isFinal = false,
+                Exception error = null,
+                string[] tokens = null,
+                float[] timestamps = null,
+                float[] durations = null)
             {
                 Status = status;
                 Text = text ?? string.Empty;
                 IsFinal = isFinal;
                 Error = error;
+                Tokens = tokens ?? Array.Empty<string>();
+                Timestamps = timestamps ?? Array.Empty<float>();
+                Durations = durations ?? Array.Empty<float>();
             }
 
             public TranscriptionStatus Status { get; }
             public string Text { get; }
             public bool IsFinal { get; }
             public Exception Error { get; }
+            public string[] Tokens { get; }
+            public float[] Timestamps { get; }
+            public float[] Durations { get; }
         }
 
         protected override SherpaONNXModuleType ModuleType => SherpaONNXModuleType.SpeechRecognition;
@@ -422,9 +436,61 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         context.FallbackReporter,
                         new[] { SherpaONNXModelFileKey.Tokenizer },
                         ModelFileCriteria.FromDirectoryKeywords("qwen3-0.6b"));
+                    config.ModelConfig.FunAsrNano.Language = GetConfiguredLanguageOrDefault(string.Empty);
                     config.ModelConfig.Tokens = string.Empty;
                     break;
+                case SpeechRecognitionModelType.Offline_Qwen3Asr:
+                    config.ModelConfig.Qwen3Asr.ConvFrontend = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR conv frontend",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.ConvFrontend },
+                        ModelFileCriteria.FromKeywords("conv_frontend", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("conv", "frontend", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("conv_frontend"),
+                        ModelFileCriteria.FromKeywords("conv", "frontend"));
+                    config.ModelConfig.Qwen3Asr.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR encoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
+                        ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.Qwen3Asr.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR decoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
+                        ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Qwen3Asr.Tokenizer = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Qwen3 ASR tokenizer folder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Tokenizer },
+                        ModelFileCriteria.FromDirectoryKeywords("tokenizer"),
+                        ModelFileCriteria.FromDirectoryKeywords("qwen3"));
+                    config.ModelConfig.Tokens = string.Empty;
+                    break;
+                case SpeechRecognitionModelType.Offline_CohereTranscribe:
+                    config.ModelConfig.CohereTranscribe.Decoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Cohere Transcribe decoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Decoder },
+                        ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("decoder"));
 
+                    config.ModelConfig.CohereTranscribe.Encoder = ModelFileResolver.ResolveRequiredFileWithBindings(
+                        metadata,
+                        "Cohere Transcribe encoder",
+                        context.FallbackReporter,
+                        new[] { SherpaONNXModelFileKey.Encoder },
+                        ModelFileCriteria.FromKeywords("encoder", context.Int8Keyword),
+                        ModelFileCriteria.FromKeywords("encoder"));
+                    config.ModelConfig.CohereTranscribe.Language = GetConfiguredLanguageOrDefault("en");
+
+                    break;
                 case SpeechRecognitionModelType.Dolphin:
                     config.ModelConfig.Dolphin.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
                         metadata,
@@ -460,7 +526,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
-                    config.ModelConfig.Whisper.Language = string.Empty;
+                    config.ModelConfig.Whisper.Language = GetConfiguredLanguageOrDefault(string.Empty);
                     config.ModelConfig.Whisper.Task = "transcribe";
                     break;
 
@@ -484,7 +550,7 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         ModelFileCriteria.FromKeywords("model", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("model"));
                     config.ModelConfig.SenseVoice.UseInverseTextNormalization = 1;
-                    config.ModelConfig.SenseVoice.Language = "auto";
+                    config.ModelConfig.SenseVoice.Language = GetConfiguredLanguageOrDefault("auto");
                     break;
 
                 case SpeechRecognitionModelType.Moonshine:
@@ -577,6 +643,8 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                         new[] { SherpaONNXModelFileKey.Decoder },
                         ModelFileCriteria.FromKeywords("decoder", context.Int8Keyword),
                         ModelFileCriteria.FromKeywords("decoder"));
+                    config.ModelConfig.Canary.SrcLang = GetConfiguredLanguageOrDefault("en");
+                    config.ModelConfig.Canary.TgtLang = GetConfiguredLanguageOrDefault("en");
                     break;
                 case SpeechRecognitionModelType.Omnilingual:
                     config.ModelConfig.Omnilingual.Model = ModelFileResolver.ResolveRequiredFileWithBindings(
@@ -594,6 +662,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
 
 
             return config;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private string GetConfiguredLanguageOrDefault(string fallback)
+        {
+            return string.IsNullOrWhiteSpace(_options.Language) ? fallback : _options.Language;
         }
 
         private void ReportRecognizerConfigDiagnostics(
@@ -687,6 +761,12 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     AppendPathDiagnostic(parts, "llm", config.ModelConfig.FunAsrNano.LLM);
                     AppendPathDiagnostic(parts, "embedding", config.ModelConfig.FunAsrNano.Embedding);
                     AppendPathDiagnostic(parts, "tokenizer", config.ModelConfig.FunAsrNano.Tokenizer);
+                    break;
+                case SpeechRecognitionModelType.Offline_Qwen3Asr:
+                    AppendPathDiagnostic(parts, "convFrontend", config.ModelConfig.Qwen3Asr.ConvFrontend);
+                    AppendPathDiagnostic(parts, "encoder", config.ModelConfig.Qwen3Asr.Encoder);
+                    AppendPathDiagnostic(parts, "decoder", config.ModelConfig.Qwen3Asr.Decoder);
+                    AppendPathDiagnostic(parts, "tokenizer", config.ModelConfig.Qwen3Asr.Tokenizer);
                     break;
                 case SpeechRecognitionModelType.Dolphin:
                     AppendPathDiagnostic(parts, "model", config.ModelConfig.Dolphin.Model);
@@ -1007,8 +1087,10 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                     }
 
                     var text = result?.Text ?? string.Empty;
+                    var tokens = result?.Tokens ?? Array.Empty<string>();
+                    var timestamps = result?.Timestamps ?? Array.Empty<float>();
                     var cased = PostProcessCasing(text);
-                    return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, cased, isFinal));
+                    return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, cased, isFinal, tokens: tokens, timestamps: timestamps));
                 }
             });
         }
@@ -1019,8 +1101,9 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
             var threadCount = ThreadingUtils.GetAdaptiveThreadCount();
             var int8QuantKeyword = isMobilePlatform ? "int8" : null;
             string tokensPath;
-            if (_modelType == SpeechRecognitionModelType.Offline_FunAsrNano)
-            {   //The FunAsrNano model does not have a token file, so please ignore it.
+            if (_modelType == SpeechRecognitionModelType.Offline_FunAsrNano
+                || _modelType == SpeechRecognitionModelType.Offline_Qwen3Asr)
+            {   // Some decoder-based offline models use a tokenizer directory instead of tokens.txt.
                 tokensPath = string.Empty;
             }
             else
@@ -1069,16 +1152,24 @@ namespace Eitan.SherpaONNXUnity.Runtime.Modules
                 }
 
                 // Create new offline stream for each transcription
-                string result = string.Empty;
+                string text;
+                string[] tokens;
+                float[] timestamps;
+                float[] durations;
                 using (var offlineStream = _offlineRecognizer.CreateStream())
                 {
                     offlineStream.AcceptWaveform(sampleRate, audioSamplesFrame);
                     combinedCt.ThrowIfCancellationRequested();
                     _offlineRecognizer.Decode(offlineStream);
-                    result = offlineStream.Result.Text;
-                    result = PostProcessCasing(result);
+                    var nativeResult = offlineStream.Result;
+                    text = nativeResult.Text;
+                    tokens = nativeResult.Tokens;
+                    timestamps = nativeResult.Timestamps;
+                    durations = nativeResult.Durations;
+
+                    text = PostProcessCasing(text);
                 }
-                return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, result, isFinal: true));
+                return Task.FromResult(new TranscriptionResult(TranscriptionStatus.Success, text, isFinal: true, tokens: tokens, timestamps: timestamps, durations: durations));
             });
         }
 

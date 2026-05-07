@@ -413,6 +413,27 @@ namespace Eitan.SherpaONNXUnity.Editor.Localization
                 internal const string EventTaggingFailed = "inspectors.audioTagging.event.taggingFailed";
             }
 
+            internal static class SourceSeparation
+            {
+                internal const string SectionPlayback = "inspectors.sourceSeparation.section.playback";
+                internal const string SectionSeparation = "inspectors.sourceSeparation.section.separation";
+                internal const string SectionOutputProcessing = "inspectors.sourceSeparation.section.outputProcessing";
+                internal const string FieldPlaybackAudioSources = "inspectors.sourceSeparation.field.playbackAudioSources";
+                internal const string FieldAutoplay = "inspectors.sourceSeparation.field.autoplay";
+                internal const string FieldClipReference = "inspectors.sourceSeparation.field.clipReference";
+                internal const string FieldSeparateOnEnable = "inspectors.sourceSeparation.field.separateOnEnable";
+                internal const string FieldEnableProcessing = "inspectors.sourceSeparation.field.enableProcessing";
+                internal const string FieldFadeInMilliseconds = "inspectors.sourceSeparation.field.fadeInMilliseconds";
+                internal const string FieldFadeOutMilliseconds = "inspectors.sourceSeparation.field.fadeOutMilliseconds";
+                internal const string FieldRemoveDcOffset = "inspectors.sourceSeparation.field.removeDcOffset";
+                internal const string FieldClampToUnitRange = "inspectors.sourceSeparation.field.clampToUnitRange";
+                internal const string FieldFadeCurve = "inspectors.sourceSeparation.field.fadeCurve";
+                internal const string ButtonSeparateNow = "inspectors.sourceSeparation.button.separateNow";
+                internal const string HelpAssignClip = "inspectors.sourceSeparation.help.assignClip";
+                internal const string EventSeparationReady = "inspectors.sourceSeparation.event.separationReady";
+                internal const string EventError = "inspectors.sourceSeparation.event.error";
+            }
+
             internal static class Punctuation
             {
                 internal const string SectionPreview = "inspectors.punctuation.section.preview";

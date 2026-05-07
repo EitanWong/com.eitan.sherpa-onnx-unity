@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.IO.Compression;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -175,6 +177,98 @@ namespace Eitan.SherpaONNXUnity.Tests
         }
 
         [Test]
+        public async Task Prepare_HashMismatch_AllowsWhenNotForced()
+        {
+            var prevForceHash = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation);
+            var prevFetchLatest = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest);
+            var prevAutoDownload = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels);
+            var prevAutoDelete = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels);
+
+            var metadata = new SherpaONNXModelMetadata
+            {
+                modelId = "zipformer-test-hash-mismatch-nonstrict",
+                moduleType = SherpaONNXModuleType.SpeechRecognition,
+                downloadUrl = "https://example.invalid/zipformer-test-hash-mismatch-nonstrict.zip",
+                downloadFileHash = "deadbeef"
+            };
+
+            SherpaUtils.Prepare.ResolveDownloadFilePath(
+                metadata,
+                out _,
+                out var modelDirectory,
+                out var downloadFileName,
+                out _);
+            var downloadPath = SherpaUtils.Prepare.ResolveDownloadFilePath(
+                metadata,
+                out _,
+                out _,
+                out _,
+                out _);
+
+            try
+            {
+                SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, bool.FalseString);
+                SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, bool.FalseString);
+                SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, bool.TrueString);
+                SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, bool.TrueString);
+
+                CleanupPath(modelDirectory);
+                CleanupPath(downloadPath);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(downloadPath));
+                CreateTestArchive(downloadPath, downloadFileName);
+
+                var result = await SherpaUtils.Prepare.PrepareAndLoadModelWithResultAsync(
+                    metadata,
+                    reporter: null,
+                    cancellationToken: CancellationToken.None);
+
+                Assert.IsTrue(result.Success, $"Prepare should succeed when hash validation is not forced. Error: {result.ErrorCode}");
+                Assert.AreEqual(PrepareErrorCode.None, result.ErrorCode);
+                Assert.IsTrue(Directory.Exists(modelDirectory));
+            }
+            finally
+            {
+                CleanupPath(modelDirectory);
+                CleanupPath(downloadPath);
+                RestoreEnvironmentValue(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, prevForceHash);
+                RestoreEnvironmentValue(SherpaONNXEnvironment.BuiltinKeys.FetchLatestManifest, prevFetchLatest);
+                RestoreEnvironmentValue(SherpaONNXEnvironment.BuiltinKeys.AutoDownloadModels, prevAutoDownload);
+                RestoreEnvironmentValue(SherpaONNXEnvironment.BuiltinKeys.AutoDeleteCorruptedModels, prevAutoDelete);
+            }
+        }
+
+        [Test]
+        public void Prepare_HashMismatch_IsRejectedWhenForced()
+        {
+            var prevForceHash = SherpaONNXEnvironment.Get(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation);
+
+            try
+            {
+                SherpaONNXEnvironment.Set(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, bool.TrueString);
+
+                var metadata = new SherpaONNXModelMetadata { modelId = "zipformer-test-hash-mismatch-strict" };
+                var verificationResult = new FileVerificationEventArgs(
+                    "/tmp/fake.zip",
+                    FileVerificationStatus.HashMismatch,
+                    progress: 1f,
+                    calculatedHash: "actual",
+                    expectedHash: "expected",
+                    message: "Expected hash: expected, Actual hash: actual");
+
+                var method = typeof(SherpaUtils.Prepare).GetMethod("ShouldAcceptVerificationResult", BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.IsNotNull(method, "Could not locate ShouldAcceptVerificationResult via reflection.");
+
+                var accepted = (bool)method.Invoke(null, new object[] { metadata, "/tmp/fake.zip", "download archive", verificationResult, null });
+                Assert.IsFalse(accepted);
+            }
+            finally
+            {
+                RestoreEnvironmentValue(SherpaONNXEnvironment.BuiltinKeys.ForceModelHashValidation, prevForceHash);
+            }
+        }
+
+        [Test]
         public async Task Prepare_VerifiesOrtModelDirectory_AsDownloaded()
         {
             var metadata = new SherpaONNXModelMetadata
@@ -224,6 +318,48 @@ namespace Eitan.SherpaONNXUnity.Tests
             }
 
             SherpaONNXEnvironment.Set(key, value);
+        }
+
+        private static void CreateTestArchive(string archivePath, string archiveName)
+        {
+            using var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create);
+            var folderName = Path.GetFileNameWithoutExtension(archiveName);
+
+            var modelEntry = archive.CreateEntry($"{folderName}/encoder.onnx");
+            using (var writer = new StreamWriter(modelEntry.Open()))
+            {
+                writer.Write("fake-model-content");
+            }
+
+            var tokensEntry = archive.CreateEntry($"{folderName}/tokens.txt");
+            using (var writer = new StreamWriter(tokensEntry.Open()))
+            {
+                writer.Write("a 1");
+            }
+        }
+
+        private static void CleanupPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            var cachePath = path + ".sha256";
+            if (File.Exists(cachePath))
+            {
+                File.Delete(cachePath);
+            }
         }
     }
 }
