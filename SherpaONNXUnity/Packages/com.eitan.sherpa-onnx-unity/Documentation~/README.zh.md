@@ -194,6 +194,6 @@ SherpaONNXUnityAPI.RegisterCustomModels(models);
 ## 平台说明
 
 - `0.1.3-exp.4` 同步 sherpa-onnx 原生库至 v1.13.0。
-- iOS 使用 xcframework，支持真机和模拟器构建。
+- iOS 使用内置静态原生库，支持 Unity iOS 构建。
 - Android 生产环境推荐 `arm64-v8a`。
 - Android `armeabi-v7a` 仍可用，但部分上游原生模型路径可能不稳定。

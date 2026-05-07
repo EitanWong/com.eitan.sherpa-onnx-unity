@@ -194,6 +194,6 @@ Minimum manifest entry:
 ## Platform Notes
 
 - `0.1.3-exp.4` updates sherpa-onnx native libraries to v1.13.0.
-- iOS uses xcframework bundles for device and simulator builds.
+- iOS uses bundled static native libraries for Unity iOS builds.
 - Android `arm64-v8a` is recommended for production.
 - Android `armeabi-v7a` remains available but may be unstable for some upstream native model paths.
